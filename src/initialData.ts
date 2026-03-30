@@ -18,14 +18,14 @@ export const INITIAL_TRAMITES = [
     "fuente": "Excel PAMI 2023"
   },
   {
-    "nombre": "Expedientes",
-    "categoria": "Afiliaciones y expedientes",
+    "nombre": "Expediente GDE",
+    "categoria": "Expediente GDE",
     "descripcion": "VE-(vía de excepción) NOMBRE Y APELLIDO - DNI - INSUMO\nRV-(riesgo de vida) NOMBRE Y APELLIDO - DNI - INSUMO \nREINTEGRO -NOMBRE Y APELLIDO - DNI -INSUMO",
     "fuente": "Excel PAMI 2023"
   },
   {
     "nombre": "Reintegros",
-    "categoria": "Afiliaciones y expedientes",
+    "categoria": "Reintegros",
     "descripcion": "A partir del día lunes 11/07 los expedientes de reintegro que se realizaban en papel pasan a realizarse por GDE. Se tiene que realizar la carátula correspondiente con el código PAMI00234 (EXTERNO). Luego se confecciona un IFGRA con toda la documentación correspondiente escaneada (Formulario de reintegro / la facturas nombre del afiliado / DNI y recibo de cobro / tienen que ser escaneadas las originales junto con las planillas y documentación respaldatoria) Si es necesario planilla de atutorizacion de cobro a otra persona) y una vez que se confecciona todo se envía al usuario MLGARCIAD.",
     "fuente": "Excel PAMI 2023"
   },
@@ -457,13 +457,309 @@ export const INITIAL_TRAMITES = [
 
 export const INITIAL_PRESTADORES = [
   {
-    "nombre": "Hospital Italiano de La Plata",
-    "especialidades": ["ONCOLOGIA - TRATAMIENTOS", "VIDEOENDOSCOPICAS GASTROINTESTINALES", "HEMATOLOGIA", "INFECTOLOGIA", "REUMATOLOGIA", "ENDOCRINOLOGIA", "FLEBOLOGIA", "OTORRINOLARINGOLOGIA", "DERMATOLOGIA", "NEUROLOGIA", "CARDIOLOGIA", "CIRUGIA GENERAL AMBULATORIA", "UROLOGIA", "NEUMONOLOGIA", "NEFROLOGIA", "HEPATOLOGIA", "GINECOLOGIA Y OBSTETRICIA", "GASTROENTEROLOGIA", "NUTRICION"],
-    "imagenes": []
+    "nombre": "Vaccarini",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS",
+      "VIDEOENDOSCOPICAS GASTROINTESTINALES",
+      "HEMATOLOGIA",
+      "INFECTOLOGIA",
+      "REUMATOLOGIA",
+      "ENDOCRINOLOGIA",
+      "FLEBOLOGIA",
+      "OTORRINOLARINGOLOGIA",
+      "DERMATOLOGIA",
+      "ALERGIA E INMUNOLOGIA",
+      "NEUROLOGIA",
+      "ANATOMIA PATOLOGICA",
+      "CARDIOLOGIA",
+      "CIRUGIA GENERAL AMBULATORIA",
+      "UROLOGIA",
+      "TRAUMATOLOGIA",
+      "NEUMONOLOGIA",
+      "NEFROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "FONOAUDIOLOGIA"
+    ],
+    "practicas": []
+  },
+  {
+    "nombre": "Clinica Belgrano",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS",
+      "VIDEOENDOSCOPICAS GASTROINTESTINALES",
+      "HEMATOLOGIA",
+      "DERMATOLOGIA",
+      "ALERGIA E INMUNOLOGIA",
+      "TRAUMATOLOGIA",
+      "NEFROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA"
+    ],
+    "direccion": "Cno Gral Belgrano 960",
+    "localidad": "Quilmes Oeste",
+    "telefono": "4365-0200",
+    "whatsapp": "15-6700-1440",
+    "email": "conmutador@clinicabelgrano.com"
+  },
+  {
+    "nombre": "Hospital San Martin",
+    "especialidades": [
+      "HEPATOLOGIA",
+      "GASTROENTEROLOGIA",
+      "FONOAUDIOLOGIA",
+      "DIABETOLOGIA",
+      "PALIATIVOS Y DOLOR",
+      "ELECTROFISIOLOGIA"
+    ],
+    "direccion": "1 esq 70",
+    "localidad": "La Plata",
+    "telefono": "483-3292 / 483-6588 / 483-5759",
+    "email": "hsanmartin@ms.gba.gov.ar",
+    "notas": "Turnos todos los días por orden de llegada"
+  },
+  {
+    "nombre": "Hospital Interzonal Rossi",
+    "especialidades": [
+      "OTORRINOLARINGOLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "FONOAUDIOLOGIA",
+      "PALIATIVOS Y DOLOR"
+    ],
+    "notas": "8 a 11hs: Órdenes, estudios, credencial y DNI - 1° Piso. Tiene un equipo de cirujanos de cabeza y cuello."
+  },
+  {
+    "nombre": "Hospital Privado Sudamericano",
+    "especialidades": [
+      "UROLOGIA",
+      "FISIATRIA - CONSULTAS"
+    ]
+  },
+  {
+    "nombre": "San Roque GONNET",
+    "especialidades": [
+      "OTORRINOLARINGOLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "FONOAUDIOLOGIA",
+      "NUTRICION"
+    ]
   },
   {
     "nombre": "Htal Zonal Ricardo Gutierrez",
-    "especialidades": ["ONCOLOGIA - TRATAMIENTOS", "HEMATOLOGIA", "INFECTOLOGIA", "PEDIATRIA", "REUMATOLOGIA", "FLEBOLOGIA", "OTORRINOLARINGOLOGIA", "DERMATOLOGIA", "ANATOMIA PATOLOGICA", "CARDIOLOGIA", "CIRUGIA GENERAL AMBULATORIA", "UROLOGIA", "TRAUMATOLOGIA", "GINECOLOGIA Y OBSTETRICIA", "GASTROENTEROLOGIA", "FONOAUDIOLOGIA", "NUTRICION"],
-    "imagenes": ["RX", "ECO", "ECODOPPLER", "TAC"]
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS",
+      "HEMATOLOGIA",
+      "INFECTOLOGIA",
+      "PEDIATRIA",
+      "REUMATOLOGIA",
+      "FLEBOLOGIA",
+      "OTORRINOLARINGOLOGIA",
+      "DERMATOLOGIA",
+      "ALERGIA E INMUNOLOGIA",
+      "ANATOMIA PATOLOGICA",
+      "CARDIOLOGIA",
+      "CIRUGIA GENERAL AMBULATORIA",
+      "UROLOGIA",
+      "TRAUMATOLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "NUTRICION"
+    ],
+    "notas": "Con OME directamente a Rayos de 8 a 12hs para sacar turno."
+  },
+  {
+    "nombre": "Clinica Mosconi (Beriso)",
+    "especialidades": [
+      "ENDOCRINOLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA"
+    ]
+  },
+  {
+    "nombre": "Instituto De Diagnostico De La Plata",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS"
+    ]
+  },
+  {
+    "nombre": "Instituto Del Diagnostico Cardiovascular",
+    "especialidades": [
+      "HEMATOLOGIA",
+      "ENDOCRINOLOGIA",
+      "DERMATOLOGIA",
+      "CARDIOLOGIA",
+      "NUTRICION"
+    ]
+  },
+  {
+    "nombre": "Instituto Medico Platense",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS",
+      "HEMATOLOGIA",
+      "CARDIOLOGIA",
+      "CIRUGIA GENERAL AMBULATORIA",
+      "UROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "ELECTROFISIOLOGIA"
+    ],
+    "notas": "Llamar de 13 a 16hs al 221-412925"
+  },
+  {
+    "nombre": "San Juan De Dios",
+    "especialidades": [
+      "INFECTOLOGIA",
+      "HEPATOLOGIA"
+    ],
+    "notas": "Llevar imágenes previas lunes, jueves y viernes para que la médica evalúe."
+  },
+  {
+    "nombre": "Sanatorio Medico Los Tilos",
+    "especialidades": [
+      "NEUROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "ELECTROFISIOLOGIA"
+    ]
+  },
+  {
+    "nombre": "POLICLINICA PRIVADA S.A. SITE",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS"
+    ]
+  },
+  {
+    "nombre": "Hospital Italiano de La Plata",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS",
+      "VIDEOENDOSCOPICAS GASTROINTESTINALES",
+      "HEMATOLOGIA",
+      "INFECTOLOGIA",
+      "REUMATOLOGIA",
+      "ENDOCRINOLOGIA",
+      "FLEBOLOGIA",
+      "OTORRINOLARINGOLOGIA",
+      "DERMATOLOGIA",
+      "ALERGIA E INMUNOLOGIA",
+      "ANATOMIA PATOLOGICA",
+      "CARDIOLOGIA",
+      "CIRUGIA GENERAL AMBULATORIA",
+      "UROLOGIA",
+      "NEUMONOLOGIA",
+      "NEFROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "NUTRICION",
+      "ELECTROFISIOLOGIA"
+    ]
+  },
+  {
+    "nombre": "Ipensa",
+    "especialidades": [
+      "HEMATOLOGIA",
+      "INFECTOLOGIA",
+      "DERMATOLOGIA",
+      "ALERGIA E INMUNOLOGIA",
+      "NEUROLOGIA",
+      "CARDIOLOGIA",
+      "CIRUGIA GENERAL AMBULATORIA",
+      "UROLOGIA",
+      "NEUMONOLOGIA",
+      "NEFROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "DIABETOLOGIA",
+      "HEMODINAMIA",
+      "COLOCACION DE MARCAPASOS",
+      "CIRUGIA CARDIOVASCULAR CENTRAL Y PERIFERICA",
+      "ELECTROFISIOLOGIA"
+    ],
+    "direccion": "Calle 59 # 434 entre 3 y 4",
+    "localidad": "La Plata",
+    "telefono": "221-427 1190",
+    "email": "nefrologia-dialisis@ipensa.com"
+  },
+  {
+    "nombre": "Quarello",
+    "especialidades": [
+      "FLEBOLOGIA",
+      "NEUROLOGIA"
+    ],
+    "practicas": ["INTERNACIÓN CON EL FIN DE REHABILITACIÓN"]
+  },
+  {
+    "nombre": "Hospital El Cruce",
+    "especialidades": [],
+    "direccion": "Av. Calchaquí Nº 5401",
+    "localidad": "Florencio Varela",
+    "telefono": "(011) 4210 9000",
+    "email": "informeshospitalelcruce@gmail.com",
+    "notas": "Turnos Videoendocapsula: gestiondepacientes@hospitalelcruce.org"
+  },
+  {
+    "nombre": "Investigaciones Medicas S.A.",
+    "especialidades": [],
+    "direccion": "Pichincha 69",
+    "localidad": "Capital Federal",
+    "telefono": "4127-2800",
+    "whatsapp": "11 4403 0238",
+    "practicas": ["COLONOSCOPIA VIRTUAL"]
+  },
+  {
+    "nombre": "Cofyb (Rapela Laboratorio Biomedico)",
+    "especialidades": [],
+    "direccion": "Ramon L Falcon 2534, PB",
+    "localidad": "Capital Federal",
+    "telefono": "4610-9900 Int 1",
+    "whatsapp": "011-5890-9864",
+    "email": "informes@rapela.com.ar"
+  },
+  {
+    "nombre": "Diagnostico Maipu",
+    "especialidades": [],
+    "direccion": "Avenida Maipu 1668, PB",
+    "localidad": "Vicente Lopez",
+    "telefono": "4837-7777"
+  },
+  {
+    "nombre": "Clinica Modelo de Lanus",
+    "especialidades": [],
+    "direccion": "Quintana 67",
+    "localidad": "Lanus",
+    "telefono": "4229-6000 (Op 1)",
+    "email": "turnos@clinicamodelolanus.com",
+    "notas": "Turnos personalmente de Lunes a Viernes de 8:30 a 13hs."
+  },
+  {
+    "nombre": "Fundacion Centro de Diagnostico Nuclear",
+    "especialidades": [],
+    "direccion": "Nazca 3449",
+    "localidad": "CABA",
+    "telefono": "11-6419-5046 / 011 7078-7870",
+    "practicas": ["SPECT GATILLADO", "RESONANCIA MULTIPARAMETRICA", "SPECT CEREBRAL"]
+  },
+  {
+    "nombre": "Sanatorio Mendez - Diagnostico Mediter",
+    "especialidades": [],
+    "direccion": "Avellaneda 551",
+    "localidad": "CABA",
+    "telefono": "011 6842-7777",
+    "whatsapp": "11-6674-4150",
+    "email": "info@imagenesmendez.com"
+  },
+  {
+    "nombre": "Centro de Diagnostico Bioimagenes",
+    "especialidades": [],
+    "direccion": "Yrigoyen 3502",
+    "localidad": "Lanus",
+    "telefono": "5263-3220",
+    "whatsapp": "1555886524"
+  },
+  {
+    "nombre": "IAMA",
+    "especialidades": [],
+    "direccion": "Viamonte 2560",
+    "localidad": "CABA",
+    "telefono": "011 4965-3600",
+    "whatsapp": "11-61953865"
   }
 ];
