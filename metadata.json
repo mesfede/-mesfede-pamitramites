@@ -1,0 +1,5 @@
+{
+  "name": "PAMI Guía de Trámites",
+  "description": "Aplicación para gestionar y consultar trámites, prestadores y servicios de PAMI con base de datos en tiempo real.",
+  "requestFramePermissions": []
+}

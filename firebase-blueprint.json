@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "Tramite": {
+      "title": "Trámite",
+      "description": "Información detallada sobre un trámite de PAMI.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "categoria": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "pasos": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "nota": { "type": "string" },
+        "fuente": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["nombre", "categoria", "descripcion"]
+    },
+    "Prestador": {
+      "title": "Prestador",
+      "description": "Información sobre un prestador de servicios médicos.",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "especialidades": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "imagenes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["nombre"]
+    }
+  },
+  "firestore": {
+    "/tramites/{tramiteId}": {
+      "schema": "Tramite",
+      "description": "Colección de trámites de PAMI."
+    },
+    "/prestadores/{prestadorId}": {
+      "schema": "Prestador",
+      "description": "Colección de prestadores médicos."
+    }
+  }
+}

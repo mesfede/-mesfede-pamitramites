@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: tramites
+    // Fields:
+    //   - nombre: string (required)
+    //   - categoria: string (required)
+    //   - descripcion: string (required)
+    //   - pasos: list (optional)
+    //   - nota: string (optional)
+    //   - fuente: string (optional)
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //   - createdBy: string (uid)
+    //
+    // Collection: prestadores
+    // Fields:
+    //   - nombre: string (required)
+    //   - especialidades: list
+    //   - imagenes: list
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email in ["mesfede@gmail.com", "lizasomariajose@gmail.com"] && request.auth.token.email_verified == true);
+    }
+
+    function isValidTramite(data) {
+      return data.nombre is string && data.nombre.size() > 0 && data.nombre.size() < 200 &&
+             data.categoria is string && data.categoria.size() > 0 &&
+             data.descripcion is string && data.descripcion.size() > 0 && data.descripcion.size() < 5000;
+    }
+
+    match /tramites/{tramiteId} {
+      allow read: if true; // Publicly readable
+      allow create: if isAdmin() && isValidTramite(request.resource.data);
+      allow update: if isAdmin() && isValidTramite(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /prestadores/{prestadorId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
