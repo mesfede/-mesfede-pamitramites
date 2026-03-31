@@ -222,6 +222,7 @@ export default function App() {
   const [uploadedFiles, setUploadedFiles] = useState<{ nombre: string; url: string }[]>([]);
   const [manualFileName, setManualFileName] = useState('');
   const [manualFileUrl, setManualFileUrl] = useState('');
+  const [scrolled, setScrolled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
@@ -244,9 +245,11 @@ export default function App() {
         message = "Error de red. Verifica tu conexión a internet.";
       } else if (error.code === 'auth/internal-error') {
         message = "Error interno de Firebase. Por favor, intenta más tarde.";
+      } else {
+        message = `Error (${error.code || 'unknown'}): ${error.message || 'Ocurrió un problema inesperado.'}`;
       }
       setLoginError(message);
-      setTimeout(() => setLoginError(null), 5000);
+      setTimeout(() => setLoginError(null), 8000);
     }
   };
 
@@ -261,10 +264,17 @@ export default function App() {
 
     testConnection();
 
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
     return () => {
       unsubscribeAuth();
       unsubscribeTramites();
       unsubscribePrestadores();
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -585,18 +595,32 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-pami-bg font-sans text-pami-text">
+    <div className="min-h-screen medical-pattern font-sans text-pami-text">
       {/* Header */}
-      <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <header className={cn(
+        "bg-pami-blue text-white sticky top-0 z-40 transition-all duration-300",
+        scrolled ? "py-1 shadow-lg bg-pami-blue/95 backdrop-blur-sm" : "py-2 shadow-md"
+      )}>
+        <div className={cn(
+          "max-w-7xl mx-auto px-4 flex items-center justify-between transition-all duration-300",
+          scrolled ? "h-12" : "h-16"
+        )}>
           <div className="flex items-center gap-3">
-            <PamiLogo className="h-8 text-white" />
+            <PamiLogo className={cn("text-white transition-all duration-300", scrolled ? "h-6" : "h-8")} />
             <div className="w-px h-6 bg-white/30 mx-2 hidden sm:block"></div>
             <div className="hidden sm:flex items-baseline gap-2">
-              <h1 className="text-lg font-semibold">
+              <h1 className={cn("font-semibold transition-all duration-300", scrolled ? "text-base" : "text-lg")}>
                 Guía de Trámites <span className="font-light">City Bell</span>
               </h1>
-              <span className="text-[9px] text-white/60 tracking-wider ml-1">Versión 1.0 @mesfede</span>
+              {!scrolled && (
+                <motion.span 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-[9px] text-white/60 tracking-wider ml-1"
+                >
+                  Versión 1.0 @mesfede
+                </motion.span>
+              )}
             </div>
           </div>
 
