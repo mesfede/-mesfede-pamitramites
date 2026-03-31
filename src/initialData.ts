@@ -1,19 +1,19 @@
 export const INITIAL_TRAMITES = [
   {
     "nombre": "Afiliacion Hijo Discapacitado",
-    "categoria": "Afiliaciones y expedientes",
+    "categoria": "Afiliaciones",
     "descripcion": "Llenar el formulario: pagina de inicio atencion personas afiliadas// afiliaciones/ formulario editable (ultimo) descargar/rellenar y firmar escribir los datos. ///// IFGRA con formulario + Documentacion + CERTIFICADO DE DISCAPACIDAD// Caratula GDE EXPEDIENTE - EXTERNO 00207 a nombre del afiliado titular // Agregar ifgra al EE y enviar a CM FERRONI",
     "fuente": "Excel PAMI 2023"
   },
   {
     "nombre": "Afiliacion Union Convivencial",
-    "categoria": "Afiliaciones y expedientes",
+    "categoria": "Afiliaciones",
     "descripcion": "Certifiado de Union Convicencial menos de un año y se hace expediente Caratula GDE EXPEDIENTE - EXTERNO 00207 a nombre del afiliado titular// Agregar toda la data de negativas y demas cosas que se piden habitualmente para afiliacion de esposa/o y se envia a Afiliaciones",
     "fuente": "Excel PAMI 2023"
   },
   {
     "nombre": "Afiliación Provisoria",
-    "categoria": "Afiliaciones y expedientes",
+    "categoria": "Afiliaciones",
     "descripcion": "Se coloca el numero 99 por delante después se suma si es 0 jubilación, si es pensión 5. luego se coloca el numero de documento del afiliado y los numero faltantes para sumar un total de 12 digitos se colocan 0 despues del tercer digito. Ejemplo: me quiero afiliar provisoriamente y mi numero de dni es 30923058 y soy jubilada: 990030923058/00 (99+0+0 como digito faltante+dni)",
     "fuente": "Excel PAMI 2023"
   },
@@ -227,7 +227,7 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "Oxigenoterapia",
-    "categoria": "Medicamentos especiales",
+    "categoria": "Oxigenoterapia",
     "descripcion": "Formulario NUEVO solicitud de oxigenoterapia (SIMAP) /Acta compromiso / Espirometria / - gasometría basal, estudio excluyente para la autorización de la prestación / Enviar la documentación requerida en sobre cerrado (cuando el expediente esta alla) al área PRESTACIONES ESPECIALES. Mariela Floch /",
     "fuente": "Excel PAMI 2023"
   },
@@ -395,13 +395,13 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "OXIGENOTERAPIA (ELEMENTOS LICITADOS)",
-    "categoria": "Insumos y ayudas técnicas",
+    "categoria": "Oxigenoterapia",
     "descripcion": "Hasta 4 de flujo de oxígeno. Se carga por sistema de Insumos y se envía por expediente electrónico (GENE00003).",
     "fuente": "PDF Guía"
   },
   {
     "nombre": "OXIGENOTERAPIA V/E (VÍA EXCEPCIÓN)",
-    "categoria": "Insumos y ayudas técnicas",
+    "categoria": "Oxigenoterapia",
     "descripcion": "Para flujos mayores a 4. Se requiere OME, resumen de HC, gasometría arterial y espirometría. Caratular por GDE.",
     "fuente": "PDF Guía"
   },

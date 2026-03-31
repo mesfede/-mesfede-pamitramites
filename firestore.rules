@@ -9,10 +9,10 @@ service cloud.firestore {
     // Fields:
     //   - nombre: string (required)
     //   - categoria: string (required)
-    //   - descripcion: string (required)
+    //   - descripcion: string (optional)
     //   - pasos: list (optional)
     //   - nota: string (optional)
-    //   - fuente: string (optional)
+    //   - documentos: list (optional)
     //   - createdAt: timestamp
     //   - updatedAt: timestamp
     //   - createdBy: string (uid)
@@ -32,25 +32,40 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        (request.auth.token.email in ["mesfede@gmail.com", "lizasomariajose@gmail.com"]);
+        (request.auth.token.email in ["mesfede@gmail.com", "lizasomariajose@gmail.com"]) &&
+        request.auth.token.email_verified == true;
     }
 
     function isValidTramite(data) {
       return data.nombre is string && data.nombre.size() > 0 && data.nombre.size() < 200 &&
              data.categoria is string && data.categoria.size() > 0 &&
-             data.descripcion is string && data.descripcion.size() > 0 && data.descripcion.size() < 5000;
+             (!('descripcion' in data) || (data.descripcion is string && data.descripcion.size() < 5000)) &&
+             (!('nota' in data) || (data.nota is string && data.nota.size() < 1000)) &&
+             (!('pasos' in data) || (data.pasos is list && data.pasos.size() < 50)) &&
+             (!('documentos' in data) || (data.documentos is list && data.documentos.size() < 20));
     }
 
     match /tramites/{tramiteId} {
       allow read: if true; // Publicly readable
-      allow create: if isAdmin() && isValidTramite(request.resource.data);
-      allow update: if isAdmin() && isValidTramite(request.resource.data);
+      allow create: if isAdmin() && isValidTramite(request.resource.data) && 
+                      (request.resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin() && isValidTramite(request.resource.data) &&
+                      (request.resource.data.createdBy == resource.data.createdBy);
       allow delete: if isAdmin();
+    }
+
+    function isValidPrestador(data) {
+      return data.nombre is string && data.nombre.size() > 0 && data.nombre.size() < 200 &&
+             (!('especialidades' in data) || (data.especialidades is list && data.especialidades.size() < 50));
     }
 
     match /prestadores/{prestadorId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() && isValidPrestador(request.resource.data) &&
+                      (request.resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin() && isValidPrestador(request.resource.data) &&
+                      (request.resource.data.createdBy == resource.data.createdBy);
+      allow delete: if isAdmin();
     }
   }
 }

@@ -82,10 +82,38 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export async function uploadFile(file: File): Promise<{ nombre: string; url: string }> {
-  const storageRef = ref(storage, `tramites/${Date.now()}_${file.name}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  const url = await getDownloadURL(snapshot.ref);
-  return { nombre: file.name, url };
+  console.log("Iniciando subida de:", file.name);
+  
+  if (!auth.currentUser) {
+    throw new Error("No has iniciado sesión. Por favor, ingresa con tu cuenta de Google para subir archivos.");
+  }
+
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error("El servidor de archivos no responde (Timeout 30s). Verifica que Storage esté activado en la consola de Firebase.")), 30000)
+  );
+
+  const uploadPromise = (async () => {
+    try {
+      const storageRef = ref(storage, `tramites/${Date.now()}_${file.name}`);
+      console.log("Referencia de storage:", storageRef.fullPath);
+      
+      const snapshot = await uploadBytes(storageRef, file);
+      console.log("Subida completada, obteniendo URL...");
+      
+      const url = await getDownloadURL(snapshot.ref);
+      console.log("URL obtenida:", url);
+      
+      return { nombre: file.name, url };
+    } catch (error: any) {
+      console.error("Error detallado en uploadBytes:", error);
+      if (error.code === 'storage/unauthorized') {
+        throw new Error("No tienes permisos para subir archivos. Revisa las 'Rules' en la pestaña Storage de Firebase.");
+      }
+      throw error;
+    }
+  })();
+
+  return Promise.race([uploadPromise, timeoutPromise]) as Promise<{ nombre: string; url: string }>;
 }
 
 export function subscribeToTramites(callback: (tramites: Tramite[]) => void) {
@@ -115,42 +143,71 @@ export function subscribeToPrestadores(callback: (prestadores: Prestador[]) => v
 }
 
 export async function addTramite(tramite: Omit<Tramite, 'id'>) {
-  return addDoc(collection(db, TRAMITES_COLLECTION), {
-    ...tramite,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    createdBy: auth.currentUser?.uid
-  });
+  try {
+    return await addDoc(collection(db, TRAMITES_COLLECTION), {
+      ...tramite,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: auth.currentUser?.uid
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, TRAMITES_COLLECTION);
+  }
 }
 
 export async function updateTramite(id: string, tramite: Partial<Tramite>) {
-  const docRef = doc(db, TRAMITES_COLLECTION, id);
-  return updateDoc(docRef, {
-    ...tramite,
-    updatedAt: serverTimestamp()
-  });
+  try {
+    const docRef = doc(db, TRAMITES_COLLECTION, id);
+    return await updateDoc(docRef, {
+      ...tramite,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, TRAMITES_COLLECTION);
+  }
 }
 
 export async function deleteTramite(id: string) {
-  const docRef = doc(db, TRAMITES_COLLECTION, id);
-  return deleteDoc(docRef);
+  try {
+    const docRef = doc(db, TRAMITES_COLLECTION, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, TRAMITES_COLLECTION);
+  }
 }
 
 export async function addPrestador(prestador: Omit<Prestador, 'id'>) {
-  return addDoc(collection(db, PRESTADORES_COLLECTION), {
-    ...prestador,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    createdBy: auth.currentUser?.uid
-  });
+  try {
+    return await addDoc(collection(db, PRESTADORES_COLLECTION), {
+      ...prestador,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: auth.currentUser?.uid
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, PRESTADORES_COLLECTION);
+  }
 }
 
 export async function updatePrestador(id: string, prestador: Partial<Prestador>) {
-  const docRef = doc(db, PRESTADORES_COLLECTION, id);
-  return updateDoc(docRef, {
-    ...prestador,
-    updatedAt: serverTimestamp()
-  });
+  try {
+    const docRef = doc(db, PRESTADORES_COLLECTION, id);
+    return await updateDoc(docRef, {
+      ...prestador,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, PRESTADORES_COLLECTION);
+  }
+}
+
+export async function deletePrestador(id: string) {
+  try {
+    const docRef = doc(db, PRESTADORES_COLLECTION, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, PRESTADORES_COLLECTION);
+  }
 }
 
 export async function deleteAllPrestadores() {
@@ -267,9 +324,22 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     const normalizedName = (t.nombre || "").trim().toLowerCase();
     if (!existingTramiteNames.has(normalizedName)) {
       const docRef = doc(collection(db, TRAMITES_COLLECTION));
+      
+      // Add a sample PDF to Dapaglifozina for testing the "Kit Completo" feature
+      let documents = t.documentos || [];
+      if (t.nombre === "Dapaglifozina") {
+        documents = [
+          { 
+            nombre: "Formulario_Dapaglifozina.pdf", 
+            url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" 
+          }
+        ];
+      }
+
       batch.set(docRef, {
         ...t,
         nombre: t.nombre.trim(),
+        documentos: documents,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         createdBy: 'system'

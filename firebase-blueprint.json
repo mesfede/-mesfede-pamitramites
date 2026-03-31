@@ -19,7 +19,7 @@
         "updatedAt": { "type": "string", "format": "date-time" },
         "createdBy": { "type": "string" }
       },
-      "required": ["nombre", "categoria", "descripcion"]
+      "required": ["nombre", "categoria"]
     },
     "Prestador": {
       "title": "Prestador",

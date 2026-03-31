@@ -42,11 +42,13 @@ import {
   Files,
   Brain,
   Eye,
-  LayoutGrid
+  LayoutGrid,
+  Wind
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { generateFullTramitePdf } from './lib/pdfUtils';
 import { 
   subscribeToTramites, 
   subscribeToPrestadores, 
@@ -55,6 +57,7 @@ import {
   deleteTramite,
   addPrestador,
   updatePrestador,
+  deletePrestador,
   cleanupPrestadores,
   cleanupTramites,
   seedDatabase,
@@ -77,7 +80,7 @@ const getFileIcon = (nombre: string) => {
 
 const getCategoryIcon = (cat: string, size: number = 20) => {
   switch (cat) {
-    case 'Afiliaciones y expedientes': return <ClipboardList size={size} />;
+    case 'Afiliaciones': return <ClipboardList size={size} />;
     case 'Audífonos e implantes auditivos': return <Ear size={size} />;
     case 'Consultas con especialistas': return <Stethoscope size={size} />;
     case 'Estudios diagnósticos e imágenes': return <Microscope size={size} />;
@@ -92,6 +95,7 @@ const getCategoryIcon = (cat: string, size: number = 20) => {
     case 'Trámites administrativos': return <Files size={size} />;
     case 'Salud mental': return <Brain size={size} />;
     case 'Óptica y oftalmología': return <Eye size={size} />;
+    case 'Oxigenoterapia': return <Wind size={size} />;
     case 'all': return <LayoutGrid size={size} />;
     default: return <FileText size={size} />;
   }
@@ -103,11 +107,8 @@ const getCategoryColor = (cat: string, isSelected: boolean) => {
   const colorClass = CATEGORY_COLORS[cat];
   if (!colorClass) return isSelected ? "text-pami-blue" : "text-pami-muted";
   
-  // Extract the text-color class (e.g. text-blue-800) and change it to -500 for a more vibrant icon
-  const textColor = colorClass.split(' ').find(c => c.startsWith('text-'));
-  const vibrantColor = textColor ? textColor.replace('-800', '-500') : "text-pami-blue";
-  
-  return isSelected ? vibrantColor : `${vibrantColor} opacity-60 group-hover:opacity-100`;
+  // Retornamos solo la clase de texto (ej. text-blue-600)
+  return colorClass.split(' ').find(c => c.startsWith('text-')) || "text-pami-blue";
 };
 
 // --- UI Components ---
@@ -203,15 +204,24 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [prestadorSearch, setPrestadorSearch] = useState('');
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'admin'>('tramites');
+  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletePrestadorModalOpen, setIsDeletePrestadorModalOpen] = useState(false);
   const [isPrestadorModalOpen, setIsPrestadorModalOpen] = useState(false);
   const [editingTramite, setEditingTramite] = useState<Tramite | null>(null);
+  const [tramiteToDelete, setTramiteToDelete] = useState<Tramite | null>(null);
+  const [prestadorToDelete, setPrestadorToDelete] = useState<Prestador | null>(null);
   const [editingPrestador, setEditingPrestador] = useState<Prestador | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrintingFull, setIsPrintingFull] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<{ nombre: string; url: string }[]>([]);
+  const [manualFileName, setManualFileName] = useState('');
+  const [manualFileUrl, setManualFileUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
@@ -238,9 +248,20 @@ export default function App() {
   // Auto-migrate Expedientes and Reintegros if they are still in the old category
   useEffect(() => {
     const migrateCategories = async () => {
+      // 1. Migrate "Afiliaciones y expedientes" to "Afiliaciones"
+      const oldAfiliaciones = tramites.filter(t => t.categoria === 'Afiliaciones y expedientes');
+      for (const t of oldAfiliaciones) {
+        try {
+          await updateTramite(t.id, { categoria: 'Afiliaciones' });
+        } catch (e) {
+          console.error('Error migrating Afiliaciones:', e);
+        }
+      }
+
+      // 2. Migrate "Expedientes" and "Reintegros" if they are in the wrong place
       const expedientesToFix = tramites.filter(t => 
         (t.nombre === 'Expedientes' || t.nombre === 'Reintegros') && 
-        t.categoria === 'Afiliaciones y expedientes'
+        (t.categoria === 'Afiliaciones' || t.categoria === 'Afiliaciones y expedientes')
       );
       
       for (const t of expedientesToFix) {
@@ -249,6 +270,20 @@ export default function App() {
           await updateTramite(t.id, { categoria: newCategory });
         } catch (e) {
           console.error('Error migrating category:', e);
+        }
+      }
+
+      // 3. Migrate Oxygen related trámites to "Oxigenoterapia"
+      const oxygenToFix = tramites.filter(t => 
+        t.nombre.toLowerCase().includes('oxigeno') && 
+        t.categoria !== 'Oxigenoterapia'
+      );
+
+      for (const t of oxygenToFix) {
+        try {
+          await updateTramite(t.id, { categoria: 'Oxigenoterapia' });
+        } catch (e) {
+          console.error('Error migrating Oxygen:', e);
         }
       }
     };
@@ -274,19 +309,28 @@ export default function App() {
 
     return tramites.filter(t => {
       const nameNorm = normalize(t.nombre);
-      const descNorm = normalize(t.descripcion);
       
-      const matchesSearch = nameNorm.includes(searchNorm) || descNorm.includes(searchNorm);
+      const matchesSearch = nameNorm.includes(searchNorm);
       const matchesCat = selectedCat === 'all' || t.categoria === selectedCat;
       return matchesSearch && matchesCat;
     });
   }, [tramites, search, selectedCat]);
+
+  const allSpecialties = useMemo(() => {
+    const specs = new Set<string>();
+    prestadores.forEach(p => {
+      (p.especialidades || []).forEach(s => specs.add(s.trim().toUpperCase()));
+      (p.practicas || []).forEach(pr => specs.add(pr.trim().toUpperCase()));
+    });
+    return Array.from(specs).sort();
+  }, [prestadores]);
 
   const filteredPrestadores = useMemo(() => {
     const normalize = (str: string) => 
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     
     const searchNorm = normalize(prestadorSearch);
+    const specialtyNorm = normalize(selectedSpecialty);
 
     return [...prestadores]
       .sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -296,12 +340,18 @@ export default function App() {
         const practsNorm = (p.practicas || []).map(pr => normalize(pr)).join(' ');
         const notasNorm = normalize(p.notas || '');
         
-        return nameNorm.includes(searchNorm) || 
-               specsNorm.includes(searchNorm) || 
-               practsNorm.includes(searchNorm) ||
-               notasNorm.includes(searchNorm);
+        const matchesSearch = nameNorm.includes(searchNorm) || 
+                             specsNorm.includes(searchNorm) || 
+                             practsNorm.includes(searchNorm) ||
+                             notasNorm.includes(searchNorm);
+
+        const matchesSpecialty = !selectedSpecialty || 
+                                specsNorm.includes(specialtyNorm) || 
+                                practsNorm.includes(specialtyNorm);
+
+        return matchesSearch && matchesSpecialty;
       });
-  }, [prestadores, prestadorSearch]);
+  }, [prestadores, prestadorSearch, selectedSpecialty]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -317,7 +367,7 @@ export default function App() {
       setUploadedFiles(prev => [...prev, ...newFiles]);
     } catch (err) {
       console.error("Error uploading files:", err);
-      alert("Error al subir archivos.");
+      alert("Error al subir archivos. Esto suele ocurrir si el servidor de archivos (Storage) no está activado o requiere el plan Blaze. Te recomendamos usar la 'Opción 1' para agregar enlaces de Google Drive o Dropbox.");
     } finally {
       setIsSaving(false);
     }
@@ -330,7 +380,7 @@ export default function App() {
     const data = {
       nombre: formData.get('nombre') as string,
       categoria: formData.get('categoria') as string,
-      descripcion: formData.get('descripcion') as string,
+      descripcion: "", // Eliminado del formulario por pedido del usuario
       nota: formData.get('nota') as string,
       pasos: (formData.get('pasos') as string).split('\n').filter(p => p.trim() !== ''),
       documentos: uploadedFiles
@@ -345,6 +395,8 @@ export default function App() {
       setIsModalOpen(false);
       setEditingTramite(null);
       setUploadedFiles([]);
+      setManualFileName('');
+      setManualFileUrl('');
     } catch (err) {
       console.error("Error saving tramite:", err);
       alert("Error al guardar el trámite. Verifique los permisos.");
@@ -353,13 +405,42 @@ export default function App() {
     }
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (t: Tramite, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm('¿Estás seguro de eliminar este trámite?')) {
+    setTramiteToDelete(t);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (tramiteToDelete) {
       try {
-        await deleteTramite(id);
+        await deleteTramite(tramiteToDelete.id);
+        setIsDeleteModalOpen(false);
+        setTramiteToDelete(null);
       } catch (err) {
         console.error("Error deleting tramite:", err);
+      }
+    }
+  };
+
+  const handleDeletePrestador = (p: Prestador, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPrestadorToDelete(p);
+    setIsDeletePrestadorModalOpen(true);
+  };
+
+  const confirmDeletePrestador = async () => {
+    if (prestadorToDelete) {
+      setIsSaving(true);
+      try {
+        await deletePrestador(prestadorToDelete.id);
+        setIsDeletePrestadorModalOpen(false);
+        setPrestadorToDelete(null);
+      } catch (err) {
+        console.error("Error deleting prestador:", err);
+        alert("Error al eliminar el prestador.");
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -449,6 +530,16 @@ export default function App() {
 
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addManualLink = () => {
+    if (!manualFileName || !manualFileUrl) {
+      alert("Por favor, ingrese el nombre y el enlace del archivo.");
+      return;
+    }
+    setUploadedFiles(prev => [...prev, { nombre: manualFileName, url: manualFileUrl }]);
+    setManualFileName('');
+    setManualFileUrl('');
   };
 
   if (loading) {
@@ -577,11 +668,13 @@ export default function App() {
                       key={cat}
                       onClick={() => setSelectedCat(cat)}
                       className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between group",
-                        selectedCat === cat ? "bg-pami-blue/10 text-pami-blue font-semibold" : "hover:bg-gray-50 text-pami-text"
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between group relative overflow-hidden",
+                        selectedCat === cat 
+                          ? `${CATEGORY_LIGHT_COLORS[cat] || "bg-pami-blue/10"} text-pami-blue font-semibold ring-1 ring-inset ring-pami-blue/20` 
+                          : "hover:bg-gray-50 text-pami-text"
                       )}
                     >
-                      <div className="flex items-center gap-3 truncate">
+                      <div className="flex items-center gap-3 truncate relative z-10">
                         <span className={cn(
                           "transition-colors",
                           getCategoryColor(cat, selectedCat === cat)
@@ -590,9 +683,15 @@ export default function App() {
                         </span>
                         <span className="truncate">{cat}</span>
                       </div>
-                      <span className="text-xs opacity-60 shrink-0 ml-2">
+                      <span className="text-xs opacity-60 shrink-0 ml-2 relative z-10">
                         {tramites.filter(t => t.categoria === cat).length}
                       </span>
+                      {selectedCat === cat && (
+                        <motion.div 
+                          layoutId="active-cat-indicator"
+                          className={cn("absolute left-0 top-0 bottom-0 w-1", CATEGORY_COLORS[cat]?.split(' ')[0] || "bg-pami-blue")}
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -642,7 +741,14 @@ export default function App() {
                         className="p-4 flex items-center gap-4 cursor-pointer"
                         onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
                       >
-                        <div className={cn("w-2 h-2 rounded-full shrink-0 hidden sm:block", CATEGORY_COLORS[t.categoria] ? CATEGORY_COLORS[t.categoria].split(' ')[1].replace('text-', 'bg-') : "bg-pami-cyan")} />
+                        <div className={cn(
+                          "w-10 h-10 rounded-full shrink-0 flex items-center justify-center transition-transform group-hover:scale-110",
+                          CATEGORY_COLORS[t.categoria]?.split(' ')[0] || "bg-pami-blue/10"
+                        )}>
+                          <span className={getCategoryColor(t.categoria, false)}>
+                            {getCategoryIcon(t.categoria, 20)}
+                          </span>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-pami-text uppercase truncate">{t.nombre}</h3>
                           {selectedCat === 'all' && (
@@ -686,56 +792,75 @@ export default function App() {
                                 </div>
                               )}
 
-                              <div className="border-l-4 border-pami-cyan pl-4 py-1">
-                                <p className="text-sm text-pami-muted leading-relaxed whitespace-pre-line">
-                                  {t.descripcion}
-                                </p>
-                              </div>
-
                               {t.pasos && t.pasos.length > 0 && (
                                 <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex items-center justify-between flex-wrap gap-2">
                                     <h4 className="text-xs font-bold uppercase tracking-widest text-pami-cyan">Pasos a seguir</h4>
-                                    <button 
-                                      onClick={() => {
-                                        const printWindow = window.open('', '_blank');
-                                        if (printWindow) {
-                                          printWindow.document.write(`
-                                            <html>
-                                              <head>
-                                                <title>Pasos a seguir - ${t.nombre}</title>
-                                                <style>
-                                                  body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-                                                  h1 { color: #0b2344; margin-bottom: 20px; font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-                                                  h2 { color: #555; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
-                                                  ol { margin-top: 20px; padding-left: 20px; }
-                                                  li { margin-bottom: 15px; font-size: 16px; }
-                                                  .footer { margin-top: 40px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
-                                                </style>
-                                              </head>
-                                              <body>
-                                                <h1>${t.nombre}</h1>
-                                                <h2>Pasos a seguir</h2>
-                                                <ol>
-                                                  ${t.pasos!.map(p => `<li>${p}</li>`).join('')}
-                                                </ol>
-                                                <div class="footer">Impreso desde el Sistema de Trámites PAMI</div>
-                                              </body>
-                                            </html>
-                                          `);
-                                          printWindow.document.close();
-                                          printWindow.focus();
-                                          setTimeout(() => {
-                                            printWindow.print();
-                                          }, 250);
-                                        }
-                                      }}
-                                      className="p-1.5 hover:bg-pami-blue/10 rounded-md text-pami-blue transition-colors flex items-center gap-1.5 text-xs font-medium"
-                                      title="Imprimir pasos"
-                                    >
-                                      <Printer size={14} />
-                                      <span>Imprimir</span>
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      {t.documentos?.some(d => d.nombre.toLowerCase().endsWith('.pdf')) && (
+                                        <button 
+                                          onClick={async () => {
+                                            const pdfDoc = t.documentos?.find(d => d.nombre.toLowerCase().endsWith('.pdf'));
+                                            if (!pdfDoc) return;
+                                            
+                                            setIsPrintingFull(t.id);
+                                            try {
+                                              const combinedPdfUrl = await generateFullTramitePdf(t, pdfDoc.url);
+                                              window.open(combinedPdfUrl, '_blank');
+                                            } catch (err) {
+                                              console.error("Error generating full PDF:", err);
+                                              alert("No se pudo generar el PDF completo. Esto puede deberse a restricciones de seguridad del servidor de archivos (CORS).");
+                                            } finally {
+                                              setIsPrintingFull(null);
+                                            }
+                                          }}
+                                          disabled={isPrintingFull === t.id}
+                                          className="p-1.5 hover:bg-pami-cyan/10 rounded-md text-pami-cyan transition-colors flex items-center gap-1.5 text-xs font-medium disabled:opacity-50"
+                                          title="Imprimir Formulario + Guía (Doble Faz)"
+                                        >
+                                          {isPrintingFull === t.id ? <Loader2 size={14} className="animate-spin" /> : <Files size={14} />}
+                                          <span>Kit Completo (Doble Faz)</span>
+                                        </button>
+                                      )}
+                                      <button 
+                                        onClick={() => {
+                                          const printWindow = window.open('', '_blank');
+                                          if (printWindow) {
+                                            printWindow.document.write(`
+                                              <html>
+                                                <head>
+                                                  <title>Pasos a seguir - ${t.nombre}</title>
+                                                  <style>
+                                                    body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+                                                    h1 { color: #0b2344; margin-bottom: 20px; font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+                                                    h2 { color: #555; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+                                                    ol { margin-top: 20px; padding-left: 20px; }
+                                                    li { margin-bottom: 15px; font-size: 16px; }
+                                                  </style>
+                                                </head>
+                                                <body>
+                                                  <h1>${t.nombre}</h1>
+                                                  <h2>Pasos a seguir</h2>
+                                                  <ol>
+                                                    ${t.pasos!.map(p => `<li>${p}</li>`).join('')}
+                                                  </ol>
+                                                </body>
+                                              </html>
+                                            `);
+                                            printWindow.document.close();
+                                            printWindow.focus();
+                                            setTimeout(() => {
+                                              printWindow.print();
+                                            }, 250);
+                                          }
+                                        }}
+                                        className="p-1.5 hover:bg-pami-blue/10 rounded-md text-pami-blue transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                        title="Imprimir pasos"
+                                      >
+                                        <Printer size={14} />
+                                        <span>Imprimir Guía</span>
+                                      </button>
+                                    </div>
                                   </div>
                                   <ul className="space-y-2">
                                     {t.pasos.map((paso, idx) => (
@@ -811,7 +936,7 @@ export default function App() {
                                     <Button 
                                       variant="ghost" 
                                       className="p-2 h-auto text-red-600 hover:bg-red-50" 
-                                      onClick={(e) => handleDelete(t.id, e)}
+                                      onClick={(e) => handleDelete(t, e)}
                                     >
                                       <Trash2 size={16} />
                                     </Button>
@@ -833,32 +958,63 @@ export default function App() {
         {activeTab === 'prestadores' && (
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-pami-text">Cartilla de Prestadores</h2>
-                  <p className="text-sm text-pami-muted">{filteredPrestadores.length} centros encontrados</p>
-                </div>
-                {isAdmin && (
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      className="text-xs py-1 h-auto"
-                      onClick={() => { setEditingPrestador(null); setIsPrestadorModalOpen(true); }}
+              <div>
+                <h2 className="text-2xl font-semibold text-pami-text">Cartilla de Prestadores</h2>
+                <p className="text-sm text-pami-muted">{filteredPrestadores.length} centros encontrados</p>
+              </div>
+              {isAdmin && (
+                <Button 
+                  onClick={() => { setEditingPrestador(null); setIsPrestadorModalOpen(true); }}
+                >
+                  <Plus size={18} className="mr-2" />
+                  Nuevo Prestador
+                </Button>
+              )}
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-pami-muted uppercase tracking-wider">Filtrar por Especialidad o Práctica</label>
+                  <div className="relative">
+                    <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                    <select 
+                      className="w-full pl-10 pr-10 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all appearance-none text-pami-text"
+                      value={selectedSpecialty}
+                      onChange={(e) => setSelectedSpecialty(e.target.value)}
                     >
-                      <Plus size={14} className="mr-1" />
-                      Nuevo Prestador
-                    </Button>
+                      <option value="">Todas las especialidades / prácticas</option>
+                      {allSpecialties.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted pointer-events-none" size={18} />
                   </div>
-                )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-pami-muted uppercase tracking-wider">Buscar por Nombre</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                    <Input 
+                      placeholder="Ej: Clínica San Miguel..." 
+                      className="pl-10"
+                      value={prestadorSearch}
+                      onChange={(e) => setPrestadorSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
-                <Input 
-                  placeholder="Buscar por nombre, especialidad o práctica..." 
-                  className="pl-10"
-                  value={prestadorSearch}
-                  onChange={(e) => setPrestadorSearch(e.target.value)}
-                />
-              </div>
+              {selectedSpecialty && (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-50">
+                  <span className="text-xs text-pami-muted">Filtro activo:</span>
+                  <span className="bg-pami-cyan/10 text-pami-cyan text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-2 uppercase tracking-wider">
+                    {selectedSpecialty}
+                    <button onClick={() => setSelectedSpecialty('')} className="hover:text-pami-blue">
+                      <X size={14} />
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -876,12 +1032,22 @@ export default function App() {
                       {p.nombre}
                     </h3>
                     {isAdmin && (
-                      <button 
-                        onClick={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
-                        className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
-                      >
-                        <Edit2 size={14} />
-                      </button>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
+                          className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
+                          title="Editar prestador"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={(e) => handleDeletePrestador(p, e)}
+                          className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar prestador"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     )}
                   </div>
                   
@@ -959,27 +1125,48 @@ export default function App() {
 
         {activeTab === 'admin' && isAdmin && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-pami-text">Panel de Administración</h2>
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-pami-muted px-2 py-1 flex items-center">Prestadores:</span>
-                  <Button variant="outline" className="text-xs py-1 h-auto" onClick={handleCleanup} isLoading={isSaving}>
-                    Limpiar
-                  </Button>
-                </div>
-                
-                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-pami-muted px-2 py-1 flex items-center">Trámites:</span>
-                  <Button variant="outline" className="text-xs py-1 h-auto" onClick={handleCleanupTramites} isLoading={isSaving}>
-                    Limpiar
-                  </Button>
-                </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-pami-text">Panel de Administración</h2>
+                <p className="text-sm text-pami-muted">Gestiona el contenido de la plataforma</p>
+              </div>
+              <div className="flex bg-gray-100 p-1 rounded-xl">
+                <button 
+                  onClick={() => setAdminSubTab('tramites')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    adminSubTab === 'tramites' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
+                  )}
+                >
+                  Trámites
+                </button>
+                <button 
+                  onClick={() => setAdminSubTab('prestadores')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    adminSubTab === 'prestadores' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
+                  )}
+                >
+                  Prestadores
+                </button>
+              </div>
+            </div>
 
-                <Button variant="outline" onClick={handleSeed} isLoading={isSaving}>
-                  Sincronizar Datos
+            <div className="flex flex-wrap gap-2 items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+              <div className="flex gap-2 p-1 bg-gray-50 rounded-lg border border-gray-100">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-pami-muted px-2 py-1 flex items-center">Limpieza:</span>
+                <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanup} isLoading={isSaving}>
+                  Prestadores
+                </Button>
+                <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanupTramites} isLoading={isSaving}>
+                  Trámites
                 </Button>
               </div>
+              
+              <Button variant="outline" className="text-[10px] py-1 h-auto px-3 ml-auto" onClick={handleSeed} isLoading={isSaving}>
+                <Activity size={12} className="mr-1" />
+                Sincronizar Datos Iniciales
+              </Button>
             </div>
 
             {adminMessage && (
@@ -995,47 +1182,98 @@ export default function App() {
             )}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
-                    <th className="px-6 py-4">Trámite</th>
-                    <th className="px-6 py-4">Categoría</th>
-                    <th className="px-6 py-4">Última Modificación</th>
-                    <th className="px-6 py-4 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {tramites.map(t => (
-                    <tr key={t.id} className="hover:bg-gray-50/50 transition-colors group">
-                      <td className="px-6 py-4 font-medium text-pami-text uppercase">{t.nombre}</td>
-                      <td className="px-6 py-4">
-                        <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md", CATEGORY_COLORS[t.categoria] || "bg-gray-100 text-pami-muted")}>
-                          {t.categoria}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-pami-muted">
-                        {t.updatedAt?.toDate().toLocaleDateString() || 'Reciente'}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => { setEditingTramite(t); setIsModalOpen(true); }}
-                            className="p-2 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={(e) => handleDelete(t.id, e)}
-                            className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+              {adminSubTab === 'tramites' ? (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
+                      <th className="px-6 py-4">Trámite</th>
+                      <th className="px-6 py-4">Categoría</th>
+                      <th className="px-6 py-4">Última Modificación</th>
+                      <th className="px-6 py-4 text-right">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {tramites.map(t => (
+                      <tr key={t.id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-6 py-4 font-medium text-pami-text uppercase">{t.nombre}</td>
+                        <td className="px-6 py-4">
+                          <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md", CATEGORY_COLORS[t.categoria] || "bg-gray-100 text-pami-muted")}>
+                            {t.categoria}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-pami-muted">
+                          {t.updatedAt?.toDate().toLocaleDateString() || 'Reciente'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => { setEditingTramite(t); setIsModalOpen(true); }}
+                              className="p-2 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={(e) => handleDelete(t, e)}
+                              className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
+                      <th className="px-6 py-4">Prestador</th>
+                      <th className="px-6 py-4">Localidad</th>
+                      <th className="px-6 py-4">Especialidades</th>
+                      <th className="px-6 py-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {prestadores.map(p => (
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-6 py-4 font-medium text-pami-text uppercase">{p.nombre}</td>
+                        <td className="px-6 py-4 text-sm text-pami-muted uppercase">{p.localidad || '-'}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {p.especialidades?.slice(0, 3).map(e => (
+                              <span key={e} className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase font-bold">
+                                {e}
+                              </span>
+                            ))}
+                            {(p.especialidades?.length || 0) > 3 && (
+                              <span className="text-[9px] text-pami-muted">+{p.especialidades!.length - 3}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
+                              className="p-2 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
+                              title="Editar prestador"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={(e) => handleDeletePrestador(p, e)}
+                              className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Eliminar prestador"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         )}
@@ -1065,11 +1303,6 @@ export default function App() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-pami-muted">Descripción / Procedimiento</label>
-            <TextArea name="descripcion" defaultValue={editingTramite?.descripcion} required placeholder="Explique cómo se realiza el trámite..." />
-          </div>
-
-          <div className="space-y-2">
             <label className="text-sm font-semibold text-pami-muted">Pasos a seguir (uno por línea)</label>
             <TextArea 
               name="pasos" 
@@ -1086,35 +1319,47 @@ export default function App() {
           <div className="space-y-4">
             <label className="text-sm font-semibold text-pami-muted flex items-center gap-2">
               <Paperclip size={16} />
-              Planillas y Documentos (PDF, Word, etc.)
+              Planillas y Documentos
             </label>
             
+            <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Input 
+                    placeholder="Nombre del archivo (ej: Formulario 1)" 
+                    value={manualFileName}
+                    onChange={(e) => setManualFileName(e.target.value)}
+                    className="text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Pegar enlace (URL) aquí" 
+                      value={manualFileUrl}
+                      onChange={(e) => setManualFileUrl(e.target.value)}
+                      className="text-xs flex-1"
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={addManualLink}
+                      className="h-auto py-1 px-3 text-xs"
+                    >
+                      Agregar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {uploadedFiles.map((file, idx) => (
                 <div key={idx} className="flex items-center gap-2 bg-pami-blue/5 text-pami-blue px-3 py-1.5 rounded-lg text-xs font-medium">
                   {getFileIcon(file.nombre)}
                   <span className="max-w-[150px] truncate">{file.nombre}</span>
-                  <button type="button" onClick={() => removeFile(idx)} className="hover:text-red-600">
-                    <X size={14} />
+                  <button type="button" onClick={() => removeFile(idx)} className="hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors" title="Eliminar archivo">
+                    <Trash2 size={14} />
                   </button>
                 </div>
               ))}
-              <button 
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 border-2 border-dashed border-gray-200 px-3 py-1.5 rounded-lg text-xs text-pami-muted hover:border-pami-blue hover:text-pami-blue transition-all"
-              >
-                <Plus size={14} />
-                <span>Subir archivo</span>
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                multiple 
-                onChange={handleFileUpload}
-                accept=".pdf,.doc,.docx,.xls,.xlsx"
-              />
             </div>
           </div>
 
@@ -1221,6 +1466,54 @@ export default function App() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal for Delete Confirmation */}
+      <Modal 
+        isOpen={isDeleteModalOpen} 
+        onClose={() => { setIsDeleteModalOpen(false); setTramiteToDelete(null); }}
+        title="Confirmar Eliminación"
+      >
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl text-red-700 border border-red-100">
+            <AlertCircle className="shrink-0" size={24} />
+            <p className="text-sm font-medium">
+              ¿Estás seguro de que deseas eliminar el trámite <span className="font-bold uppercase">"{tramiteToDelete?.nombre}"</span>? Esta acción no se puede deshacer.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="danger" onClick={confirmDelete} isLoading={isSaving}>
+              <Trash2 size={18} />
+              <span>Eliminar Trámite</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal for Prestador Delete Confirmation */}
+      <Modal 
+        isOpen={isDeletePrestadorModalOpen} 
+        onClose={() => { setIsDeletePrestadorModalOpen(false); setPrestadorToDelete(null); }}
+        title="Confirmar Eliminación de Prestador"
+      >
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl text-red-700 border border-red-100">
+            <AlertCircle className="shrink-0" size={24} />
+            <p className="text-sm font-medium">
+              ¿Estás seguro de que deseas eliminar al prestador <span className="font-bold uppercase">"{prestadorToDelete?.nombre}"</span>? Esta acción no se puede deshacer.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsDeletePrestadorModalOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="danger" onClick={confirmDeletePrestador} isLoading={isSaving}>
+              <Trash2 size={18} />
+              <span>Eliminar Prestador</span>
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Footer */}
