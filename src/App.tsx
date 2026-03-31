@@ -381,7 +381,7 @@ export default function App() {
     const data = {
       nombre: formData.get('nombre') as string,
       categoria: formData.get('categoria') as string,
-      descripcion: editingTramite?.descripcion || "", // Preservar descripción existente si se edita
+      descripcion: formData.get('descripcion') as string || "",
       nota: formData.get('nota') as string,
       pasos: (formData.get('pasos') as string).split('\n').filter(p => p.trim() !== ''),
       documentos: uploadedFiles
@@ -1309,6 +1309,15 @@ export default function App() {
             >
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Descripción / Procedimiento (opcional)</label>
+            <TextArea 
+              name="descripcion" 
+              defaultValue={editingTramite?.descripcion} 
+              placeholder="Detalles adicionales sobre el trámite..." 
+            />
           </div>
 
           <div className="space-y-2">
