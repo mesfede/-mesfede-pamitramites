@@ -27,7 +27,22 @@ import {
   ExternalLink,
   Printer,
   FileSpreadsheet,
-  FileImage
+  FileImage,
+  ClipboardList,
+  Ear,
+  Microscope,
+  FolderOpen,
+  Accessibility,
+  Hospital,
+  Activity,
+  Pill,
+  Apple,
+  Syringe,
+  Banknote,
+  Files,
+  Brain,
+  Eye,
+  LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -46,7 +61,7 @@ import {
   uploadFile,
   testConnection
 } from './services/firestore';
-import { Tramite, Prestador, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS } from './types';
+import { Tramite, Prestador, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES } from './initialData';
 import { cn } from './lib/utils';
 import { PamiLogo } from './components/PamiLogo';
@@ -58,6 +73,41 @@ const getFileIcon = (nombre: string) => {
   if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx')) return <FileSpreadsheet size={18} className="text-green-500" />;
   if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.png')) return <FileImage size={18} className="text-purple-500" />;
   return <File size={18} className="text-gray-500" />;
+};
+
+const getCategoryIcon = (cat: string, size: number = 20) => {
+  switch (cat) {
+    case 'Afiliaciones y expedientes': return <ClipboardList size={size} />;
+    case 'Audífonos e implantes auditivos': return <Ear size={size} />;
+    case 'Consultas con especialistas': return <Stethoscope size={size} />;
+    case 'Estudios diagnósticos e imágenes': return <Microscope size={size} />;
+    case 'Expediente GDE': return <FolderOpen size={size} />;
+    case 'Insumos y ayudas técnicas': return <Accessibility size={size} />;
+    case 'Internación y cuidados especiales': return <Hospital size={size} />;
+    case 'Kinesiología y rehabilitación': return <Activity size={size} />;
+    case 'Medicamentos especiales': return <Pill size={size} />;
+    case 'Nutrición': return <Apple size={size} />;
+    case 'Prácticas quirúrgicas y de alta complejidad': return <Syringe size={size} />;
+    case 'Reintegros': return <Banknote size={size} />;
+    case 'Trámites administrativos': return <Files size={size} />;
+    case 'Salud mental': return <Brain size={size} />;
+    case 'Óptica y oftalmología': return <Eye size={size} />;
+    case 'all': return <LayoutGrid size={size} />;
+    default: return <FileText size={size} />;
+  }
+};
+
+const getCategoryColor = (cat: string, isSelected: boolean) => {
+  if (cat === 'all') return isSelected ? "text-pami-blue" : "text-pami-muted";
+  
+  const colorClass = CATEGORY_COLORS[cat];
+  if (!colorClass) return isSelected ? "text-pami-blue" : "text-pami-muted";
+  
+  // Extract the text-color class (e.g. text-blue-800) and change it to -500 for a more vibrant icon
+  const textColor = colorClass.split(' ').find(c => c.startsWith('text-'));
+  const vibrantColor = textColor ? textColor.replace('-800', '-500') : "text-pami-blue";
+  
+  return isSelected ? vibrantColor : `${vibrantColor} opacity-60 group-hover:opacity-100`;
 };
 
 // --- UI Components ---
@@ -185,6 +235,29 @@ export default function App() {
     };
   }, []);
 
+  // Auto-migrate Expedientes and Reintegros if they are still in the old category
+  useEffect(() => {
+    const migrateCategories = async () => {
+      const expedientesToFix = tramites.filter(t => 
+        (t.nombre === 'Expedientes' || t.nombre === 'Reintegros') && 
+        t.categoria === 'Afiliaciones y expedientes'
+      );
+      
+      for (const t of expedientesToFix) {
+        const newCategory = t.nombre === 'Expedientes' ? 'Expediente GDE' : 'Reintegros';
+        try {
+          await updateTramite(t.id, { categoria: newCategory });
+        } catch (e) {
+          console.error('Error migrating category:', e);
+        }
+      }
+    };
+
+    if (isAdmin && tramites.length > 0) {
+      migrateCategories();
+    }
+  }, [tramites, isAdmin]);
+
   useEffect(() => {
     if (editingTramite) {
       setUploadedFiles(editingTramite.documentos || []);
@@ -260,7 +333,6 @@ export default function App() {
       descripcion: formData.get('descripcion') as string,
       nota: formData.get('nota') as string,
       pasos: (formData.get('pasos') as string).split('\n').filter(p => p.trim() !== ''),
-      fuente: formData.get('fuente') as string || 'Manual',
       documentos: uploadedFiles
     };
 
@@ -399,7 +471,12 @@ export default function App() {
           <div className="flex items-center gap-3">
             <PamiLogo className="h-8 text-white" />
             <div className="w-px h-6 bg-white/30 mx-2 hidden sm:block"></div>
-            <h1 className="text-lg font-semibold hidden sm:block">Guía de Trámites</h1>
+            <div className="hidden sm:flex items-baseline gap-2">
+              <h1 className="text-lg font-semibold">
+                Guía de Trámites <span className="font-light">City Bell</span>
+              </h1>
+              <span className="text-[9px] text-white/60 tracking-wider ml-1">Versión 1.0 @mesfede</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -425,19 +502,21 @@ export default function App() {
           <button 
             onClick={() => setActiveTab('tramites')}
             className={cn(
-              "px-6 py-3 text-sm font-medium transition-all border-b-2",
+              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
               activeTab === 'tramites' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
             )}
           >
+            <FileText size={16} />
             Trámites
           </button>
           <button 
             onClick={() => setActiveTab('prestadores')}
             className={cn(
-              "px-6 py-3 text-sm font-medium transition-all border-b-2",
+              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
               activeTab === 'prestadores' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
             )}
           >
+            <Stethoscope size={16} />
             Prestadores
           </button>
           {isAdmin && (
@@ -457,9 +536,9 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {activeTab === 'tramites' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Sidebar Filters */}
-            <aside className="lg:col-span-1 space-y-6">
+            <aside className="lg:col-span-4 space-y-6">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
                 <Input 
@@ -482,9 +561,14 @@ export default function App() {
                       selectedCat === 'all' ? "bg-pami-blue/10 text-pami-blue font-semibold" : "hover:bg-gray-50 text-pami-text"
                     )}
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <div className="w-2 h-2 rounded-full shrink-0 bg-gray-300" />
-                      <span>📂 Todas</span>
+                    <div className="flex items-center gap-3 truncate">
+                      <span className={cn(
+                        "transition-colors",
+                        selectedCat === 'all' ? "text-pami-blue" : "text-pami-muted"
+                      )}>
+                        {getCategoryIcon('all', 22)}
+                      </span>
+                      <span>Todas</span>
                     </div>
                     <span className="text-xs opacity-60 shrink-0 ml-2">{tramites.length}</span>
                   </button>
@@ -493,13 +577,18 @@ export default function App() {
                       key={cat}
                       onClick={() => setSelectedCat(cat)}
                       className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between",
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between group",
                         selectedCat === cat ? "bg-pami-blue/10 text-pami-blue font-semibold" : "hover:bg-gray-50 text-pami-text"
                       )}
                     >
-                      <div className="flex items-center gap-2 truncate">
-                        <div className={cn("w-2 h-2 rounded-full shrink-0", CATEGORY_COLORS[cat] ? CATEGORY_COLORS[cat].split(' ')[1].replace('text-', 'bg-') : "bg-gray-200")} />
-                        <span className="truncate">{CATEGORY_ICONS[cat]} {cat}</span>
+                      <div className="flex items-center gap-3 truncate">
+                        <span className={cn(
+                          "transition-colors",
+                          getCategoryColor(cat, selectedCat === cat)
+                        )}>
+                          {getCategoryIcon(cat, 22)}
+                        </span>
+                        <span className="truncate">{cat}</span>
                       </div>
                       <span className="text-xs opacity-60 shrink-0 ml-2">
                         {tramites.filter(t => t.categoria === cat).length}
@@ -511,7 +600,7 @@ export default function App() {
             </aside>
 
             {/* Content */}
-            <div className="lg:col-span-3 space-y-4">
+            <div className="lg:col-span-8 space-y-4">
               <div className="flex items-baseline justify-between mb-2">
                 <div className="flex items-center gap-4">
                   <h2 className="text-2xl font-semibold text-pami-text">
@@ -544,7 +633,8 @@ export default function App() {
                       layout
                       key={t.id}
                       className={cn(
-                        "bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all",
+                        "rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all",
+                        CATEGORY_LIGHT_COLORS[t.categoria] || "bg-white",
                         expandedId === t.id ? "ring-2 ring-pami-blue shadow-md" : "hover:border-pami-blue/50"
                       )}
                     >
@@ -604,7 +694,49 @@ export default function App() {
 
                               {t.pasos && t.pasos.length > 0 && (
                                 <div className="space-y-3">
-                                  <h4 className="text-xs font-bold uppercase tracking-widest text-pami-cyan">Pasos a seguir</h4>
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-xs font-bold uppercase tracking-widest text-pami-cyan">Pasos a seguir</h4>
+                                    <button 
+                                      onClick={() => {
+                                        const printWindow = window.open('', '_blank');
+                                        if (printWindow) {
+                                          printWindow.document.write(`
+                                            <html>
+                                              <head>
+                                                <title>Pasos a seguir - ${t.nombre}</title>
+                                                <style>
+                                                  body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+                                                  h1 { color: #0b2344; margin-bottom: 20px; font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+                                                  h2 { color: #555; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+                                                  ol { margin-top: 20px; padding-left: 20px; }
+                                                  li { margin-bottom: 15px; font-size: 16px; }
+                                                  .footer { margin-top: 40px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
+                                                </style>
+                                              </head>
+                                              <body>
+                                                <h1>${t.nombre}</h1>
+                                                <h2>Pasos a seguir</h2>
+                                                <ol>
+                                                  ${t.pasos!.map(p => `<li>${p}</li>`).join('')}
+                                                </ol>
+                                                <div class="footer">Impreso desde el Sistema de Trámites PAMI</div>
+                                              </body>
+                                            </html>
+                                          `);
+                                          printWindow.document.close();
+                                          printWindow.focus();
+                                          setTimeout(() => {
+                                            printWindow.print();
+                                          }, 250);
+                                        }
+                                      }}
+                                      className="p-1.5 hover:bg-pami-blue/10 rounded-md text-pami-blue transition-colors flex items-center gap-1.5 text-xs font-medium"
+                                      title="Imprimir pasos"
+                                    >
+                                      <Printer size={14} />
+                                      <span>Imprimir</span>
+                                    </button>
+                                  </div>
                                   <ul className="space-y-2">
                                     {t.pasos.map((paso, idx) => (
                                       <li key={idx} className="flex gap-3 text-sm text-pami-text">
@@ -662,10 +794,7 @@ export default function App() {
                                 </div>
                               )}
 
-                              <div className="pt-4 flex items-center justify-between border-t border-gray-100">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">
-                                  Fuente: {t.fuente || 'PAMI Oficial'}
-                                </span>
+                              <div className="pt-4 flex items-center justify-end border-t border-gray-100">
                                 {isAdmin && (
                                   <div className="flex gap-2">
                                     <Button 
@@ -924,21 +1053,15 @@ export default function App() {
             <Input name="nombre" defaultValue={editingTramite?.nombre} required placeholder="Ej: Afiliación de Cónyuge" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-pami-muted">Categoría</label>
-              <select 
-                name="categoria" 
-                defaultValue={editingTramite?.categoria || CATEGORIES[0]}
-                className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan"
-              >
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-pami-muted">Fuente</label>
-              <Input name="fuente" defaultValue={editingTramite?.fuente} placeholder="Ej: Excel PAMI 2023" />
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Categoría</label>
+            <select 
+              name="categoria" 
+              defaultValue={editingTramite?.categoria || CATEGORIES[0]}
+              className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan"
+            >
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           <div className="space-y-2">

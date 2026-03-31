@@ -5,7 +5,6 @@ export interface Tramite {
   descripcion: string;
   pasos?: string[];
   nota?: string;
-  fuente?: string;
   documentos?: { nombre: string; url: string }[];
   createdAt?: any;
   updatedAt?: any;
@@ -95,4 +94,22 @@ export const CATEGORY_COLORS: Record<string, string> = {
   "Trámites administrativos": "bg-slate-100 text-slate-800",
   "Salud mental": "bg-indigo-100 text-indigo-800",
   "Óptica y oftalmología": "bg-teal-100 text-teal-800"
+};
+
+export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
+  "Afiliaciones y expedientes": "bg-blue-50/50",
+  "Audífonos e implantes auditivos": "bg-amber-50/50",
+  "Consultas con especialistas": "bg-emerald-50/50",
+  "Estudios diagnósticos e imágenes": "bg-purple-50/50",
+  "Expediente GDE": "bg-fuchsia-50/50",
+  "Insumos y ayudas técnicas": "bg-orange-50/50",
+  "Internación y cuidados especiales": "bg-rose-50/50",
+  "Kinesiología y rehabilitación": "bg-lime-50/50",
+  "Medicamentos especiales": "bg-cyan-50/50",
+  "Nutrición": "bg-green-50/50",
+  "Prácticas quirúrgicas y de alta complejidad": "bg-red-50/50",
+  "Reintegros": "bg-yellow-50/50",
+  "Trámites administrativos": "bg-slate-50/50",
+  "Salud mental": "bg-indigo-50/50",
+  "Óptica y oftalmología": "bg-teal-50/50"
 };
