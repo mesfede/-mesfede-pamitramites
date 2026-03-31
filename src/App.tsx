@@ -305,14 +305,19 @@ export default function App() {
     const normalize = (str: string) => 
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     
-    const searchNorm = normalize(search);
+    const searchNorm = normalize(search.trim());
 
     return tramites.filter(t => {
-      const nameNorm = normalize(t.nombre);
+      const nameNorm = normalize(t.nombre || "");
       const descNorm = normalize(t.descripcion || "");
+      const catNorm = normalize(t.categoria || "");
       
-      const matchesSearch = nameNorm.includes(searchNorm) || descNorm.includes(searchNorm);
-      const matchesCat = selectedCat === 'all' || t.categoria === selectedCat;
+      const matchesSearch = nameNorm.includes(searchNorm) || 
+                           descNorm.includes(searchNorm) || 
+                           catNorm.includes(searchNorm);
+      
+      // Si hay búsqueda, ignoramos el filtro de categoría para que sea global
+      const matchesCat = searchNorm !== "" || selectedCat === 'all' || t.categoria === selectedCat;
       return matchesSearch && matchesCat;
     });
   }, [tramites, search, selectedCat]);
@@ -346,7 +351,8 @@ export default function App() {
                              practsNorm.includes(searchNorm) ||
                              notasNorm.includes(searchNorm);
 
-        const matchesSpecialty = !selectedSpecialty || 
+        const matchesSpecialty = searchNorm !== "" || 
+                                !selectedSpecialty || 
                                 specsNorm.includes(specialtyNorm) || 
                                 practsNorm.includes(specialtyNorm);
 
@@ -667,7 +673,7 @@ export default function App() {
                   {CATEGORIES.map(cat => (
                     <button 
                       key={cat}
-                      onClick={() => setSelectedCat(cat)}
+                      onClick={() => setSelectedCat(selectedCat === cat ? 'all' : cat)}
                       className={cn(
                         "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between group relative overflow-hidden",
                         selectedCat === cat 

@@ -457,7 +457,7 @@ export const INITIAL_TRAMITES = [
 
 export const INITIAL_PRESTADORES = [
   {
-    "nombre": "Vaccarini",
+    "nombre": "ALTHEA (EX VACCARINI)",
     "especialidades": [
       "ONCOLOGIA - TRATAMIENTOS",
       "VIDEOENDOSCOPICAS GASTROINTESTINALES",
@@ -481,73 +481,104 @@ export const INITIAL_PRESTADORES = [
       "GASTROENTEROLOGIA",
       "FONOAUDIOLOGIA"
     ],
+    "direccion": "80 Nº 570 e/ 6 y 7",
+    "telefono": "221 453-3765",
     "practicas": []
   },
   {
-    "nombre": "Clinica Belgrano",
-    "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS",
-      "VIDEOENDOSCOPICAS GASTROINTESTINALES",
-      "HEMATOLOGIA",
-      "DERMATOLOGIA",
-      "ALERGIA E INMUNOLOGIA",
-      "TRAUMATOLOGIA",
-      "NEFROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA"
-    ],
-    "direccion": "Cno Gral Belgrano 960",
-    "localidad": "Quilmes Oeste",
-    "telefono": "4365-0200",
-    "whatsapp": "15-6700-1440",
-    "email": "conmutador@clinicabelgrano.com"
+    "nombre": "APONIA",
+    "especialidades": ["FISIOKINESIO"],
+    "direccion": "6 Nº 1429 e/ 47 y 48 (V.E)",
+    "telefono": "221 487-0620"
   },
   {
-    "nombre": "Hospital San Martin",
-    "especialidades": [
-      "HEPATOLOGIA",
-      "GASTROENTEROLOGIA",
-      "FONOAUDIOLOGIA",
-      "DIABETOLOGIA",
-      "PALIATIVOS Y DOLOR",
-      "ELECTROFISIOLOGIA"
-    ],
-    "direccion": "1 esq 70",
-    "localidad": "La Plata",
-    "telefono": "483-3292 / 483-6588 / 483-5759",
-    "email": "hsanmartin@ms.gba.gov.ar",
-    "notas": "Turnos todos los días por orden de llegada"
+    "nombre": "BENGOA, Daniela",
+    "especialidades": ["DIABETOLOGIA"],
+    "direccion": "35 Nº 318 e/ 1 y 2",
+    "telefono": "221 482-5420"
   },
   {
-    "nombre": "Hospital Interzonal Rossi",
-    "especialidades": [
-      "OTORRINOLARINGOLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "FONOAUDIOLOGIA",
-      "PALIATIVOS Y DOLOR"
-    ],
-    "notas": "8 a 11hs: Órdenes, estudios, credencial y DNI - 1° Piso. Tiene un equipo de cirujanos de cabeza y cuello."
+    "nombre": "BRUNO, Azucena",
+    "especialidades": ["TRAUMATOLOGIA"],
+    "direccion": "81 Nº 386 e/ 2 y 2bis",
+    "telefono": "11 416-06041"
   },
   {
-    "nombre": "Hospital Privado Sudamericano",
-    "especialidades": [
-      "UROLOGIA",
-      "FISIATRIA - CONSULTAS"
-    ]
+    "nombre": "CEMDDE",
+    "especialidades": ["FISIOKINESIO"],
+    "direccion": "50 Nº 1565e/ 26 y 27",
+    "telefono": "221 457-2687"
   },
   {
-    "nombre": "San Roque GONNET",
-    "especialidades": [
-      "OTORRINOLARINGOLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "FONOAUDIOLOGIA",
-      "NUTRICION"
-    ]
+    "nombre": "CLINICA DE EXCELENCIA MEDICA",
+    "especialidades": ["MAMOGRAFIA"],
+    "direccion": "4 Nº 1074 e/ 54 y 55",
+    "telefono": "221 423-6431"
   },
   {
-    "nombre": "Htal Zonal Ricardo Gutierrez",
+    "nombre": "CENTRO MEDICO BERISSO",
+    "especialidades": [],
+    "direccion": "122 e/ 68 y 69",
+    "telefono": "221 423-1976 / 591-4343"
+  },
+  {
+    "nombre": "CLINICA DE LA COM. DE ENSE.",
+    "especialidades": [],
+    "direccion": "La Merced 383",
+    "telefono": "221 460-2400"
+  },
+  {
+    "nombre": "CLINICA DE NIÑOS",
+    "especialidades": [],
+    "direccion": "63 N.º 763",
+    "telefono": "221 453-4940"
+  },
+  {
+    "nombre": "CLINICA MOSCONI DE BERISSO",
+    "especialidades": ["ENDOCRINOLOGIA", "GINECOLOGIA Y OBSTETRICIA"],
+    "direccion": "8 Nº 3419",
+    "telefono": "221 461-1898",
+    "whatsapp": "6790114"
+  },
+  {
+    "nombre": "CLINICA SITE",
+    "especialidades": ["ONCOLOGIA"],
+    "direccion": "7 Nº 505",
+    "telefono": "221 427-0118 / 489-4822"
+  },
+  {
+    "nombre": "CORPUS",
+    "especialidades": ["CARDIO", "FONO", "PSICO", "KINESIO"],
+    "direccion": "56 Nº 1469 e/ 24 y 25",
+    "telefono": "221 417-6701"
+  },
+  {
+    "nombre": "ELIZALDE, Daniel",
+    "especialidades": ["NEUMONOLOGIA"],
+    "direccion": "41 Nº 347 e/ 1 y 2",
+    "telefono": "221 690-1662"
+  },
+  {
+    "nombre": "FUNDACION QUARELLO",
+    "especialidades": ["FLEBOLOGIA", "NEUROLOGIA"],
+    "direccion": "14a e/ 467 y 471",
+    "telefono": "221 472-4040 / 11 3317-8480",
+    "practicas": ["INTERNACIÓN CON EL FIN DE REHABILITACIÓN"]
+  },
+  {
+    "nombre": "GUENAGA, Pablo",
+    "especialidades": ["CARDIO", "ECODOPPLER"],
+    "direccion": "60 Nº 2024 e/ 135 y 136",
+    "telefono": "221 364-9032"
+  },
+  {
+    "nombre": "HTAL. DE AGUDOS LARRAIN",
+    "especialidades": [],
+    "direccion": "Londres Nº 4435",
+    "telefono": "221 461-1101"
+  },
+  {
+    "nombre": "HTAL. GUTIERREZ",
     "especialidades": [
       "ONCOLOGIA - TRATAMIENTOS",
       "HEMATOLOGIA",
@@ -567,68 +598,18 @@ export const INITIAL_PRESTADORES = [
       "GASTROENTEROLOGIA",
       "NUTRICION"
     ],
+    "direccion": "Diag. 114 e/ 39 y 40 s/n",
+    "telefono": "221 483-0171",
     "notas": "Con OME directamente a Rayos de 8 a 12hs para sacar turno."
   },
   {
-    "nombre": "Clinica Mosconi (Beriso)",
-    "especialidades": [
-      "ENDOCRINOLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA"
-    ]
+    "nombre": "HTAL. ITALIANO CITY BELL",
+    "especialidades": ["CARDIO", "GINECO", "GASTRO", "REUMA", "HEPATO"],
+    "direccion": "13B e/ Cantilo y 472",
+    "telefono": "221 472-2626"
   },
   {
-    "nombre": "Instituto De Diagnostico De La Plata",
-    "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS"
-    ]
-  },
-  {
-    "nombre": "Instituto Del Diagnostico Cardiovascular",
-    "especialidades": [
-      "HEMATOLOGIA",
-      "ENDOCRINOLOGIA",
-      "DERMATOLOGIA",
-      "CARDIOLOGIA",
-      "NUTRICION"
-    ]
-  },
-  {
-    "nombre": "Instituto Medico Platense",
-    "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS",
-      "HEMATOLOGIA",
-      "CARDIOLOGIA",
-      "CIRUGIA GENERAL AMBULATORIA",
-      "UROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "ELECTROFISIOLOGIA"
-    ],
-    "notas": "Llamar de 13 a 16hs al 221-412925"
-  },
-  {
-    "nombre": "San Juan De Dios",
-    "especialidades": [
-      "INFECTOLOGIA",
-      "HEPATOLOGIA"
-    ],
-    "notas": "Llevar imágenes previas lunes, jueves y viernes para que la médica evalúe."
-  },
-  {
-    "nombre": "Sanatorio Medico Los Tilos",
-    "especialidades": [
-      "NEUROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "ELECTROFISIOLOGIA"
-    ]
-  },
-  {
-    "nombre": "POLICLINICA PRIVADA S.A. SITE",
-    "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS"
-    ]
-  },
-  {
-    "nombre": "Hospital Italiano de La Plata",
+    "nombre": "HTAL. ITALIANO DE LA PLATA",
     "especialidades": [
       "ONCOLOGIA - TRATAMIENTOS",
       "VIDEOENDOSCOPICAS GASTROINTESTINALES",
@@ -650,10 +631,105 @@ export const INITIAL_PRESTADORES = [
       "GASTROENTEROLOGIA",
       "NUTRICION",
       "ELECTROFISIOLOGIA"
-    ]
+    ],
+    "direccion": "51 Nº 1725 e/ 30 y 29",
+    "telefono": "221 512-9500 / 457-3001"
   },
   {
-    "nombre": "Ipensa",
+    "nombre": "HTAL. PRIVADO SUDAMERICANO",
+    "especialidades": ["UROLOGIA", "FISIATRIA - CONSULTAS"],
+    "direccion": "2 Nº 432 e/ 40 y 41",
+    "telefono": "221 445-2121"
+  },
+  {
+    "nombre": "HTAL. ROSSI",
+    "especialidades": [
+      "OTORRINOLARINGOLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "FONOAUDIOLOGIA",
+      "PALIATIVOS Y DOLOR"
+    ],
+    "direccion": "116 Nº 228 e/ 36 y 37",
+    "whatsapp": "221 556-7674",
+    "notas": "8 a 11hs: Órdenes, estudios, credencial y DNI - 1° Piso. Tiene un equipo de cirujanos de cabeza y cuello."
+  },
+  {
+    "nombre": "HTAL. SAN JUAN DE DIOS",
+    "especialidades": ["INFECTOLOGIA", "HEPATOLOGIA"],
+    "direccion": "27 y Calle 70 s/n",
+    "telefono": "221 453-2476 / 451-0320",
+    "notas": "Llevar imágenes previas lunes, jueves y viernes para que la médica evalúe. Otros tels: 457-7659 / 5800/02/04/06/08"
+  },
+  {
+    "nombre": "HTAL. SAN MARTIN",
+    "especialidades": [
+      "HEPATOLOGIA",
+      "GASTROENTEROLOGIA",
+      "FONOAUDIOLOGIA",
+      "DIABETOLOGIA",
+      "PALIATIVOS Y DOLOR",
+      "ELECTROFISIOLOGIA"
+    ],
+    "direccion": "1 esq. 70 s/n",
+    "telefono": "483-3292 / 6588 / 5759",
+    "email": "hsanmartin@ms.gba.gov.ar",
+    "notas": "Turnos todos los días por orden de llegada"
+  },
+  {
+    "nombre": "HTAL. SAN ROQUE",
+    "especialidades": [
+      "OTORRINOLARINGOLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA",
+      "FONOAUDIOLOGIA",
+      "NUTRICION"
+    ],
+    "direccion": "508 e/ 18 y 19",
+    "whatsapp": "221 364-2272",
+    "notas": "Atención L a V 7 a 16 hs"
+  },
+  {
+    "nombre": "INST MEDICO ARG. DE BERISSO",
+    "especialidades": [],
+    "direccion": "Punta Arenas 4299",
+    "telefono": "221 464-3113"
+  },
+  {
+    "nombre": "INST. DIAG. CARDIOVASCULAR",
+    "especialidades": [
+      "HEMATOLOGIA",
+      "ENDOCRINOLOGIA",
+      "DERMATOLOGIA",
+      "CARDIOLOGIA",
+      "NUTRICION"
+    ],
+    "direccion": "13 Nº 525",
+    "telefono": "221 621-4354"
+  },
+  {
+    "nombre": "INST. DEL DIAGNOSTICO",
+    "especialidades": ["ONCOLOGIA - TRATAMIENTOS"],
+    "direccion": "62 Nº 370",
+    "telefono": "221 425-9700"
+  },
+  {
+    "nombre": "INST. MEDICO PLATENSE",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS",
+      "HEMATOLOGIA",
+      "CARDIOLOGIA",
+      "CIRUGIA GENERAL AMBULATORIA",
+      "UROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "ELECTROFISIOLOGIA"
+    ],
+    "direccion": "51 Nº 315",
+    "telefono": "221 425-8390",
+    "notas": "Llamar de 13 a 16hs al 221-412925"
+  },
+  {
+    "nombre": "IPENSA",
     "especialidades": [
       "HEMATOLOGIA",
       "INFECTOLOGIA",
@@ -673,18 +749,320 @@ export const INITIAL_PRESTADORES = [
       "CIRUGIA CARDIOVASCULAR CENTRAL Y PERIFERICA",
       "ELECTROFISIOLOGIA"
     ],
-    "direccion": "Calle 59 # 434 entre 3 y 4",
+    "direccion": "59 Nº 434",
     "localidad": "La Plata",
-    "telefono": "221-427 1190",
+    "telefono": "221 427-1190",
     "email": "nefrologia-dialisis@ipensa.com"
   },
   {
-    "nombre": "Quarello",
+    "nombre": "LOVARI, Juan",
+    "especialidades": ["DERMATOLOGIA"],
+    "direccion": "60 Nº 2270 e/ 140 y 141",
+    "whatsapp": "221 363-5770"
+  },
+  {
+    "nombre": "PARRA, Natali",
+    "especialidades": ["ENDOCRINOLOGIA"],
+    "direccion": "18 Nº 252 e/ 37 y 38",
+    "telefono": "221 423-7547"
+  },
+  {
+    "nombre": "SANATORIO MEDICO LOS TILOS",
     "especialidades": [
-      "FLEBOLOGIA",
-      "NEUROLOGIA"
+      "NEUROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "ELECTROFISIOLOGIA"
     ],
-    "practicas": ["INTERNACIÓN CON EL FIN DE REHABILITACIÓN"]
+    "direccion": "41 Nº 347 e/ 1 y 2",
+    "telefono": "221 616-5296 / 358-4558"
+  },
+  {
+    "nombre": "SALIM, María Mercedes",
+    "especialidades": ["NEFROLOGIA"],
+    "direccion": "488 Nº 2681 e/ 20 y 22",
+    "telefono": "221 471-3181"
+  },
+  {
+    "nombre": "WRNICKE, Verónica",
+    "especialidades": ["REUMATOLOGIA"],
+    "direccion": "18 Nº 252 e/ 37 y 38",
+    "telefono": "221 423-7547"
+  },
+  {
+    "nombre": "JAURE, Cecilia",
+    "especialidades": ["NUTRICIONISTA"],
+    "direccion": "4 Nº 304 (Ex Piria - V.E)",
+    "telefono": "221 599-3682"
+  },
+  {
+    "nombre": "VISIONAIRE",
+    "especialidades": ["OTORRINO / FONOAUDIO"],
+    "direccion": "53 esq. 8",
+    "whatsapp": "2214959953"
+  },
+  {
+    "nombre": "C.R.M",
+    "especialidades": ["RX - ECODIAG. / ECO DOPPLER"],
+    "direccion": "8 Nº 620",
+    "telefono": "221 421-5524",
+    "whatsapp": "220-3495"
+  },
+  {
+    "nombre": "CIEN DE ENSENADA",
+    "especialidades": ["DSM OSEA"],
+    "direccion": "Sidotti Nº 281",
+    "telefono": "221 469-2002"
+  },
+  {
+    "nombre": "CIENCIA Y TECNOLOGIA",
+    "especialidades": [],
+    "direccion": "8 Nº 607",
+    "telefono": "221 421-1067"
+  },
+  {
+    "nombre": "CIMED",
+    "especialidades": ["TAC DE 64 O + / MAMOTONNE / PET"],
+    "direccion": "5 Nº 416 e/ 40 y 41",
+    "telefono": "221 439-1111"
+  },
+  {
+    "nombre": "IDYTAC",
+    "especialidades": ["ECO DOPPLER"],
+    "direccion": "8 Nº 140",
+    "telefono": "221 482-8965"
+  },
+  {
+    "nombre": "INST. DE CARDIO. LP",
+    "especialidades": ["ECO DOPP. / ECODIAG."],
+    "direccion": "6 Nº 212",
+    "telefono": "221 427-1000"
+  },
+  {
+    "nombre": "MED IMAGE",
+    "especialidades": ["ECOGRAFIA"],
+    "direccion": "45 Nº 915",
+    "telefono": "221 489-1222"
+  },
+  {
+    "nombre": "CLINICA DE EX. MEDICA",
+    "especialidades": ["MAMOGRAFIA"],
+    "direccion": "4 Nº 1074 e/ 54 y 55",
+    "telefono": "221 423-6431"
+  },
+  {
+    "nombre": "OPEN IMAGE (Tolosa)",
+    "especialidades": ["ECODIAGNOSTICO - RMN"],
+    "direccion": "4 Bis Nº 329",
+    "telefono": "221 422-0639",
+    "whatsapp": "319-7336"
+  },
+  {
+    "nombre": "OPEN IMAGE (V.E)",
+    "especialidades": ["RX - TAC"],
+    "direccion": "55 Nº 801 e/ 8 y 9",
+    "telefono": "221 422-0639",
+    "whatsapp": "319-7336"
+  },
+  {
+    "nombre": "RESONANCIA HI",
+    "especialidades": [],
+    "direccion": "50 Nº 1728",
+    "telefono": "221 451-1528"
+  },
+  {
+    "nombre": "SANATORIO ARGENTINO",
+    "especialidades": ["TAC - RMN"],
+    "direccion": "56 Nº 874",
+    "telefono": "221 412-9500",
+    "whatsapp": "220-4280"
+  },
+  {
+    "nombre": "CTRO. DE LA VISIÓN LP",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "2 Nº 731 e/ 46 y 47",
+    "telefono": "221 427-1452",
+    "whatsapp": "590-3504"
+  },
+  {
+    "nombre": "CLÍNICA MERONI",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "63 Nº 782 e/ 10 y 11",
+    "telefono": "221 452-5551"
+  },
+  {
+    "nombre": "COB",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "6 Nº 459 e/ 41 y 42",
+    "telefono": "221 4405079"
+  },
+  {
+    "nombre": "COB Berisso",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "12 Nº 4348 e/ 165 y 166",
+    "telefono": "221 4645315 / 6796013"
+  },
+  {
+    "nombre": "HANSEN ARIEL EDUARDO",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "42 Nº 763",
+    "telefono": "221 482-1669"
+  },
+  {
+    "nombre": "HTAL DR. A. KORN",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "520 S/N e/173 y 178",
+    "telefono": "0-800 333433",
+    "whatsapp": "5675-3580"
+  },
+  {
+    "nombre": "INST. OFTAL. PRIETO DIAZ",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "53 Nº 693",
+    "telefono": "221 425-7523 / 423-8178"
+  },
+  {
+    "nombre": "INST. OFTAL. PLATENSE",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "2 Nº 609 e/ 44 y 45",
+    "telefono": "221 483-1503 / 526-2112"
+  },
+  {
+    "nombre": "SANTA LUCIA",
+    "especialidades": ["OFTALMOLOGIA"],
+    "direccion": "56 e/ 7 y 8 Nº 625",
+    "telefono": "221 422-1617 / 445-2099"
+  },
+  {
+    "nombre": "AGOSTINI City Bell",
+    "especialidades": ["OPTICA"],
+    "direccion": "Cno. Cente y diag.92",
+    "telefono": "221 472-2573"
+  },
+  {
+    "nombre": "ARMONIA VISUAL",
+    "especialidades": ["OPTICA"],
+    "direccion": "35 Nº 912"
+  },
+  {
+    "nombre": "NUEVA VISTA Villa Elisa",
+    "especialidades": ["OPTICA"],
+    "direccion": "6 e/ 42 y 43",
+    "telefono": "221 548-8458"
+  },
+  {
+    "nombre": "DANIEL BERMUDEZ",
+    "especialidades": ["OPTICA"],
+    "direccion": "43 esq. 5",
+    "telefono": "221 489-4316"
+  },
+  {
+    "nombre": "BERMUDEZ S.A",
+    "especialidades": ["OPTICA"],
+    "direccion": "7 e/ 54 y 55",
+    "telefono": "221 423-3950"
+  },
+  {
+    "nombre": "POLERO",
+    "especialidades": ["OPTICA"],
+    "direccion": "137 e/ 63 y 62",
+    "telefono": "221 450-8041"
+  },
+  {
+    "nombre": "VISIÓN",
+    "especialidades": ["OPTICA"],
+    "direccion": "Pza Italia Nº 1498",
+    "telefono": "221 424-2312"
+  },
+  {
+    "nombre": "VEO",
+    "especialidades": ["OPTICA"],
+    "direccion": "5 esq. 520",
+    "telefono": "221 527-1216"
+  },
+  {
+    "nombre": "MERONI",
+    "especialidades": ["OPTICA"],
+    "direccion": "11 e/ 64 y 63",
+    "telefono": "221 452-4568"
+  },
+  {
+    "nombre": "MILENIO",
+    "especialidades": ["OPTICA"],
+    "direccion": "10 e/ 50 y 51",
+    "telefono": "221 595-7028"
+  },
+  {
+    "nombre": "OPTIMA VISION",
+    "especialidades": ["OPTICA"],
+    "direccion": "48 e/ 15 y diag.73",
+    "telefono": "221 423-3256"
+  },
+  {
+    "nombre": "POLERO Berisso",
+    "especialidades": ["OPTICA"],
+    "direccion": "Montevideo e/ 8 y 9",
+    "telefono": "221 461-4327"
+  },
+  {
+    "nombre": "TOLABA",
+    "especialidades": ["OPTICA"],
+    "direccion": "2 e/ 44 y 45",
+    "telefono": "221 421-5774"
+  },
+  {
+    "nombre": "RENO",
+    "especialidades": ["OPTICA"],
+    "direccion": "Diag. 79 e/ 2 y 3",
+    "telefono": "221 482-5544"
+  },
+  {
+    "nombre": "CLUB",
+    "especialidades": ["OPTICA"],
+    "direccion": "11 esq. 43",
+    "telefono": "221 595-7028"
+  },
+  {
+    "nombre": "SICARDI",
+    "especialidades": ["OPTICA"],
+    "direccion": "7 e/ 650 y 651",
+    "telefono": "221 540-2867"
+  },
+  {
+    "nombre": "FERRERI",
+    "especialidades": ["OPTICA"],
+    "direccion": "7 e/62 y 63",
+    "telefono": "221 424-0137"
+  },
+  {
+    "nombre": "VIA OPTICA Berisso",
+    "especialidades": ["OPTICA"],
+    "direccion": "Montevideo esq. 16",
+    "telefono": "221 564-3376"
+  },
+  {
+    "nombre": "Clinica Belgrano",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS",
+      "VIDEOENDOSCOPICAS GASTROINTESTINALES",
+      "HEMATOLOGIA",
+      "DERMATOLOGIA",
+      "ALERGIA E INMUNOLOGIA",
+      "TRAUMATOLOGIA",
+      "NEFROLOGIA",
+      "GINECOLOGIA Y OBSTETRICIA",
+      "GASTROENTEROLOGIA"
+    ],
+    "direccion": "Cno Gral Belgrano 960",
+    "localidad": "Quilmes Oeste",
+    "telefono": "4365-0200",
+    "whatsapp": "15-6700-1440",
+    "email": "conmutador@clinicabelgrano.com"
+  },
+  {
+    "nombre": "POLICLINICA PRIVADA S.A. SITE",
+    "especialidades": [
+      "ONCOLOGIA - TRATAMIENTOS"
+    ]
   },
   {
     "nombre": "Hospital El Cruce",
