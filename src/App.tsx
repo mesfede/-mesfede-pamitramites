@@ -309,8 +309,9 @@ export default function App() {
 
     return tramites.filter(t => {
       const nameNorm = normalize(t.nombre);
+      const descNorm = normalize(t.descripcion || "");
       
-      const matchesSearch = nameNorm.includes(searchNorm);
+      const matchesSearch = nameNorm.includes(searchNorm) || descNorm.includes(searchNorm);
       const matchesCat = selectedCat === 'all' || t.categoria === selectedCat;
       return matchesSearch && matchesCat;
     });
@@ -380,7 +381,7 @@ export default function App() {
     const data = {
       nombre: formData.get('nombre') as string,
       categoria: formData.get('categoria') as string,
-      descripcion: "", // Eliminado del formulario por pedido del usuario
+      descripcion: editingTramite?.descripcion || "", // Preservar descripción existente si se edita
       nota: formData.get('nota') as string,
       pasos: (formData.get('pasos') as string).split('\n').filter(p => p.trim() !== ''),
       documentos: uploadedFiles
@@ -789,6 +790,14 @@ export default function App() {
                                 <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-lg text-sm text-amber-900 flex gap-3">
                                   <Info size={18} className="shrink-0 text-amber-500" />
                                   <p>{t.nota}</p>
+                                </div>
+                              )}
+
+                              {t.descripcion && (
+                                <div className="border-l-4 border-pami-cyan pl-4 py-1">
+                                  <p className="text-sm text-pami-muted leading-relaxed whitespace-pre-line">
+                                    {t.descripcion}
+                                  </p>
                                 </div>
                               )}
 
