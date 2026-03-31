@@ -227,6 +227,29 @@ export default function App() {
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
   const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+    setLoginError(null);
+    try {
+      await loginWithGoogle();
+    } catch (error: any) {
+      console.error("Login error:", error);
+      let message = "Error al iniciar sesión. Por favor, intenta de nuevo.";
+      if (error.code === 'auth/popup-blocked') {
+        message = "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.";
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        message = "Cerraste la ventana de inicio de sesión antes de completar el proceso.";
+      } else if (error.code === 'auth/network-request-failed') {
+        message = "Error de red. Verifica tu conexión a internet.";
+      } else if (error.code === 'auth/internal-error') {
+        message = "Error interno de Firebase. Por favor, intenta más tarde.";
+      }
+      setLoginError(message);
+      setTimeout(() => setLoginError(null), 5000);
+    }
+  };
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -587,10 +610,17 @@ export default function App() {
                 </Button>
               </div>
             ) : (
-              <Button variant="outline" className="bg-white text-pami-blue border-white hover:bg-white/90" onClick={loginWithGoogle}>
-                <LogIn size={18} />
-                <span>Ingresar</span>
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button variant="outline" className="bg-white text-pami-blue border-white hover:bg-white/90" onClick={handleLogin}>
+                  <LogIn size={18} />
+                  <span>Ingresar</span>
+                </Button>
+                {loginError && (
+                  <span className="text-[10px] text-red-200 bg-red-900/50 px-2 py-1 rounded animate-pulse">
+                    {loginError}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
