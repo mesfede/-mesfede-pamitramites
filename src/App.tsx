@@ -43,7 +43,8 @@ import {
   Brain,
   Eye,
   LayoutGrid,
-  Wind
+  Wind,
+  BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -52,20 +53,24 @@ import { generateFullTramitePdf } from './lib/pdfUtils';
 import { 
   subscribeToTramites, 
   subscribeToPrestadores, 
+  subscribeToFolletos,
   addTramite, 
   updateTramite, 
   deleteTramite,
   addPrestador,
   updatePrestador,
   deletePrestador,
+  addFolleto,
+  deleteFolleto,
   cleanupPrestadores,
   cleanupTramites,
   seedDatabase,
   uploadFile,
   testConnection
 } from './services/firestore';
-import { Tramite, Prestador, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
-import { INITIAL_TRAMITES, INITIAL_PRESTADORES } from './initialData';
+import { Tramite, Prestador, PracticaOME, Folleto, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
+import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
+import { PRACTICAS_OME } from './data/practicasOME';
 import { cn } from './lib/utils';
 import { PamiLogo } from './components/PamiLogo';
 
@@ -201,20 +206,25 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [tramites, setTramites] = useState<Tramite[]>([]);
   const [prestadores, setPrestadores] = useState<Prestador[]>([]);
+  const [folletos, setFolletos] = useState<Folleto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [prestadorSearch, setPrestadorSearch] = useState('');
+  const [folletoSearch, setFolletoSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'admin'>('tramites');
-  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores'>('tramites');
+  const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'folletos' | 'admin'>('tramites');
+  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletePrestadorModalOpen, setIsDeletePrestadorModalOpen] = useState(false);
+  const [isDeleteFolletoModalOpen, setIsDeleteFolletoModalOpen] = useState(false);
   const [isPrestadorModalOpen, setIsPrestadorModalOpen] = useState(false);
+  const [isFolletoModalOpen, setIsFolletoModalOpen] = useState(false);
   const [editingTramite, setEditingTramite] = useState<Tramite | null>(null);
   const [tramiteToDelete, setTramiteToDelete] = useState<Tramite | null>(null);
   const [prestadorToDelete, setPrestadorToDelete] = useState<Prestador | null>(null);
+  const [folletoToDelete, setFolletoToDelete] = useState<Folleto | null>(null);
   const [editingPrestador, setEditingPrestador] = useState<Prestador | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -222,6 +232,7 @@ export default function App() {
   const [uploadedFiles, setUploadedFiles] = useState<{ nombre: string; url: string }[]>([]);
   const [manualFileName, setManualFileName] = useState('');
   const [manualFileUrl, setManualFileUrl] = useState('');
+  const [practicaSearch, setPracticaSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
@@ -258,6 +269,7 @@ export default function App() {
 
     const unsubscribeTramites = subscribeToTramites(setTramites);
     const unsubscribePrestadores = subscribeToPrestadores(setPrestadores);
+    const unsubscribeFolletos = subscribeToFolletos(setFolletos);
 
     testConnection();
 
@@ -265,6 +277,7 @@ export default function App() {
       unsubscribeAuth();
       unsubscribeTramites();
       unsubscribePrestadores();
+      unsubscribeFolletos();
     };
   }, []);
 
@@ -382,6 +395,50 @@ export default function App() {
         return matchesSearch && matchesSpecialty;
       });
   }, [prestadores, prestadorSearch, selectedSpecialty]);
+
+  const filteredPracticas = useMemo(() => {
+    const normalize = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    const searchNorm = normalize(practicaSearch.trim());
+
+    if (!searchNorm) return PRACTICAS_OME;
+
+    const searchWords = searchNorm.split(/\s+/);
+
+    return PRACTICAS_OME.filter(p => {
+      const rawFields = [
+        p.codigo || "",
+        p.descripcion || "",
+        p.modulo || "",
+        p.descImpresa || "",
+        p.sinonimo || ""
+      ];
+      
+      const fields = rawFields.map(f => normalize(f));
+      const fieldsNoSpace = rawFields.map(f => normalize(f).replace(/\s+/g, ""));
+      
+      // Check if ALL search words are present in at least ONE of the fields
+      // We check both the normal field and the field without spaces
+      return searchWords.every(word => {
+        const wordNoSpace = word.replace(/\s+/g, "");
+        return fields.some(field => field.includes(word)) || 
+               fieldsNoSpace.some(fieldNoSpace => fieldNoSpace.includes(wordNoSpace));
+      });
+    });
+  }, [practicaSearch]);
+
+  const filteredFolletos = useMemo(() => {
+    const normalize = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    const searchNorm = normalize(folletoSearch.trim());
+
+    return folletos.filter(f => {
+      const nameNorm = normalize(f.nombre || "");
+      return nameNorm.includes(searchNorm);
+    });
+  }, [folletos, folletoSearch]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -517,9 +574,9 @@ export default function App() {
     setIsSaving(true);
     setAdminMessage(null);
     try {
-      const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES);
+      const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS);
       setAdminMessage({ 
-        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites y ${result.addedPrestadores} prestadores nuevos.`,
+        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores y ${result.addedFolletos} folletos nuevos.`,
         type: 'success'
       });
     } catch (err) {
@@ -646,6 +703,26 @@ export default function App() {
           >
             <Stethoscope size={16} />
             Prestadores
+          </button>
+          <button 
+            onClick={() => setActiveTab('practicas')}
+            className={cn(
+              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
+              activeTab === 'practicas' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+            )}
+          >
+            <Activity size={16} />
+            Prácticas OME
+          </button>
+          <button 
+            onClick={() => setActiveTab('folletos')}
+            className={cn(
+              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
+              activeTab === 'folletos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+            )}
+          >
+            <BookOpen size={16} />
+            Folletos
           </button>
           {isAdmin && (
             <button 
@@ -1168,6 +1245,167 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'practicas' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-pami-text">Buscador de Prácticas OME</h2>
+                <p className="text-sm text-pami-muted">Identifica quién debe generar la Orden Médica Electrónica</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-pami-muted uppercase tracking-wider">Buscar por Código o Descripción</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                  <Input 
+                    placeholder="Ej: 660101, Hemograma, TAC, RMN, Fondo de ojo..." 
+                    className="pl-10"
+                    value={practicaSearch}
+                    onChange={(e) => setPracticaSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {filteredPracticas.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                  <Search size={48} className="mx-auto text-gray-200 mb-4" />
+                  <p className="text-pami-muted">No se encontraron prácticas con estos criterios.</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
+                          <th className="px-6 py-4">Código</th>
+                          <th className="px-6 py-4">Descripción</th>
+                          <th className="px-6 py-4">Módulo</th>
+                          <th className="px-6 py-4 text-center">Responsable</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredPracticas.map((p, idx) => (
+                          <tr key={`${p.codigo}-${idx}`} className="hover:bg-gray-50/50 transition-colors group">
+                            <td className="px-6 py-4 font-mono text-sm text-pami-blue font-bold">{p.codigo}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col">
+                                <span className="text-sm text-pami-text font-medium uppercase">{p.descripcion}</span>
+                                {(p.descImpresa || p.sinonimo) && (
+                                  <div className="flex gap-2 mt-1">
+                                    {p.descImpresa && (
+                                      <span className="text-[10px] text-pami-muted italic">Imp: {p.descImpresa}</span>
+                                    )}
+                                    {p.sinonimo && (
+                                      <span className="text-[10px] text-pami-cyan font-medium">Sín: {p.sinonimo}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-xs text-pami-muted uppercase">{p.modulo}</td>
+                            <td className="px-6 py-4 text-center">
+                              <span className={cn(
+                                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                p.responsable === 'Médico de Cabecera' 
+                                  ? "bg-green-100 text-green-700 border border-green-200" 
+                                  : "bg-amber-100 text-amber-700 border border-amber-200"
+                              )}>
+                                {p.responsable === 'Médico de Cabecera' ? (
+                                  <CheckCircle2 size={12} />
+                                ) : (
+                                  <AlertCircle size={12} />
+                                )}
+                                {p.responsable}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'folletos' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-pami-text">Folletos Informativos</h2>
+                <p className="text-sm text-pami-muted">{filteredFolletos.length} folletos encontrados</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1 md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                  <Input 
+                    placeholder="Buscar folleto..." 
+                    className="pl-10"
+                    value={folletoSearch}
+                    onChange={(e) => setFolletoSearch(e.target.value)}
+                  />
+                </div>
+                {isAdmin && (
+                  <Button onClick={() => setIsFolletoModalOpen(true)}>
+                    <Plus size={18} className="mr-2" />
+                    <span>Subir Folleto</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {filteredFolletos.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                <BookOpen size={48} className="mx-auto text-gray-200 mb-4" />
+                <p className="text-pami-muted">No se encontraron folletos con estos criterios.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredFolletos.map(f => (
+                  <motion.div 
+                    key={f.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all group relative"
+                  >
+                    <div className="p-6 flex flex-col items-center text-center space-y-4">
+                      <div className="w-16 h-16 bg-pami-blue/10 rounded-full flex items-center justify-center text-pami-blue group-hover:scale-110 transition-transform">
+                        <FileText size={32} />
+                      </div>
+                      <h3 className="font-semibold text-pami-text line-clamp-2 min-h-[3rem] uppercase text-sm">{f.nombre}</h3>
+                      <div className="flex items-center gap-2 w-full">
+                        <a 
+                          href={f.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex-1 bg-pami-blue text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-pami-blue/90 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Printer size={16} />
+                          Ver / Imprimir
+                        </a>
+                        {isAdmin && (
+                          <button 
+                            onClick={() => { setFolletoToDelete(f); setIsDeleteFolletoModalOpen(true); }}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar folleto"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'admin' && isAdmin && (
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1193,6 +1431,15 @@ export default function App() {
                   )}
                 >
                   Prestadores
+                </button>
+                <button 
+                  onClick={() => setAdminSubTab('folletos')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    adminSubTab === 'folletos' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
+                  )}
+                >
+                  Folletos
                 </button>
               </div>
             </div>
@@ -1269,7 +1516,7 @@ export default function App() {
                     ))}
                   </tbody>
                 </table>
-              ) : (
+              ) : adminSubTab === 'prestadores' ? (
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
@@ -1309,6 +1556,37 @@ export default function App() {
                               onClick={(e) => handleDeletePrestador(p, e)}
                               className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                               title="Eliminar prestador"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
+                      <th className="px-6 py-4">Folleto</th>
+                      <th className="px-6 py-4">URL</th>
+                      <th className="px-6 py-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {folletos.map(f => (
+                      <tr key={f.id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-6 py-4 font-medium text-pami-text uppercase">{f.nombre}</td>
+                        <td className="px-6 py-4 text-xs text-pami-muted truncate max-w-[200px]">
+                          {f.url}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => { setFolletoToDelete(f); setIsDeleteFolletoModalOpen(true); }}
+                              className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Eliminar folleto"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -1568,6 +1846,88 @@ export default function App() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Delete Folleto Modal */}
+      <Modal 
+        isOpen={isDeleteFolletoModalOpen} 
+        onClose={() => setIsDeleteFolletoModalOpen(false)} 
+        title="Eliminar Folleto"
+      >
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl text-red-700 border border-red-100">
+            <AlertCircle className="shrink-0" size={24} />
+            <p className="text-sm font-medium">
+              ¿Estás seguro que deseas eliminar el folleto <span className="font-bold uppercase">"{folletoToDelete?.nombre}"</span>? Esta acción no se puede deshacer.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button variant="ghost" onClick={() => setIsDeleteFolletoModalOpen(false)}>Cancelar</Button>
+            <Button 
+              variant="danger" 
+              isLoading={isSaving}
+              onClick={async () => {
+                if (folletoToDelete) {
+                  setIsSaving(true);
+                  try {
+                    await deleteFolleto(folletoToDelete.id);
+                    setIsDeleteFolletoModalOpen(false);
+                    setFolletoToDelete(null);
+                  } catch (err) {
+                    console.error("Error deleting folleto:", err);
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }
+              }}
+            >
+              <Trash2 size={18} />
+              <span>Eliminar Folleto</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Folleto Modal */}
+      <Modal 
+        isOpen={isFolletoModalOpen} 
+        onClose={() => setIsFolletoModalOpen(false)} 
+        title="Subir Nuevo Folleto"
+      >
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setIsSaving(true);
+          const formData = new FormData(e.currentTarget);
+          const nombre = formData.get('nombre') as string;
+          const url = formData.get('url') as string;
+
+          try {
+            await addFolleto({ nombre, url });
+            setIsFolletoModalOpen(false);
+          } catch (err) {
+            console.error("Error adding folleto:", err);
+            alert("Error al subir el folleto.");
+          } finally {
+            setIsSaving(false);
+          }
+        }} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Nombre del Folleto</label>
+            <Input name="nombre" placeholder="Ej: Cartilla Prestadores 2026" required />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Enlace de Google Drive</label>
+            <Input name="url" placeholder="https://drive.google.com/..." required />
+            <p className="text-[10px] text-pami-muted mt-1">Asegúrate de que el enlace tenga permisos de lectura para cualquier persona con el link.</p>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsFolletoModalOpen(false)}>Cancelar</Button>
+            <Button type="submit" isLoading={isSaving}>
+              <CheckCircle2 size={18} />
+              <span>Guardar Folleto</span>
+            </Button>
+          </div>
+        </form>
       </Modal>
 
       {/* Footer */}

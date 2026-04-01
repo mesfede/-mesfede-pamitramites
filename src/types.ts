@@ -1,3 +1,19 @@
+export interface Folleto {
+  id: string;
+  nombre: string;
+  url: string;
+  createdAt?: any;
+}
+
+export interface PracticaOME {
+  codigo: string;
+  descripcion: string;
+  descImpresa?: string;
+  sinonimo?: string;
+  modulo: string;
+  responsable: 'Médico de Cabecera' | 'Médico Auditor';
+}
+
 export interface Tramite {
   id: string;
   nombre: string;

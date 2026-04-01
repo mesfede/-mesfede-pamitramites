@@ -1141,3 +1141,10 @@ export const INITIAL_PRESTADORES = [
     "whatsapp": "11-61953865"
   }
 ];
+
+export const INITIAL_FOLLETOS = [
+  {
+    "nombre": "Cartilla Prestadores 2026",
+    "url": "https://drive.google.com/file/d/1XbpUIsXnMYNNxaqbHnlUIPBrViZMuuK1/view?usp=drive_link"
+  }
+];

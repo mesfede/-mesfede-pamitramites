@@ -37,6 +37,18 @@
         }
       },
       "required": ["nombre"]
+    },
+    "Folleto": {
+      "title": "Folleto",
+      "description": "Folleto informativo con enlace a Drive.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "url": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nombre", "url"]
     }
   },
   "firestore": {
@@ -47,6 +59,10 @@
     "/prestadores/{prestadorId}": {
       "schema": "Prestador",
       "description": "Colección de prestadores médicos."
+    },
+    "/folletos/{folletoId}": {
+      "schema": "Folleto",
+      "description": "Colección de folletos informativos."
     }
   }
 }

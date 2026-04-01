@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import { Tramite, Prestador } from '../types';
+import { Tramite, Prestador, Folleto } from '../types';
 
 export async function testConnection() {
   try {
@@ -29,6 +29,7 @@ export async function testConnection() {
 
 const TRAMITES_COLLECTION = 'tramites';
 const PRESTADORES_COLLECTION = 'prestadores';
+const FOLLETOS_COLLECTION = 'folletos';
 
 enum OperationType {
   CREATE = 'create',
@@ -305,7 +306,40 @@ export async function cleanupTramites() {
   return deleted;
 }
 
-export async function seedDatabase(initialTramites: any[], initialPrestadores: any[]) {
+export function subscribeToFolletos(callback: (folletos: Folleto[]) => void) {
+  const q = query(collection(db, FOLLETOS_COLLECTION), orderBy('nombre', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const folletos = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Folleto[];
+    callback(folletos);
+  }, (error) => {
+    console.error("Error subscribing to folletos:", error);
+  });
+}
+
+export async function addFolleto(folleto: Omit<Folleto, 'id'>) {
+  try {
+    return await addDoc(collection(db, FOLLETOS_COLLECTION), {
+      ...folleto,
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, FOLLETOS_COLLECTION);
+  }
+}
+
+export async function deleteFolleto(id: string) {
+  try {
+    const docRef = doc(db, FOLLETOS_COLLECTION, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, FOLLETOS_COLLECTION);
+  }
+}
+
+export async function seedDatabase(initialTramites: any[], initialPrestadores: any[], initialFolletos: any[] = []) {
   const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
   const existingTramiteNames = new Set(
     tramitesSnap.docs.map(doc => (doc.data().nombre || "").trim().toLowerCase())
@@ -316,9 +350,15 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     prestadoresSnap.docs.map(doc => (doc.data().nombre || "").trim().toLowerCase())
   );
 
+  const folletosSnap = await getDocs(collection(db, FOLLETOS_COLLECTION));
+  const existingFolletoNames = new Set(
+    folletosSnap.docs.map(doc => (doc.data().nombre || "").trim().toLowerCase())
+  );
+
   const batch = writeBatch(db);
   let addedTramites = 0;
   let addedPrestadores = 0;
+  let addedFolletos = 0;
 
   initialTramites.forEach(t => {
     const normalizedName = (t.nombre || "").trim().toLowerCase();
@@ -364,9 +404,23 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
       addedPrestadores++;
     }
   });
+
+  initialFolletos.forEach(f => {
+    const normalizedName = (f.nombre || "").trim().toLowerCase();
+    if (!existingFolletoNames.has(normalizedName)) {
+      const docRef = doc(collection(db, FOLLETOS_COLLECTION));
+      batch.set(docRef, {
+        ...f,
+        nombre: f.nombre.trim(),
+        createdAt: serverTimestamp()
+      });
+      existingFolletoNames.add(normalizedName);
+      addedFolletos++;
+    }
+  });
   
-  if (addedTramites > 0 || addedPrestadores > 0) {
+  if (addedTramites > 0 || addedPrestadores > 0 || addedFolletos > 0) {
     await batch.commit();
   }
-  return { addedTramites, addedPrestadores };
+  return { addedTramites, addedPrestadores, addedFolletos };
 }

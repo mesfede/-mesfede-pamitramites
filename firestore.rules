@@ -23,6 +23,12 @@ service cloud.firestore {
     //   - especialidades: list
     //   - imagenes: list
     //
+    // Collection: folletos
+    // Fields:
+    //   - nombre: string (required)
+    //   - url: string (required)
+    //   - createdAt: timestamp
+    //
     // ===============================================================
 
     // Helper Functions
@@ -43,6 +49,18 @@ service cloud.firestore {
              (!('nota' in data) || (data.nota is string && data.nota.size() < 1000)) &&
              (!('pasos' in data) || (data.pasos is list && data.pasos.size() < 50)) &&
              (!('documentos' in data) || (data.documentos is list && data.documentos.size() < 20));
+    }
+
+    function isValidFolleto(data) {
+      return data.nombre is string && data.nombre.size() > 0 && data.nombre.size() < 200 &&
+             data.url is string && data.url.size() > 0 && data.url.size() < 1000;
+    }
+
+    match /folletos/{folletoId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidFolleto(request.resource.data);
+      allow update: if isAdmin() && isValidFolleto(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /tramites/{tramiteId} {
