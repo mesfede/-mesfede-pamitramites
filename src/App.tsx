@@ -44,7 +44,8 @@ import {
   Eye,
   LayoutGrid,
   Wind,
-  BookOpen
+  BookOpen,
+  Truck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -101,6 +102,7 @@ const getCategoryIcon = (cat: string, size: number = 20) => {
     case 'Salud mental': return <Brain size={size} />;
     case 'Óptica y oftalmología': return <Eye size={size} />;
     case 'Oxigenoterapia': return <Wind size={size} />;
+    case 'Traslados': return <Truck size={size} />;
     case 'all': return <LayoutGrid size={size} />;
     default: return <FileText size={size} />;
   }

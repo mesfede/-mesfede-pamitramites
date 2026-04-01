@@ -430,7 +430,7 @@ export const INITIAL_TRAMITES = [
     "fuente": "PDF Guía"
   },
   {
-    "nombre": "TRASLADO (+ DE 30KM)",
+    "nombre": "Traslado (+ de 30km)",
     "categoria": "Traslados",
     "descripcion": "Se requiere OME de traslado, resumen de HC que justifique la derivación y turno del prestador de destino. Caratular por GDE.",
     "fuente": "PDF Guía"
