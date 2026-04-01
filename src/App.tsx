@@ -1006,32 +1006,54 @@ export default function App() {
                                     {t.documentos.map((doc, idx) => (
                                       <div 
                                         key={idx} 
-                                        className="flex items-center gap-3 p-3 bg-pami-blue/5 rounded-lg hover:bg-pami-blue/10 transition-all group"
+                                        className="flex items-center gap-3 p-3 bg-pami-blue/5 rounded-lg hover:bg-pami-blue/10 transition-all group relative"
                                       >
-                                        {getFileIcon(doc.nombre)}
-                                        <span className="text-sm font-medium flex-1 truncate text-pami-blue">{doc.nombre}</span>
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                          {getFileIcon(doc.nombre)}
                                           <a 
                                             href={doc.url} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
-                                            className="p-1.5 hover:bg-white rounded-md text-pami-blue shadow-sm transition-colors"
+                                            className="text-sm font-medium truncate text-pami-blue hover:underline decoration-2 underline-offset-4"
+                                            title="Ver / Descargar"
+                                          >
+                                            {doc.nombre}
+                                          </a>
+                                        </div>
+                                        <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <a 
+                                            href={doc.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-pami-blue shadow-sm sm:shadow-none hover:shadow-sm transition-colors"
                                             title="Ver / Descargar"
                                           >
                                             <ExternalLink size={16} />
                                           </a>
                                           <button 
                                             onClick={() => {
+                                              navigator.clipboard.writeText(doc.url);
+                                              alert("Enlace copiado al portapapeles");
+                                            }}
+                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-pami-blue shadow-sm sm:shadow-none hover:shadow-sm transition-colors"
+                                            title="Copiar enlace"
+                                          >
+                                            <Paperclip size={16} />
+                                          </button>
+                                          <button 
+                                            onClick={() => {
                                               const printWindow = window.open(doc.url, '_blank');
-                                              // Note: Cross-origin restrictions might prevent auto-printing,
-                                              // but opening it allows the user to use the browser's native print.
-                                              if (printWindow && doc.nombre.toLowerCase().endsWith('.pdf')) {
+                                              if (!printWindow) {
+                                                alert("El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio o usa el botón de 'Ver / Descargar'.");
+                                                return;
+                                              }
+                                              if (doc.nombre.toLowerCase().endsWith('.pdf')) {
                                                 printWindow.onload = () => {
                                                   try { printWindow.print(); } catch (e) { /* Ignore cross-origin errors */ }
                                                 };
                                               }
                                             }}
-                                            className="p-1.5 hover:bg-white rounded-md text-pami-blue shadow-sm transition-colors"
+                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-pami-blue shadow-sm sm:shadow-none hover:shadow-sm transition-colors"
                                             title="Imprimir"
                                           >
                                             <Printer size={16} />
