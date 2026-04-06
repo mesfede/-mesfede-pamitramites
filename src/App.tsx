@@ -770,67 +770,70 @@ export default function App() {
             </button>
           )}
         </div>
+
+        {/* Integrated Search Bar for Tramites */}
+        {activeTab === 'tramites' && (
+          <div className="bg-white border-t border-gray-200 py-2 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-6 items-center">
+              {/* Primary Search: Internal Tramites */}
+              <div className="flex-grow flex items-center gap-3 w-full">
+                <div className="flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
+                  <Search size={16} />
+                  <h3 className="text-sm font-medium">Buscar trámite</h3>
+                </div>
+                <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={16} />
+                  <Input 
+                    placeholder="Ej: Reintegro, Pañales..." 
+                    className="pl-9 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-blue focus:border-pami-blue focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+
+              {/* Secondary Search: Google Search */}
+              <div className="md:w-[380px] flex items-center gap-3 w-full shrink-0">
+                <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16px" height="16px" className="bg-transparent p-0">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                  </svg>
+                  <h3 className="text-sm font-medium text-pami-muted">Google</h3>
+                </div>
+                <form onSubmit={handleGoogleSearch} className="relative flex-grow">
+                  <Input 
+                    placeholder="Consulta externa..." 
+                    className="pr-10 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-cyan focus:border-pami-cyan focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
+                    value={aiSearch}
+                    onChange={(e) => setAiSearch(e.target.value)}
+                  />
+                  <button 
+                    type="submit"
+                    disabled={!aiSearch.trim()}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-pami-cyan hover:text-pami-blue hover:bg-pami-blue/5 rounded transition-colors disabled:opacity-30"
+                  >
+                    <ArrowRight size={16} />
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {activeTab === 'tramites' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Sidebar Filters */}
-            <aside className="lg:col-span-4 space-y-6">
-              <div className="space-y-6">
-                {/* Primary Search: Internal Tramites */}
-                <div className="bg-pami-cyan/10 rounded-xl shadow-sm border border-pami-cyan/30 p-4 ring-1 ring-pami-cyan/10">
-                  <div className="flex items-center gap-2 mb-3 text-pami-blue">
-                    <Search size={18} />
-                    <h3 className="text-sm font-bold uppercase tracking-wider">Buscar Trámite</h3>
-                  </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
-                    <Input 
-                      placeholder="Ej: Reintegro, Pañales..." 
-                      className="pl-10 border-gray-300 focus:ring-pami-blue h-11 text-base shadow-inner"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                  <p className="text-[10px] text-pami-muted mt-2">
-                    Búsqueda interna en la guía de trámites de PAMI.
-                  </p>
-                </div>
-
-                {/* Secondary Search: Google Search */}
-                <div className="bg-pami-cyan/5 rounded-xl border border-pami-cyan/20 p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="14px" height="14px">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                    </svg>
-                    <h3 className="text-[11px] font-semibold uppercase tracking-widest text-pami-cyan">Consulta Externa (Google)</h3>
-                  </div>
-                  <form onSubmit={handleGoogleSearch} className="relative">
-                    <Input 
-                      placeholder="¿Para qué sirve el Enalapril?..." 
-                      className="pr-10 border-gray-200 focus:ring-pami-cyan h-9 text-sm bg-white/80"
-                      value={aiSearch}
-                      onChange={(e) => setAiSearch(e.target.value)}
-                    />
-                    <button 
-                      type="submit"
-                      disabled={!aiSearch.trim()}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-pami-cyan hover:bg-pami-cyan/10 rounded transition-colors disabled:opacity-30"
-                    >
-                      <ArrowRight size={14} />
-                    </button>
-                  </form>
-                  <p className="text-[9px] text-pami-muted mt-1.5 leading-tight italic">
-                    Búsqueda directa en Google para información externa.
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Sidebar Filters */}
+              <aside className="lg:col-span-4 space-y-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-4 py-4 bg-white border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-pami-text">Categorías</h2>
                 </div>
@@ -1172,6 +1175,7 @@ export default function App() {
                 </div>
               )}
             </div>
+          </div>
           </div>
         )}
 
