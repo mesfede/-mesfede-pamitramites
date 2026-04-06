@@ -895,7 +895,7 @@ export default function App() {
             <div className="lg:col-span-8 space-y-4">
               <div className="flex items-baseline justify-between mb-2">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-2xl font-semibold text-pami-text">
+                  <h2 className="text-lg font-semibold text-pami-text">
                     {selectedCat === 'all' ? 'Todos los trámites' : selectedCat}
                   </h2>
                   {isAdmin && (
