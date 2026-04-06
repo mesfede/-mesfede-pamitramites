@@ -43,7 +43,7 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "Ayuda Externa - Ortopedia",
-    "categoria": "Insumos y ayudas técnicas",
+    "categoria": "Prótesis",
     "descripcion": "Se debe pedir el ítem al mail ayudastecnicas@pami.org.ar (debe adjuntarse al mail la orden médica manual y el resumen de historia clínica).",
     "fuente": "PDF Guía"
   },
@@ -79,7 +79,7 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "Calibracion de Implante Coclear",
-    "categoria": "Prácticas quirúrgicas y de alta complejidad",
+    "categoria": "Prótesis",
     "descripcion": "Hacer EE GDE Externo Practiva por VE poner en el asunto (PAMI00245) adjuntar ifgra con documentacion (calibracion//presupuesto//informe de la calibracion anterior) se envia a la gerencia de prestaciones medicas.",
     "fuente": "PDF Guía"
   },
@@ -109,7 +109,7 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "Elevador Hidráulico para Pacientes",
-    "categoria": "Insumos y ayudas técnicas",
+    "categoria": "Prótesis",
     "descripcion": "Se envía un mail a ayudas técnicas solicitando ítem para la carga en el SII – se hace un EE con GENE0003 (hidráulico). Credencial, DNI. Recibo. Tel de contacto. Se envía a prótesis.",
     "fuente": "PDF Guía"
   },
@@ -193,13 +193,13 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "Audifono: Reclamo//solicitud",
-    "categoria": "Audífonos e implantes auditivos",
+    "categoria": "Prótesis",
     "descripcion": "RECLAMO: mandar mail a programas_audifonos@pami.org.ar // SOLICITUD: Se indica al afiliado el lugar de cápita (Mutualidada Argentina de Hipoacusticos) tiene que ir con la OME que indica el pedido de audífonos y los estudios",
     "fuente": "Excel PAMI 2023"
   },
   {
     "nombre": "Audífono: Recalibración",
-    "categoria": "Audífonos e implantes auditivos",
+    "categoria": "Prótesis",
     "descripcion": "Solicitar turno por mail laboral a karinaf@audisonicsa.com.ar",
     "fuente": "Excel PAMI 2023",
     "pasos": ["Solicitar turno por mail laboral a karinaf@audisonicsa.com.ar"]
@@ -245,7 +245,7 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "Implante Coclear",
-    "categoria": "Prácticas quirúrgicas y de alta complejidad",
+    "categoria": "Prótesis",
     "descripcion": "Orden x el MC interconsulta con otorrino y se llama por telefono para solicitar un turno (Milstein sector otorrino 1149220879 // 1149220630// mail: mmazalannes@pami.org.ar).",
     "fuente": "Excel PAMI 2023"
   },
@@ -365,7 +365,7 @@ export const INITIAL_TRAMITES = [
   },
   {
     "nombre": "IMPLANTE COCLEAR – PILAS",
-    "categoria": "Insumos y ayudas técnicas",
+    "categoria": "Prótesis",
     "descripcion": "Solicitar ítem por mail a programas_audifonos@pami.org.ar, adjuntando toda la documentación. Cargar en sistema de Insumos del Sii y enviar por expediente electrónico (GENE00003).",
     "fuente": "PDF Guía"
   },

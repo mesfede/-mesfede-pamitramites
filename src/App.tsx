@@ -45,7 +45,9 @@ import {
   LayoutGrid,
   Wind,
   BookOpen,
-  Truck
+  Truck,
+  Footprints,
+  Ambulance
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -87,7 +89,6 @@ const getFileIcon = (nombre: string) => {
 const getCategoryIcon = (cat: string, size: number = 20) => {
   switch (cat) {
     case 'Afiliaciones': return <ClipboardList size={size} />;
-    case 'Audífonos e implantes auditivos': return <Ear size={size} />;
     case 'Consultas con especialistas': return <Stethoscope size={size} />;
     case 'Estudios diagnósticos e imágenes': return <Microscope size={size} />;
     case 'Expediente GDE': return <FolderOpen size={size} />;
@@ -96,13 +97,14 @@ const getCategoryIcon = (cat: string, size: number = 20) => {
     case 'Kinesiología y rehabilitación': return <Activity size={size} />;
     case 'Medicamentos especiales': return <Pill size={size} />;
     case 'Nutrición': return <Apple size={size} />;
-    case 'Prácticas quirúrgicas y de alta complejidad': return <Syringe size={size} />;
-    case 'Reintegros': return <Banknote size={size} />;
-    case 'Trámites administrativos': return <Files size={size} />;
-    case 'Salud mental': return <Brain size={size} />;
     case 'Óptica y oftalmología': return <Eye size={size} />;
     case 'Oxigenoterapia': return <Wind size={size} />;
-    case 'Traslados': return <Truck size={size} />;
+    case 'Prácticas quirúrgicas y de alta complejidad': return <Syringe size={size} />;
+    case 'Prótesis': return <Footprints size={size} />;
+    case 'Reintegros': return <Banknote size={size} />;
+    case 'Salud mental': return <Brain size={size} />;
+    case 'Trámites administrativos': return <Files size={size} />;
+    case 'Traslados': return <Ambulance size={size} />;
     case 'all': return <LayoutGrid size={size} />;
     default: return <FileText size={size} />;
   }
