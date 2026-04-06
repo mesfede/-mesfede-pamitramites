@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
-import Markdown from 'react-markdown';
 import { 
   Search, 
   Plus, 
@@ -50,7 +48,6 @@ import {
   Truck,
   Footprints,
   Ambulance,
-  Sparkles,
   ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -243,9 +240,6 @@ export default function App() {
   const [manualFileUrl, setManualFileUrl] = useState('');
   const [practicaSearch, setPracticaSearch] = useState('');
   const [aiSearch, setAiSearch] = useState('');
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
@@ -253,33 +247,29 @@ export default function App() {
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  const handleAiSearch = async (e: React.FormEvent) => {
+  const handleGoogleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiSearch.trim()) return;
+    
+    const query = encodeURIComponent(aiSearch);
+    const url = `https://www.google.com/search?q=${query}`;
+    
+    // Configuramos la ventana flotante (popup)
+    const width = 800;
+    const height = 600;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    // Intentamos abrir la ventana flotante
+    const popup = window.open(
+      url, 
+      'GoogleSearch', 
+      `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=no,location=no,toolbar=no,menubar=no`
+    );
 
-    setIsAiLoading(true);
-    setIsAiModalOpen(true);
-    setAiResponse(null);
-
-    try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("API Key no configurada. Verifica las variables de entorno.");
-      }
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: aiSearch,
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
-      });
-      setAiResponse(response.text || "No se encontró información.");
-    } catch (error) {
-      console.error("AI Search error:", error);
-      setAiResponse("Ocurrió un error al realizar la búsqueda. Por favor, intenta de nuevo.");
-    } finally {
-      setIsAiLoading(false);
+    // Si el navegador bloquea el popup, abrimos en pestaña normal como respaldo
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      window.open(url, '_blank');
     }
   };
 
@@ -808,13 +798,13 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* Secondary Search: AI Assistant */}
+                {/* Secondary Search: Google Search */}
                 <div className="bg-gray-50/50 rounded-xl border border-gray-200 p-3">
                   <div className="flex items-center gap-2 mb-2 text-pami-muted">
-                    <Sparkles size={14} />
-                    <h3 className="text-[11px] font-semibold uppercase tracking-widest">Consulta Externa (IA)</h3>
+                    <Search size={14} />
+                    <h3 className="text-[11px] font-semibold uppercase tracking-widest">Consulta Externa (Google)</h3>
                   </div>
-                  <form onSubmit={handleAiSearch} className="relative">
+                  <form onSubmit={handleGoogleSearch} className="relative">
                     <Input 
                       placeholder="¿Para qué sirve el Enalapril?..." 
                       className="pr-10 border-gray-200 focus:ring-pami-cyan h-9 text-sm bg-white/80"
@@ -823,14 +813,14 @@ export default function App() {
                     />
                     <button 
                       type="submit"
-                      disabled={isAiLoading || !aiSearch.trim()}
+                      disabled={!aiSearch.trim()}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-pami-cyan hover:bg-pami-cyan/10 rounded transition-colors disabled:opacity-30"
                     >
-                      {isAiLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+                      <ArrowRight size={14} />
                     </button>
                   </form>
                   <p className="text-[9px] text-pami-muted mt-1.5 leading-tight italic">
-                    Información médica general vía Google Search.
+                    Búsqueda directa en Google para información externa.
                   </p>
                 </div>
               </div>
@@ -1901,46 +1891,6 @@ export default function App() {
             </Button>
           </div>
         </form>
-      </Modal>
-
-      {/* AI Response Modal */}
-      <Modal 
-        isOpen={isAiModalOpen} 
-        onClose={() => setIsAiModalOpen(false)} 
-        title="Información del Asistente"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 bg-pami-blue/5 rounded-lg border border-pami-blue/10">
-            <div className="w-8 h-8 rounded-full bg-pami-blue flex items-center justify-center text-white shrink-0">
-              <Sparkles size={16} />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase font-bold text-pami-blue tracking-wider">Pregunta</p>
-              <p className="text-sm font-medium text-pami-text">{aiSearch}</p>
-            </div>
-          </div>
-
-          <div className="prose prose-sm max-w-none prose-pami">
-            {isAiLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <Loader2 className="animate-spin text-pami-blue" size={40} />
-                <p className="text-pami-muted animate-pulse">Consultando a la IA y Google Search...</p>
-              </div>
-            ) : (
-              <div className="markdown-body">
-                <Markdown>{aiResponse || ""}</Markdown>
-              </div>
-            )}
-          </div>
-
-          {!isAiLoading && (
-            <div className="pt-4 border-t border-gray-100 flex justify-end">
-              <Button variant="outline" onClick={() => setIsAiModalOpen(false)}>
-                Cerrar
-              </Button>
-            </div>
-          )}
-        </div>
       </Modal>
 
       {/* Modal for Delete Confirmation */}
