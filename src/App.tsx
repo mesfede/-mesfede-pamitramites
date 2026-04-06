@@ -93,6 +93,7 @@ const getFileIcon = (nombre: string) => {
 const getCategoryIcon = (cat: string, size: number = 20) => {
   switch (cat) {
     case 'Afiliaciones': return <ClipboardList size={size} />;
+    case 'Audífonos e implantes auditivos': return <Ear size={size} />;
     case 'Consultas con especialistas': return <Stethoscope size={size} />;
     case 'Estudios diagnósticos e imágenes': return <Microscope size={size} />;
     case 'Expediente GDE': return <FolderOpen size={size} />;
@@ -782,40 +783,50 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Sidebar Filters */}
             <aside className="lg:col-span-4 space-y-6">
-              <div className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
-                  <Input 
-                    placeholder="Buscar trámite..." 
-                    className="pl-10"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+              <div className="space-y-6">
+                {/* Primary Search: Internal Tramites */}
+                <div className="bg-white rounded-xl shadow-sm border border-pami-blue/30 p-4 ring-1 ring-pami-blue/5">
+                  <div className="flex items-center gap-2 mb-3 text-pami-blue">
+                    <Search size={18} />
+                    <h3 className="text-sm font-bold uppercase tracking-wider">Buscar Trámite</h3>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                    <Input 
+                      placeholder="Ej: Reintegro, Pañales..." 
+                      className="pl-10 border-gray-300 focus:ring-pami-blue h-11 text-base shadow-inner"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-[10px] text-pami-muted mt-2">
+                    Búsqueda interna en la guía de trámites de PAMI.
+                  </p>
                 </div>
 
-                {/* AI Assistant Search Bar */}
-                <div className="bg-gradient-to-br from-pami-blue/5 to-pami-cyan/5 rounded-xl border border-pami-blue/20 p-4 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3 text-pami-blue">
-                    <Sparkles size={18} className="text-pami-cyan animate-pulse" />
-                    <h3 className="text-sm font-semibold uppercase tracking-wider">Asistente IA / Google</h3>
+                {/* Secondary Search: AI Assistant */}
+                <div className="bg-gray-50/50 rounded-xl border border-gray-200 p-3">
+                  <div className="flex items-center gap-2 mb-2 text-pami-muted">
+                    <Sparkles size={14} />
+                    <h3 className="text-[11px] font-semibold uppercase tracking-widest">Consulta Externa (IA)</h3>
                   </div>
                   <form onSubmit={handleAiSearch} className="relative">
                     <Input 
-                      placeholder="¿Para qué sirve este medicamento?..." 
-                      className="pr-10 border-pami-blue/20 focus:ring-pami-blue"
+                      placeholder="¿Para qué sirve el Enalapril?..." 
+                      className="pr-10 border-gray-200 focus:ring-pami-cyan h-9 text-sm bg-white/80"
                       value={aiSearch}
                       onChange={(e) => setAiSearch(e.target.value)}
                     />
                     <button 
                       type="submit"
                       disabled={isAiLoading || !aiSearch.trim()}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-pami-blue hover:bg-pami-blue/10 rounded-md transition-colors disabled:opacity-30"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-pami-cyan hover:bg-pami-cyan/10 rounded transition-colors disabled:opacity-30"
                     >
-                      {isAiLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                      {isAiLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
                     </button>
                   </form>
-                  <p className="text-[10px] text-pami-muted mt-2 leading-tight">
-                    Busca información externa sobre medicamentos, patologías o prestaciones generales.
+                  <p className="text-[9px] text-pami-muted mt-1.5 leading-tight italic">
+                    Información médica general vía Google Search.
                   </p>
                 </div>
               </div>

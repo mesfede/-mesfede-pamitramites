@@ -43,6 +43,7 @@ export interface Prestador {
 
 export type Category = 
   | "Afiliaciones"
+  | "Audífonos e implantes auditivos"
   | "Consultas con especialistas"
   | "Estudios diagnósticos e imágenes"
   | "Expediente GDE"
@@ -62,6 +63,7 @@ export type Category =
 
 export const CATEGORIES: Category[] = [
   "Afiliaciones",
+  "Audífonos e implantes auditivos",
   "Consultas con especialistas",
   "Estudios diagnósticos e imágenes",
   "Expediente GDE",
@@ -82,6 +84,7 @@ export const CATEGORIES: Category[] = [
 
 export const CATEGORY_ICONS: Record<string, string> = {
   "Afiliaciones": "📋",
+  "Audífonos e implantes auditivos": "👂",
   "Consultas con especialistas": "🩺",
   "Estudios diagnósticos e imágenes": "🔬",
   "Expediente GDE": "📁",
@@ -102,6 +105,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
 
 export const CATEGORY_COLORS: Record<string, string> = {
   "Afiliaciones": "bg-blue-100 text-blue-600",
+  "Audífonos e implantes auditivos": "bg-amber-100 text-amber-600",
   "Consultas con especialistas": "bg-emerald-100 text-emerald-600",
   "Estudios diagnósticos e imágenes": "bg-purple-100 text-purple-600",
   "Expediente GDE": "bg-fuchsia-100 text-fuchsia-600",
@@ -122,6 +126,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
 
 export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
   "Afiliaciones": "bg-blue-50",
+  "Audífonos e implantes auditivos": "bg-amber-50",
   "Consultas con especialistas": "bg-emerald-50",
   "Estudios diagnósticos e imágenes": "bg-purple-50",
   "Expediente GDE": "bg-fuchsia-50",
