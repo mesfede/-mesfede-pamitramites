@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { GoogleGenAI } from "@google/genai";
+import Markdown from 'react-markdown';
 import { 
   Search, 
   Plus, 
@@ -47,7 +49,9 @@ import {
   BookOpen,
   Truck,
   Footprints,
-  Ambulance
+  Ambulance,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -237,12 +241,42 @@ export default function App() {
   const [manualFileName, setManualFileName] = useState('');
   const [manualFileUrl, setManualFileUrl] = useState('');
   const [practicaSearch, setPracticaSearch] = useState('');
+  const [aiSearch, setAiSearch] = useState('');
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
   const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  const handleAiSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiSearch.trim()) return;
+
+    setIsAiLoading(true);
+    setIsAiModalOpen(true);
+    setAiResponse(null);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: aiSearch,
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
+      setAiResponse(response.text || "No se encontró información.");
+    } catch (error) {
+      console.error("AI Search error:", error);
+      setAiResponse("Ocurrió un error al realizar la búsqueda. Por favor, intenta de nuevo.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     setLoginError(null);
@@ -748,14 +782,42 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Sidebar Filters */}
             <aside className="lg:col-span-4 space-y-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
-                <Input 
-                  placeholder="Buscar trámite..." 
-                  className="pl-10"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                  <Input 
+                    placeholder="Buscar trámite..." 
+                    className="pl-10"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                {/* AI Assistant Search Bar */}
+                <div className="bg-gradient-to-br from-pami-blue/5 to-pami-cyan/5 rounded-xl border border-pami-blue/20 p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3 text-pami-blue">
+                    <Sparkles size={18} className="text-pami-cyan animate-pulse" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wider">Asistente IA / Google</h3>
+                  </div>
+                  <form onSubmit={handleAiSearch} className="relative">
+                    <Input 
+                      placeholder="¿Para qué sirve este medicamento?..." 
+                      className="pr-10 border-pami-blue/20 focus:ring-pami-blue"
+                      value={aiSearch}
+                      onChange={(e) => setAiSearch(e.target.value)}
+                    />
+                    <button 
+                      type="submit"
+                      disabled={isAiLoading || !aiSearch.trim()}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-pami-blue hover:bg-pami-blue/10 rounded-md transition-colors disabled:opacity-30"
+                    >
+                      {isAiLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                    </button>
+                  </form>
+                  <p className="text-[10px] text-pami-muted mt-2 leading-tight">
+                    Busca información externa sobre medicamentos, patologías o prestaciones generales.
+                  </p>
+                </div>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1824,6 +1886,46 @@ export default function App() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* AI Response Modal */}
+      <Modal 
+        isOpen={isAiModalOpen} 
+        onClose={() => setIsAiModalOpen(false)} 
+        title="Información del Asistente"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-pami-blue/5 rounded-lg border border-pami-blue/10">
+            <div className="w-8 h-8 rounded-full bg-pami-blue flex items-center justify-center text-white shrink-0">
+              <Sparkles size={16} />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-pami-blue tracking-wider">Pregunta</p>
+              <p className="text-sm font-medium text-pami-text">{aiSearch}</p>
+            </div>
+          </div>
+
+          <div className="prose prose-sm max-w-none prose-pami">
+            {isAiLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <Loader2 className="animate-spin text-pami-blue" size={40} />
+                <p className="text-pami-muted animate-pulse">Consultando a la IA y Google Search...</p>
+              </div>
+            ) : (
+              <div className="markdown-body">
+                <Markdown>{aiResponse || ""}</Markdown>
+              </div>
+            )}
+          </div>
+
+          {!isAiLoading && (
+            <div className="pt-4 border-t border-gray-100 flex justify-end">
+              <Button variant="outline" onClick={() => setIsAiModalOpen(false)}>
+                Cerrar
+              </Button>
+            </div>
+          )}
+        </div>
       </Modal>
 
       {/* Modal for Delete Confirmation */}
