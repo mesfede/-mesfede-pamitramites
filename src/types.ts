@@ -22,6 +22,7 @@ export interface Tramite {
   pasos?: string[];
   nota?: string;
   documentos?: { nombre: string; url: string }[];
+  prestadoresIds?: string[];
   createdAt?: any;
   updatedAt?: any;
   createdBy?: string;

@@ -238,6 +238,7 @@ export default function App() {
   const [uploadedFiles, setUploadedFiles] = useState<{ nombre: string; url: string }[]>([]);
   const [manualFileName, setManualFileName] = useState('');
   const [manualFileUrl, setManualFileUrl] = useState('');
+  const [selectedPrestadoresIds, setSelectedPrestadoresIds] = useState<string[]>([]);
   const [practicaSearch, setPracticaSearch] = useState('');
   const [aiSearch, setAiSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -365,8 +366,10 @@ export default function App() {
   useEffect(() => {
     if (editingTramite) {
       setUploadedFiles(editingTramite.documentos || []);
+      setSelectedPrestadoresIds(editingTramite.prestadoresIds || []);
     } else {
       setUploadedFiles([]);
+      setSelectedPrestadoresIds([]);
     }
   }, [editingTramite]);
 
@@ -604,7 +607,8 @@ export default function App() {
       descripcion: formData.get('descripcion') as string || "",
       nota: formData.get('nota') as string,
       pasos: (formData.get('pasos') as string).split('\n').filter(p => p.trim() !== ''),
-      documentos: uploadedFiles
+      documentos: uploadedFiles,
+      prestadoresIds: selectedPrestadoresIds
     };
 
     try {
@@ -616,6 +620,7 @@ export default function App() {
       setIsModalOpen(false);
       setEditingTramite(null);
       setUploadedFiles([]);
+      setSelectedPrestadoresIds([]);
       setManualFileName('');
       setManualFileUrl('');
     } catch (err) {
@@ -1091,6 +1096,31 @@ export default function App() {
                                   <p className="text-sm text-pami-muted leading-relaxed whitespace-pre-line">
                                     {t.descripcion}
                                   </p>
+                                </div>
+                              )}
+
+                              {t.prestadoresIds && t.prestadoresIds.length > 0 && (
+                                <div className="space-y-2">
+                                  <h4 className="text-xs font-bold uppercase tracking-widest text-pami-blue">Prestadores que realizan este trámite</h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    {t.prestadoresIds.map(id => {
+                                      const p = prestadores.find(p => p.id === id);
+                                      if (!p) return null;
+                                      return (
+                                        <button
+                                          key={id}
+                                          onClick={() => {
+                                            setActiveTab('prestadores');
+                                            setPrestadorSearch(p.nombre);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                          }}
+                                          className="text-xs bg-pami-blue/5 text-pami-blue px-3 py-1.5 rounded-full hover:bg-pami-blue/10 transition-all font-medium uppercase"
+                                        >
+                                          {p.nombre}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               )}
 
@@ -1852,6 +1882,32 @@ export default function App() {
           <div className="space-y-2">
             <label className="text-sm font-semibold text-pami-muted">Nota Importante (opcional)</label>
             <Input name="nota" defaultValue={editingTramite?.nota} placeholder="Ej: Solo para mayores de 75 años" />
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-pami-muted">Prestadores que realizan este trámite</label>
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="max-h-48 overflow-y-auto p-2 space-y-1 bg-gray-50">
+                {prestadores.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(p => (
+                  <label key={p.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors group">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-gray-300 text-pami-blue focus:ring-pami-blue"
+                      checked={selectedPrestadoresIds.includes(p.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedPrestadoresIds([...selectedPrestadoresIds, p.id]);
+                        } else {
+                          setSelectedPrestadoresIds(selectedPrestadoresIds.filter(id => id !== p.id));
+                        }
+                      }}
+                    />
+                    <span className="text-sm text-pami-text group-hover:text-pami-blue transition-colors uppercase">{p.nombre}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <p className="text-[10px] text-pami-muted italic">Selecciona los prestadores donde se puede realizar este trámite o práctica.</p>
           </div>
 
           <div className="space-y-4">

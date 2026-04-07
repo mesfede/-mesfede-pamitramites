@@ -13,6 +13,7 @@ service cloud.firestore {
     //   - pasos: list (optional)
     //   - nota: string (optional)
     //   - documentos: list (optional)
+    //   - prestadoresIds: list (optional)
     //   - createdAt: timestamp
     //   - updatedAt: timestamp
     //   - createdBy: string (uid)
@@ -22,6 +23,7 @@ service cloud.firestore {
     //   - nombre: string (required)
     //   - especialidades: list
     //   - imagenes: list
+    //   - createdBy: string (uid)
     //
     // Collection: folletos
     // Fields:
@@ -48,7 +50,8 @@ service cloud.firestore {
              (!('descripcion' in data) || (data.descripcion is string && data.descripcion.size() < 5000)) &&
              (!('nota' in data) || (data.nota is string && data.nota.size() < 1000)) &&
              (!('pasos' in data) || (data.pasos is list && data.pasos.size() < 50)) &&
-             (!('documentos' in data) || (data.documentos is list && data.documentos.size() < 20));
+             (!('documentos' in data) || (data.documentos is list && data.documentos.size() < 20)) &&
+             (!('prestadoresIds' in data) || (data.prestadoresIds is list && data.prestadoresIds.size() < 100));
     }
 
     function isValidFolleto(data) {
