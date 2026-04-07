@@ -376,7 +376,7 @@ export default function App() {
     
     const searchNorm = normalize(search.trim());
 
-    return tramites.filter(t => {
+    const filtered = tramites.filter(t => {
       const nameNorm = normalize(t.nombre || "");
       const descNorm = normalize(t.descripcion || "");
       const catNorm = normalize(t.categoria || "");
@@ -388,6 +388,35 @@ export default function App() {
       // Si hay búsqueda, ignoramos el filtro de categoría para que sea global
       const matchesCat = searchNorm !== "" || selectedCat === 'all' || t.categoria === selectedCat;
       return matchesSearch && matchesCat;
+    });
+
+    if (searchNorm === "") {
+      return filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    }
+
+    return filtered.sort((a, b) => {
+      const nameA = normalize(a.nombre || "");
+      const nameB = normalize(b.nombre || "");
+      const descA = normalize(a.descripcion || "");
+      const descB = normalize(b.descripcion || "");
+      
+      const getScore = (name: string, desc: string) => {
+        if (name === searchNorm) return 100;
+        if (name.startsWith(searchNorm + " ")) return 90;
+        if (name.startsWith(searchNorm)) return 80;
+        if (name.includes(" " + searchNorm + " ")) return 70;
+        if (name.includes(searchNorm)) return 60;
+        if (desc.includes(searchNorm)) return 40;
+        return 0;
+      };
+
+      const scoreA = getScore(nameA, descA);
+      const scoreB = getScore(nameB, descB);
+
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA; // Descending order
+      }
+      return nameA.localeCompare(nameB); // Alphabetical fallback
     });
   }, [tramites, search, selectedCat]);
 
@@ -404,29 +433,53 @@ export default function App() {
     const normalize = (str: string) => 
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     
-    const searchNorm = normalize(prestadorSearch);
+    const searchNorm = normalize(prestadorSearch.trim());
     const specialtyNorm = normalize(selectedSpecialty);
 
-    return [...prestadores]
-      .sort((a, b) => a.nombre.localeCompare(b.nombre))
-      .filter(p => {
-        const nameNorm = normalize(p.nombre);
-        const specsNorm = (p.especialidades || []).map(s => normalize(s)).join(' ');
-        const practsNorm = (p.practicas || []).map(pr => normalize(pr)).join(' ');
-        const notasNorm = normalize(p.notas || '');
-        
-        const matchesSearch = nameNorm.includes(searchNorm) || 
-                             specsNorm.includes(searchNorm) || 
-                             practsNorm.includes(searchNorm) ||
-                             notasNorm.includes(searchNorm);
+    const filtered = prestadores.filter(p => {
+      const nameNorm = normalize(p.nombre);
+      const specsNorm = (p.especialidades || []).map(s => normalize(s)).join(' ');
+      const practsNorm = (p.practicas || []).map(pr => normalize(pr)).join(' ');
+      const notasNorm = normalize(p.notas || '');
+      
+      const matchesSearch = nameNorm.includes(searchNorm) || 
+                           specsNorm.includes(searchNorm) || 
+                           practsNorm.includes(searchNorm) ||
+                           notasNorm.includes(searchNorm);
 
-        const matchesSpecialty = searchNorm !== "" || 
-                                !selectedSpecialty || 
-                                specsNorm.includes(specialtyNorm) || 
-                                practsNorm.includes(specialtyNorm);
+      const matchesSpecialty = searchNorm !== "" || 
+                              !selectedSpecialty || 
+                              specsNorm.includes(specialtyNorm) || 
+                              practsNorm.includes(specialtyNorm);
 
-        return matchesSearch && matchesSpecialty;
-      });
+      return matchesSearch && matchesSpecialty;
+    });
+
+    if (searchNorm === "") {
+      return filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    }
+
+    return filtered.sort((a, b) => {
+      const nameA = normalize(a.nombre);
+      const nameB = normalize(b.nombre);
+      
+      const getScore = (name: string) => {
+        if (name === searchNorm) return 100;
+        if (name.startsWith(searchNorm + " ")) return 90;
+        if (name.startsWith(searchNorm)) return 80;
+        if (name.includes(" " + searchNorm + " ")) return 70;
+        if (name.includes(searchNorm)) return 60;
+        return 0;
+      };
+
+      const scoreA = getScore(nameA);
+      const scoreB = getScore(nameB);
+
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      return nameA.localeCompare(nameB);
+    });
   }, [prestadores, prestadorSearch, selectedSpecialty]);
 
   const filteredPracticas = useMemo(() => {
@@ -439,7 +492,7 @@ export default function App() {
 
     const searchWords = searchNorm.split(/\s+/);
 
-    return PRACTICAS_OME.filter(p => {
+    const filtered = PRACTICAS_OME.filter(p => {
       const rawFields = [
         p.codigo || "",
         p.descripcion || "",
@@ -459,6 +512,28 @@ export default function App() {
                fieldsNoSpace.some(fieldNoSpace => fieldNoSpace.includes(wordNoSpace));
       });
     });
+
+    return filtered.sort((a, b) => {
+      const descA = normalize(a.descripcion || "");
+      const descB = normalize(b.descripcion || "");
+      
+      const getScore = (desc: string) => {
+        if (desc === searchNorm) return 100;
+        if (desc.startsWith(searchNorm + " ")) return 90;
+        if (desc.startsWith(searchNorm)) return 80;
+        if (desc.includes(" " + searchNorm + " ")) return 70;
+        if (desc.includes(searchNorm)) return 60;
+        return 0;
+      };
+
+      const scoreA = getScore(descA);
+      const scoreB = getScore(descB);
+
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      return descA.localeCompare(descB);
+    });
   }, [practicaSearch]);
 
   const filteredFolletos = useMemo(() => {
@@ -467,9 +542,35 @@ export default function App() {
     
     const searchNorm = normalize(folletoSearch.trim());
 
-    return folletos.filter(f => {
+    const filtered = folletos.filter(f => {
       const nameNorm = normalize(f.nombre || "");
       return nameNorm.includes(searchNorm);
+    });
+
+    if (searchNorm === "") {
+      return filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    }
+
+    return filtered.sort((a, b) => {
+      const nameA = normalize(a.nombre || "");
+      const nameB = normalize(b.nombre || "");
+      
+      const getScore = (name: string) => {
+        if (name === searchNorm) return 100;
+        if (name.startsWith(searchNorm + " ")) return 90;
+        if (name.startsWith(searchNorm)) return 80;
+        if (name.includes(" " + searchNorm + " ")) return 70;
+        if (name.includes(searchNorm)) return 60;
+        return 0;
+      };
+
+      const scoreA = getScore(nameA);
+      const scoreB = getScore(nameB);
+
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      return nameA.localeCompare(nameB);
     });
   }, [folletos, folletoSearch]);
 
@@ -776,7 +877,7 @@ export default function App() {
           <div className="bg-white border-t border-gray-200 py-2 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-6 items-center">
               {/* Primary Search: Internal Tramites */}
-              <div className="flex-grow flex items-center gap-3 w-full">
+              <div className="flex-grow flex items-center gap-3 w-full md:pl-6">
                 <div className="flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
                   <Search size={16} />
                   <h3 className="text-sm font-medium">Buscar trámite</h3>
@@ -835,7 +936,7 @@ export default function App() {
               <aside className="lg:col-span-4 space-y-6">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-4 py-4 bg-white border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-pami-text">Categorías</h2>
+                  <h2 className="text-2xl font-semibold text-pami-text">Categorías</h2>
                 </div>
                 <div className="p-2 space-y-1">
                   <button 
@@ -895,7 +996,7 @@ export default function App() {
             <div className="lg:col-span-8 space-y-4">
               <div className="flex items-baseline justify-between mb-2">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-semibold text-pami-text">
+                  <h2 className="text-2xl font-semibold text-pami-text">
                     {selectedCat === 'all' ? 'Todos los trámites' : selectedCat}
                   </h2>
                   {isAdmin && (
@@ -1142,7 +1243,10 @@ export default function App() {
                                 </div>
                               )}
 
-                              <div className="pt-4 flex items-center justify-end border-t border-gray-100">
+                              <div className="pt-4 flex items-center justify-between border-t border-gray-100">
+                                <div className="text-[10px] text-gray-400 font-medium">
+                                  {t.updatedAt?.toDate ? `Última actualización: ${t.updatedAt.toDate().toLocaleDateString()}` : (t.createdAt?.toDate ? `Añadido el: ${t.createdAt.toDate().toLocaleDateString()}` : '')}
+                                </div>
                                 {isAdmin && (
                                   <div className="flex gap-2">
                                     <Button 

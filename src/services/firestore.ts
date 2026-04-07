@@ -355,17 +355,18 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     folletosSnap.docs.map(doc => (doc.data().nombre || "").trim().toLowerCase())
   );
 
-  const batch = writeBatch(db);
   let addedTramites = 0;
   let addedPrestadores = 0;
   let addedFolletos = 0;
+
+  const chunks = [];
+  let currentChunk = [];
 
   initialTramites.forEach(t => {
     const normalizedName = (t.nombre || "").trim().toLowerCase();
     if (!existingTramiteNames.has(normalizedName)) {
       const docRef = doc(collection(db, TRAMITES_COLLECTION));
       
-      // Add a sample PDF to Dapaglifozina for testing the "Kit Completo" feature
       let documents = t.documentos || [];
       if (t.nombre === "Dapaglifozina") {
         documents = [
@@ -376,16 +377,23 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
         ];
       }
 
-      batch.set(docRef, {
-        ...t,
-        nombre: t.nombre.trim(),
-        documentos: documents,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        createdBy: 'system'
+      currentChunk.push({
+        ref: docRef,
+        data: {
+          ...t,
+          nombre: t.nombre.trim(),
+          documentos: documents,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          createdBy: auth.currentUser?.uid || 'system'
+        }
       });
       existingTramiteNames.add(normalizedName);
       addedTramites++;
+      if (currentChunk.length === 450) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+      }
     }
   });
 
@@ -393,15 +401,22 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     const normalizedName = (p.nombre || "").trim().toLowerCase();
     if (!existingPrestadorNames.has(normalizedName)) {
       const docRef = doc(collection(db, PRESTADORES_COLLECTION));
-      batch.set(docRef, {
-        ...p,
-        nombre: p.nombre.trim(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        createdBy: 'system'
+      currentChunk.push({
+        ref: docRef,
+        data: {
+          ...p,
+          nombre: p.nombre.trim(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          createdBy: auth.currentUser?.uid || 'system'
+        }
       });
       existingPrestadorNames.add(normalizedName);
       addedPrestadores++;
+      if (currentChunk.length === 450) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+      }
     }
   });
 
@@ -409,18 +424,34 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     const normalizedName = (f.nombre || "").trim().toLowerCase();
     if (!existingFolletoNames.has(normalizedName)) {
       const docRef = doc(collection(db, FOLLETOS_COLLECTION));
-      batch.set(docRef, {
-        ...f,
-        nombre: f.nombre.trim(),
-        createdAt: serverTimestamp()
+      currentChunk.push({
+        ref: docRef,
+        data: {
+          ...f,
+          nombre: f.nombre.trim(),
+          createdAt: serverTimestamp()
+        }
       });
       existingFolletoNames.add(normalizedName);
       addedFolletos++;
+      if (currentChunk.length === 450) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+      }
     }
   });
   
-  if (addedTramites > 0 || addedPrestadores > 0 || addedFolletos > 0) {
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  for (const chunk of chunks) {
+    const batch = writeBatch(db);
+    chunk.forEach(op => {
+      batch.set(op.ref, op.data);
+    });
     await batch.commit();
   }
+
   return { addedTramites, addedPrestadores, addedFolletos };
 }
