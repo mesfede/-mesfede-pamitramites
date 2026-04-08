@@ -444,7 +444,6 @@ export default function App() {
     const specs = new Set<string>();
     prestadores.forEach(p => {
       (p.especialidades || []).forEach(s => specs.add(s.trim().toUpperCase()));
-      (p.practicas || []).forEach(pr => specs.add(pr.trim().toUpperCase()));
     });
     return Array.from(specs).sort();
   }, [prestadores]);
@@ -459,18 +458,15 @@ export default function App() {
     const filtered = prestadores.filter(p => {
       const nameNorm = normalize(p.nombre);
       const specsNorm = (p.especialidades || []).map(s => normalize(s)).join(' ');
-      const practsNorm = (p.practicas || []).map(pr => normalize(pr)).join(' ');
       const notasNorm = normalize(p.notas || '');
       
       const matchesSearch = nameNorm.includes(searchNorm) || 
                            specsNorm.includes(searchNorm) || 
-                           practsNorm.includes(searchNorm) ||
                            notasNorm.includes(searchNorm);
 
       const matchesSpecialty = searchNorm !== "" || 
                               !selectedSpecialty || 
-                              specsNorm.includes(specialtyNorm) || 
-                              practsNorm.includes(specialtyNorm);
+                              specsNorm.includes(specialtyNorm);
 
       return matchesSearch && matchesSpecialty;
     });
@@ -719,7 +715,6 @@ export default function App() {
     const data = {
       nombre: formData.get('nombre') as string,
       especialidades: (formData.get('especialidades') as string).split('\n').filter(p => p.trim() !== ''),
-      practicas: (formData.get('practicas') as string).split('\n').filter(p => p.trim() !== ''),
       notas: formData.get('notas') as string,
       telefono: formData.get('telefono') as string,
       whatsapp: formData.get('whatsapp') as string,
@@ -1495,24 +1490,11 @@ export default function App() {
 
                     {p.especialidades && p.especialidades.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">Especialidades</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">Especialidades / Prácticas</p>
                         <div className="flex flex-wrap gap-1.5">
-                          {p.especialidades.map(e => (
-                            <span key={e} className="text-[10px] bg-pami-blue/5 text-pami-blue px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                          {p.especialidades.map((e, idx) => (
+                            <span key={`${e}-${idx}`} className="text-[10px] bg-pami-blue/5 text-pami-blue px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
                               {e}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {p.practicas && p.practicas.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-pami-cyan">Prácticas Específicas</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {p.practicas.map(pr => (
-                            <span key={pr} className="text-[10px] bg-pami-cyan/5 text-pami-cyan px-2 py-0.5 rounded-full font-medium">
-                              {pr}
                             </span>
                           ))}
                         </div>
@@ -1821,8 +1803,8 @@ export default function App() {
                         <td className="px-6 py-4 text-sm text-pami-muted uppercase">{p.localidad || '-'}</td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1 max-w-xs">
-                            {p.especialidades?.slice(0, 3).map(e => (
-                              <span key={e} className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase font-bold">
+                            {p.especialidades?.slice(0, 3).map((e, idx) => (
+                              <span key={`${e}-${idx}`} className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase font-bold">
                                 {e}
                               </span>
                             ))}
@@ -2054,12 +2036,12 @@ export default function App() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-pami-muted">Especialidades (una por línea)</label>
+            <label className="text-sm font-semibold text-pami-muted">Especialidades / Prácticas (una por línea)</label>
             <TextArea 
               name="especialidades" 
               defaultValue={editingPrestador?.especialidades?.join('\n')} 
               required
-              placeholder="Ej: CARDIOLOGIA&#10;CLINICA MEDICA..." 
+              placeholder="Ej: CARDIOLOGIA&#10;VIDEOCOLONOSCOPIA&#10;CLINICA MEDICA..." 
             />
           </div>
 
@@ -2088,15 +2070,6 @@ export default function App() {
           <div className="space-y-2">
             <label className="text-sm font-semibold text-pami-muted">Email</label>
             <Input name="email" type="email" defaultValue={editingPrestador?.email} placeholder="Ej: contacto@clinica.com" />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-pami-muted">Prácticas Específicas (una por línea)</label>
-            <TextArea 
-              name="practicas" 
-              defaultValue={editingPrestador?.practicas?.join('\n')} 
-              placeholder="Ej: VIDEOCOLONOSCOPIA VIRTUAL&#10;HISTEROSCOPIA..." 
-            />
           </div>
 
           <div className="space-y-2">

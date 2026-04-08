@@ -21,9 +21,16 @@ service cloud.firestore {
     // Collection: prestadores
     // Fields:
     //   - nombre: string (required)
-    //   - especialidades: list
-    //   - imagenes: list
+    //   - especialidades: list (unified with practices)
+    //   - direccion: string (optional)
+    //   - localidad: string (optional)
+    //   - telefono: string (optional)
+    //   - whatsapp: string (optional)
+    //   - email: string (optional)
+    //   - notas: string (optional)
     //   - createdBy: string (uid)
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
     //
     // Collection: folletos
     // Fields:

@@ -482,8 +482,7 @@ export const INITIAL_PRESTADORES = [
       "FONOAUDIOLOGIA"
     ],
     "direccion": "80 Nº 570 e/ 6 y 7",
-    "telefono": "221 453-3765",
-    "practicas": []
+    "telefono": "221 453-3765"
   },
   {
     "nombre": "APONIA",
@@ -560,10 +559,9 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "FUNDACION QUARELLO",
-    "especialidades": ["FLEBOLOGIA", "NEUROLOGIA"],
+    "especialidades": ["FLEBOLOGIA", "NEUROLOGIA", "INTERNACIÓN CON EL FIN DE REHABILITACIÓN"],
     "direccion": "14a e/ 467 y 471",
-    "telefono": "221 472-4040 / 11 3317-8480",
-    "practicas": ["INTERNACIÓN CON EL FIN DE REHABILITACIÓN"]
+    "telefono": "221 472-4040 / 11 3317-8480"
   },
   {
     "nombre": "GUENAGA, Pablo",
@@ -1075,12 +1073,11 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "Investigaciones Medicas S.A.",
-    "especialidades": [],
+    "especialidades": ["COLONOSCOPIA VIRTUAL"],
     "direccion": "Pichincha 69",
     "localidad": "Capital Federal",
     "telefono": "4127-2800",
-    "whatsapp": "11 4403 0238",
-    "practicas": ["COLONOSCOPIA VIRTUAL"]
+    "whatsapp": "11 4403 0238"
   },
   {
     "nombre": "Cofyb (Rapela Laboratorio Biomedico)",
@@ -1109,11 +1106,10 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "Fundacion Centro de Diagnostico Nuclear",
-    "especialidades": [],
+    "especialidades": ["SPECT GATILLADO", "RESONANCIA MULTIPARAMETRICA", "SPECT CEREBRAL"],
     "direccion": "Nazca 3449",
     "localidad": "CABA",
-    "telefono": "11-6419-5046 / 011 7078-7870",
-    "practicas": ["SPECT GATILLADO", "RESONANCIA MULTIPARAMETRICA", "SPECT CEREBRAL"]
+    "telefono": "11-6419-5046 / 011 7078-7870"
   },
   {
     "nombre": "Sanatorio Mendez - Diagnostico Mediter",

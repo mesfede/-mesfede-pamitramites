@@ -30,15 +30,21 @@
       "description": "Información sobre un prestador de servicios médicos.",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
         "nombre": { "type": "string" },
         "especialidades": {
           "type": "array",
           "items": { "type": "string" }
         },
-        "imagenes": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+        "direccion": { "type": "string" },
+        "localidad": { "type": "string" },
+        "telefono": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "email": { "type": "string" },
+        "notas": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
       },
       "required": ["nombre"]
     },

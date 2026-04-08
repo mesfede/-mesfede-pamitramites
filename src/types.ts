@@ -32,7 +32,6 @@ export interface Prestador {
   id: string;
   nombre: string;
   especialidades: string[];
-  practicas?: string[];
   telefono?: string;
   whatsapp?: string;
   email?: string;
