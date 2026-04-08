@@ -49,7 +49,8 @@ import {
   Footprints,
   Ambulance,
   ArrowRight,
-  Users
+  Users,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -109,6 +110,20 @@ const getCategoryIcon = (cat: string, size: number = 20) => {
     case 'Trámites administrativos': return <Files size={size} />;
     case 'Traslados': return <Ambulance size={size} />;
     case 'Sociales': return <Users size={size} />;
+    case 'Odontología': return (
+      <svg 
+        width={size} 
+        height={size} 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <path d="M7 3C4.23858 3 2 5.23858 2 8C2 11.5 5 13 5 16C5 19 6 21 8 21C10 21 11 19 11 16C11 14 12 14 13 16C13 19 14 21 16 21C18 21 19 19 19 16C19 13 22 11.5 22 8C22 5.23858 19.7614 3 17 3C14.5 3 13 4.5 12 6C11 4.5 9.5 3 7 3Z" />
+      </svg>
+    );
     case 'all': return <LayoutGrid size={size} />;
     default: return <FileText size={size} />;
   }

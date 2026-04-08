@@ -61,7 +61,8 @@ export type Category =
   | "Salud mental"
   | "Trámites administrativos"
   | "Traslados"
-  | "Sociales";
+  | "Sociales"
+  | "Odontología";
 
 export const CATEGORIES: Category[] = [
   "Afiliaciones",
@@ -74,15 +75,16 @@ export const CATEGORIES: Category[] = [
   "Kinesiología y rehabilitación",
   "Medicamentos especiales",
   "Nutrición",
+  "Odontología",
   "Óptica y oftalmología",
   "Oxigenoterapia",
   "Prácticas quirúrgicas y de alta complejidad",
   "Prótesis",
   "Reintegros",
   "Salud mental",
+  "Sociales",
   "Trámites administrativos",
-  "Traslados",
-  "Sociales"
+  "Traslados"
 ];
 
 export const CATEGORY_ICONS: Record<string, string> = {
@@ -104,7 +106,8 @@ export const CATEGORY_ICONS: Record<string, string> = {
   "Salud mental": "🧠",
   "Trámites administrativos": "🗂️",
   "Traslados": "🚑",
-  "Sociales": "👥"
+  "Sociales": "👥",
+  "Odontología": "🦷"
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -126,7 +129,8 @@ export const CATEGORY_COLORS: Record<string, string> = {
   "Salud mental": "bg-indigo-100 text-indigo-600",
   "Trámites administrativos": "bg-slate-100 text-slate-600",
   "Traslados": "bg-violet-100 text-violet-600",
-  "Sociales": "bg-emerald-100 text-emerald-600"
+  "Sociales": "bg-emerald-100 text-emerald-600",
+  "Odontología": "bg-sky-100 text-sky-600"
 };
 
 export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
@@ -148,5 +152,6 @@ export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
   "Salud mental": "bg-indigo-50",
   "Trámites administrativos": "bg-slate-50",
   "Traslados": "bg-violet-50",
-  "Sociales": "bg-emerald-50"
+  "Sociales": "bg-emerald-50",
+  "Odontología": "bg-sky-50"
 };
