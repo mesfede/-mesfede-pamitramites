@@ -617,6 +617,26 @@ export default function App() {
       } else {
         await addTramite(data);
       }
+
+      // Automáticamente agregar el nombre del trámite como especialidad a los prestadores seleccionados
+      if (selectedPrestadoresIds.length > 0) {
+        const tramiteNombre = data.nombre.trim();
+        for (const id of selectedPrestadoresIds) {
+          const prestador = prestadores.find(p => p.id === id);
+          if (prestador) {
+            const currentSpecs = prestador.especialidades || [];
+            // Normalizar para evitar duplicados (ignorando mayúsculas/minúsculas y espacios)
+            const alreadyHasSpec = currentSpecs.some(s => s.trim().toLowerCase() === tramiteNombre.toLowerCase());
+            
+            if (!alreadyHasSpec) {
+              await updatePrestador(id, {
+                especialidades: [...currentSpecs, tramiteNombre]
+              });
+            }
+          }
+        }
+      }
+
       setIsModalOpen(false);
       setEditingTramite(null);
       setUploadedFiles([]);
