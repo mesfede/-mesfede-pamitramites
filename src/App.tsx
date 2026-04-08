@@ -48,7 +48,8 @@ import {
   Truck,
   Footprints,
   Ambulance,
-  ArrowRight
+  ArrowRight,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -107,6 +108,7 @@ const getCategoryIcon = (cat: string, size: number = 20) => {
     case 'Salud mental': return <Brain size={size} />;
     case 'Trámites administrativos': return <Files size={size} />;
     case 'Traslados': return <Ambulance size={size} />;
+    case 'Sociales': return <Users size={size} />;
     case 'all': return <LayoutGrid size={size} />;
     default: return <FileText size={size} />;
   }

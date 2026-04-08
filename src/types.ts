@@ -60,7 +60,8 @@ export type Category =
   | "Reintegros"
   | "Salud mental"
   | "Trámites administrativos"
-  | "Traslados";
+  | "Traslados"
+  | "Sociales";
 
 export const CATEGORIES: Category[] = [
   "Afiliaciones",
@@ -80,7 +81,8 @@ export const CATEGORIES: Category[] = [
   "Reintegros",
   "Salud mental",
   "Trámites administrativos",
-  "Traslados"
+  "Traslados",
+  "Sociales"
 ];
 
 export const CATEGORY_ICONS: Record<string, string> = {
@@ -101,7 +103,8 @@ export const CATEGORY_ICONS: Record<string, string> = {
   "Reintegros": "💸",
   "Salud mental": "🧠",
   "Trámites administrativos": "🗂️",
-  "Traslados": "🚑"
+  "Traslados": "🚑",
+  "Sociales": "👥"
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -122,7 +125,8 @@ export const CATEGORY_COLORS: Record<string, string> = {
   "Reintegros": "bg-yellow-100 text-yellow-600",
   "Salud mental": "bg-indigo-100 text-indigo-600",
   "Trámites administrativos": "bg-slate-100 text-slate-600",
-  "Traslados": "bg-violet-100 text-violet-600"
+  "Traslados": "bg-violet-100 text-violet-600",
+  "Sociales": "bg-emerald-100 text-emerald-600"
 };
 
 export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
@@ -143,5 +147,6 @@ export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
   "Reintegros": "bg-yellow-50",
   "Salud mental": "bg-indigo-50",
   "Trámites administrativos": "bg-slate-50",
-  "Traslados": "bg-violet-50"
+  "Traslados": "bg-violet-50",
+  "Sociales": "bg-emerald-50"
 };
