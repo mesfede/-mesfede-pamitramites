@@ -620,13 +620,13 @@ export default function App() {
 
       // Automáticamente agregar el nombre del trámite como especialidad a los prestadores seleccionados
       if (selectedPrestadoresIds.length > 0) {
-        const tramiteNombre = data.nombre.trim();
+        const tramiteNombre = data.nombre.trim().toUpperCase();
         for (const id of selectedPrestadoresIds) {
           const prestador = prestadores.find(p => p.id === id);
           if (prestador) {
             const currentSpecs = prestador.especialidades || [];
             // Normalizar para evitar duplicados (ignorando mayúsculas/minúsculas y espacios)
-            const alreadyHasSpec = currentSpecs.some(s => s.trim().toLowerCase() === tramiteNombre.toLowerCase());
+            const alreadyHasSpec = currentSpecs.some(s => s.trim().toUpperCase() === tramiteNombre);
             
             if (!alreadyHasSpec) {
               await updatePrestador(id, {
@@ -1466,7 +1466,7 @@ export default function App() {
                         <p className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">Especialidades</p>
                         <div className="flex flex-wrap gap-1.5">
                           {p.especialidades.map(e => (
-                            <span key={e} className="text-[10px] bg-pami-blue/5 text-pami-blue px-2 py-0.5 rounded-full font-medium">
+                            <span key={e} className="text-[10px] bg-pami-blue/5 text-pami-blue px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
                               {e}
                             </span>
                           ))}
