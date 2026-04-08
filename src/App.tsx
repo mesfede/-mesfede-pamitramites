@@ -620,15 +620,18 @@ export default function App() {
 
       // Automáticamente agregar el nombre del trámite como especialidad a los prestadores seleccionados
       if (selectedPrestadoresIds.length > 0) {
-        const tramiteNombre = data.nombre.trim().toUpperCase();
+        // Limpiamos el nombre para tomar solo la especialidad/estudio, eliminando descripciones adicionales
+        // que suelen venir después de un paréntesis, guion o dos puntos.
+        const tramiteNombre = data.nombre.split('(')[0].split('-')[0].split(':')[0].trim().toUpperCase();
+        
         for (const id of selectedPrestadoresIds) {
           const prestador = prestadores.find(p => p.id === id);
           if (prestador) {
             const currentSpecs = prestador.especialidades || [];
-            // Normalizar para evitar duplicados (ignorando mayúsculas/minúsculas y espacios)
+            // Normalizar para evitar duplicados
             const alreadyHasSpec = currentSpecs.some(s => s.trim().toUpperCase() === tramiteNombre);
             
-            if (!alreadyHasSpec) {
+            if (!alreadyHasSpec && tramiteNombre.length > 0) {
               await updatePrestador(id, {
                 especialidades: [...currentSpecs, tramiteNombre]
               });
