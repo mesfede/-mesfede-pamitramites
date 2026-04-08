@@ -1426,7 +1426,7 @@ export default function App() {
                   <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all flex flex-col">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="text-lg font-bold text-pami-text flex items-center gap-2">
-                      <MapPin size={18} className="text-pami-blue" />
+                      <Hospital size={18} className="text-pami-blue" />
                       {p.nombre}
                     </h3>
                     {isAdmin && (
@@ -1452,21 +1452,20 @@ export default function App() {
                   <div className="space-y-4 flex-1">
                     {(p.direccion || p.localidad) && (
                       <div className="flex items-start gap-2 text-sm text-pami-muted">
-                        <Globe size={16} className="shrink-0 mt-0.5 opacity-60" />
-                        <div className="flex flex-col">
-                          <span>{p.direccion}{p.localidad ? `, ${p.localidad}` : ''}</span>
-                          {p.direccion && (
-                            <a 
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.direccion}${p.localidad ? `, ${p.localidad}` : ''}`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] text-pami-blue hover:underline flex items-center gap-1 mt-1 font-bold uppercase tracking-wider"
-                            >
-                              <ExternalLink size={10} />
-                              Ver en Google Maps
-                            </a>
-                          )}
-                        </div>
+                        {p.direccion ? (
+                          <a 
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.direccion}${p.localidad ? `, ${p.localidad}` : ''}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 mt-0.5 text-pami-blue hover:scale-110 transition-transform"
+                            title="Ver en Google Maps"
+                          >
+                            <MapPin size={18} />
+                          </a>
+                        ) : (
+                          <Globe size={16} className="shrink-0 mt-0.5 opacity-60" />
+                        )}
+                        <span>{p.direccion}{p.localidad ? `, ${p.localidad}` : ''}</span>
                       </div>
                     )}
 
