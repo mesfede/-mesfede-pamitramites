@@ -1453,7 +1453,20 @@ export default function App() {
                     {(p.direccion || p.localidad) && (
                       <div className="flex items-start gap-2 text-sm text-pami-muted">
                         <Globe size={16} className="shrink-0 mt-0.5 opacity-60" />
-                        <span>{p.direccion}{p.localidad ? `, ${p.localidad}` : ''}</span>
+                        <div className="flex flex-col">
+                          <span>{p.direccion}{p.localidad ? `, ${p.localidad}` : ''}</span>
+                          {p.direccion && (
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.direccion}${p.localidad ? `, ${p.localidad}` : ''}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-pami-blue hover:underline flex items-center gap-1 mt-1 font-bold uppercase tracking-wider"
+                            >
+                              <ExternalLink size={10} />
+                              Ver en Google Maps
+                            </a>
+                          )}
+                        </div>
                       </div>
                     )}
 
