@@ -53,7 +53,8 @@ import {
   Ambulance,
   ArrowRight,
   Users,
-  Sparkles
+  Sparkles,
+  Dumbbell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -110,7 +111,7 @@ const getCategoryIcon = (cat: string, size: number = 20) => {
     case 'Expediente GDE': return <FolderOpen size={size} />;
     case 'Insumos y ayudas técnicas': return <Accessibility size={size} />;
     case 'Internación y cuidados especiales': return <Hospital size={size} />;
-    case 'Kinesiología y rehabilitación': return <Activity size={size} />;
+    case 'Kinesiología y rehabilitación': return <Dumbbell size={size} />;
     case 'Medicamentos especiales': return <Pill size={size} />;
     case 'Nutrición': return <Apple size={size} />;
     case 'Óptica y oftalmología': return <Eye size={size} />;
@@ -1041,7 +1042,7 @@ export default function App() {
             )}
           >
             <FileText size={16} />
-            Trámites
+            Trámites y Prácticas
           </button>
           <button 
             onClick={() => setActiveTab('prestadores')}
@@ -1071,7 +1072,7 @@ export default function App() {
             )}
           >
             <Hospital size={16} />
-            Centros Coordinadores
+            C. Coordinadores
           </button>
           <button 
             onClick={() => setActiveTab('folletos')}
@@ -1234,7 +1235,7 @@ export default function App() {
               <div className="flex items-baseline justify-between mb-2">
                 <div className="flex items-center gap-4">
                   <h2 className="text-2xl font-semibold text-pami-text">
-                    {selectedCat === 'all' ? 'Todos los trámites' : selectedCat}
+                    {selectedCat === 'all' ? 'Todos los trámites y prácticas' : selectedCat}
                   </h2>
                   {isAdmin && (
                     <div className="flex items-center gap-2">
@@ -1843,7 +1844,7 @@ export default function App() {
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-semibold text-pami-text">Centros Coordinadores</h2>
+                <h2 className="text-2xl font-semibold text-pami-text">C. Coordinadores</h2>
                 <p className="text-sm text-pami-muted">Hospitales y personal de contacto para consultas</p>
               </div>
               {user && (
@@ -2056,7 +2057,7 @@ export default function App() {
                     adminSubTab === 'tramites' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
                   )}
                 >
-                  Trámites
+                  Trámites y Prácticas
                 </button>
                 <button 
                   onClick={() => setAdminSubTab('prestadores')}
@@ -2086,7 +2087,7 @@ export default function App() {
                   Prestadores
                 </Button>
                 <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanupTramites} isLoading={isSaving}>
-                  Trámites
+                  Trámites y Prácticas
                 </Button>
               </div>
               
