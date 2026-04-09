@@ -77,6 +77,16 @@
   @apply text-pami-cyan hover:underline;
 }
 
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
 .markdown-body blockquote {
   @apply border-l-4 border-pami-blue/20 pl-4 italic text-pami-muted my-4;
 }

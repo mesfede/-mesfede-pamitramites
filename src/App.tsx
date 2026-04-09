@@ -1008,15 +1008,15 @@ export default function App() {
     <div className="min-h-screen bg-pami-bg font-sans text-pami-text">
       {/* Header */}
       <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 pl-6">
-            <PamiLogo className="h-8 text-white" />
-            <div className="w-px h-6 bg-white/30 mx-2 hidden sm:block"></div>
-            <div className="hidden sm:flex items-center gap-2">
-              <h1 className="text-lg font-semibold">
-                Guía de Trámites <span className="font-light">Agencia Citybell</span>
+        <div className="max-w-7xl mx-auto px-4 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-y-2">
+          <div className="flex items-center gap-2 sm:gap-3 sm:pl-6">
+            <PamiLogo className="h-7 sm:h-8 text-white shrink-0" />
+            <div className="w-px h-6 bg-white/30 mx-1 sm:mx-2"></div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
+              <h1 className="text-sm sm:text-lg font-semibold leading-tight">
+                Guía de Trámites <span className="font-light block sm:inline">Agencia Citybell</span>
               </h1>
-              <span className="text-[9px] text-white/60 tracking-wider ml-1">Versión 1.0 @mesfede</span>
+              <span className="text-[8px] sm:text-[9px] text-white/60 tracking-wider">Versión 1.0 @mesfede</span>
             </div>
           </div>
 
@@ -1025,14 +1025,14 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <span className="text-sm hidden md:block opacity-80">{user.displayName}</span>
                 <img src={user.photoURL || ''} alt="User" className="w-8 h-8 rounded-full border-2 border-white/20" />
-                <Button variant="ghost" className="text-white hover:bg-white/10" onClick={logout}>
-                  <LogOut size={18} />
+                <Button variant="ghost" className="text-white hover:bg-white/10 p-2 h-8 w-8" onClick={logout}>
+                  <LogOut size={14} />
                 </Button>
               </div>
             ) : (
               <div className="flex flex-col items-end gap-1">
-                <Button variant="outline" className="bg-white text-pami-blue border-white hover:bg-white/90" onClick={handleLogin}>
-                  <LogIn size={18} />
+                <Button variant="outline" className="bg-white text-pami-blue border-white hover:bg-white/90 px-3 py-1 text-xs h-8" onClick={handleLogin}>
+                  <LogIn size={14} />
                   <span>Ingresar</span>
                 </Button>
                 {loginError && (
@@ -1046,69 +1046,73 @@ export default function App() {
         </div>
         
         {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-4 flex border-t border-white/10">
-          <button 
-            onClick={() => setActiveTab('tramites')}
-            className={cn(
-              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
-              activeTab === 'tramites' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-            )}
-          >
-            <FileText size={16} />
-            Trámites y Prácticas
-          </button>
-          <button 
-            onClick={() => setActiveTab('prestadores')}
-            className={cn(
-              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
-              activeTab === 'prestadores' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-            )}
-          >
-            <Stethoscope size={16} />
-            Prestadores
-          </button>
-          <button 
-            onClick={() => setActiveTab('practicas')}
-            className={cn(
-              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
-              activeTab === 'practicas' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-            )}
-          >
-            <Activity size={16} />
-            Prácticas OME
-          </button>
-          <button 
-            onClick={() => setActiveTab('centros')}
-            className={cn(
-              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
-              activeTab === 'centros' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-            )}
-          >
-            <Hospital size={16} />
-            C. Coordinadores
-          </button>
-          <button 
-            onClick={() => setActiveTab('folletos')}
-            className={cn(
-              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
-              activeTab === 'folletos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-            )}
-          >
-            <BookOpen size={16} />
-            Folletos
-          </button>
-          {isAdmin && (
+        <div className="relative bg-pami-blue/95 backdrop-blur-sm border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 flex overflow-x-auto no-scrollbar scroll-smooth">
             <button 
-              onClick={() => setActiveTab('admin')}
+              onClick={() => setActiveTab('tramites')}
               className={cn(
-                "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
-                activeTab === 'admin' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                activeTab === 'tramites' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
               )}
             >
-              <Settings size={16} />
-              Administrar
+              <FileText size={16} className="shrink-0" />
+              Trámites y Prácticas
             </button>
-          )}
+            <button 
+              onClick={() => setActiveTab('prestadores')}
+              className={cn(
+                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                activeTab === 'prestadores' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+              )}
+            >
+              <Stethoscope size={16} className="shrink-0" />
+              Prestadores
+            </button>
+            <button 
+              onClick={() => setActiveTab('practicas')}
+              className={cn(
+                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                activeTab === 'practicas' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+              )}
+            >
+              <Activity size={16} className="shrink-0" />
+              Prácticas OME
+            </button>
+            <button 
+              onClick={() => setActiveTab('centros')}
+              className={cn(
+                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                activeTab === 'centros' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+              )}
+            >
+              <Hospital size={16} className="shrink-0" />
+              C. Coordinadores
+            </button>
+            <button 
+              onClick={() => setActiveTab('folletos')}
+              className={cn(
+                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                activeTab === 'folletos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+              )}
+            >
+              <BookOpen size={16} className="shrink-0" />
+              Folletos
+            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setActiveTab('admin')}
+                className={cn(
+                  "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                  activeTab === 'admin' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                )}
+              >
+                <Settings size={16} className="shrink-0" />
+                Administrar
+              </button>
+            )}
+          </div>
+          {/* Visual indicator for more content on mobile */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-pami-blue to-transparent pointer-events-none sm:hidden"></div>
         </div>
 
         {/* Integrated Search Bar for Tramites */}
