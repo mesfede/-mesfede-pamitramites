@@ -2822,7 +2822,7 @@ export default function App() {
             Agencia Citybell - UGLVII - La Plata
           </div>
           <p className="text-sm text-pami-muted">
-            Esta es una herramienta de consulta interna para facilitar la gestión de trámites.
+            Esta es una herramienta de consulta interna para facilitar la gestión de trámites. Desarrollada por F.M
           </p>
         </div>
       </footer>
