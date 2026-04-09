@@ -311,6 +311,24 @@ export default function App() {
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  const handleSimapClick = () => {
+    const url = 'https://simap.pami.org.ar/';
+    const width = 1000;
+    const height = 700;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    const popup = window.open(
+      url, 
+      'SIMAP', 
+      `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=no,location=no,toolbar=no,menubar=no`
+    );
+
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      window.open(url, '_blank');
+    }
+  };
+
   const handleGoogleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiSearch.trim()) return;
@@ -1082,7 +1100,7 @@ export default function App() {
         {/* Integrated Search Bar for Tramites */}
         {activeTab === 'tramites' && (
           <div className="bg-white border-t border-gray-200 py-2 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-6 items-center">
+            <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-4 items-center">
               {/* Primary Search: Internal Tramites */}
               <div className="flex-grow flex items-center gap-3 w-full md:pl-6">
                 <div className="flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
@@ -1103,8 +1121,20 @@ export default function App() {
               {/* Divider */}
               <div className="hidden md:block w-px h-6 bg-gray-200"></div>
 
+              {/* SIMAP Link */}
+              <button 
+                onClick={handleSimapClick}
+                className="flex items-center gap-2 px-5 py-1.5 bg-pami-blue/5 hover:bg-pami-blue/10 text-[#1d438a] rounded-lg transition-all border border-pami-blue/10 shrink-0 group"
+                title="Ir a SIMAP PAMI"
+              >
+                <span className="text-lg font-varela font-bold tracking-tight">SIMAP</span>
+              </button>
+
+              {/* Divider */}
+              <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+
               {/* Secondary Search: Google Search */}
-              <div className="md:w-[380px] flex items-center gap-3 w-full shrink-0">
+              <div className="md:w-[300px] flex items-center gap-3 w-full shrink-0">
                 <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16px" height="16px" className="bg-transparent p-0">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
