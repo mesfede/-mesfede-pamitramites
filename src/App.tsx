@@ -1009,7 +1009,7 @@ export default function App() {
       {/* Header */}
       <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pl-6">
             <PamiLogo className="h-8 text-white" />
             <div className="w-px h-6 bg-white/30 mx-2 hidden sm:block"></div>
             <div className="hidden sm:flex items-center gap-2">
