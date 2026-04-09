@@ -1012,9 +1012,9 @@ export default function App() {
           <div className="flex items-center gap-3">
             <PamiLogo className="h-8 text-white" />
             <div className="w-px h-6 bg-white/30 mx-2 hidden sm:block"></div>
-            <div className="hidden sm:flex items-baseline gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <h1 className="text-lg font-semibold">
-                Guía de Trámites <span className="font-light">City Bell</span>
+                Guía de Trámites <span className="font-light">Agencia Citybell</span>
               </h1>
               <span className="text-[9px] text-white/60 tracking-wider ml-1">Versión 1.0 @mesfede</span>
             </div>
@@ -2819,7 +2819,7 @@ export default function App() {
             <PamiLogo className="h-8 text-pami-blue" />
           </div>
           <div className="bg-pami-blue text-white inline-block px-4 py-1 rounded-full text-xs font-bold mb-4">
-            UGL City Bell · 2026
+            Agencia Citybell - UGLVII - La Plata
           </div>
           <p className="text-sm text-pami-muted">
             Esta es una herramienta de consulta interna para facilitar la gestión de trámites.
