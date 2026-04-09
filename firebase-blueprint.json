@@ -59,6 +59,37 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["nombre", "url"]
+    },
+    "PracticaOME": {
+      "title": "Práctica OME",
+      "description": "Información sobre una práctica OME.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "codigo": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "descImpresa": { "type": "string" },
+        "sinonimo": { "type": "string" },
+        "modulo": { "type": "string" },
+        "responsable": { "type": "string", "enum": ["Médico de Cabecera", "Médico Auditor"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["codigo", "descripcion", "modulo", "responsable"]
+    },
+    "CentroCoordinador": {
+      "title": "Centro Coordinador",
+      "description": "Información sobre centros coordinadores y sus trabajadores.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "hospital": { "type": "string" },
+        "trabajador": { "type": "string" },
+        "telefono": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["hospital", "trabajador", "telefono"]
     }
   },
   "firestore": {
@@ -73,6 +104,14 @@
     "/folletos/{folletoId}": {
       "schema": "Folleto",
       "description": "Colección de folletos informativos."
+    },
+    "/practicas/{practicaId}": {
+      "schema": "PracticaOME",
+      "description": "Colección de prácticas OME."
+    },
+    "/centros_coordinadores/{centroId}": {
+      "schema": "CentroCoordinador",
+      "description": "Colección de centros coordinadores."
     }
   }
 }

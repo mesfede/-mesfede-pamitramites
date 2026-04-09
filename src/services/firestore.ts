@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import { Tramite, Prestador, Folleto } from '../types';
+import { Tramite, Prestador, Folleto, PracticaOME, CentroCoordinador } from '../types';
 
 export async function testConnection() {
   try {
@@ -30,6 +30,8 @@ export async function testConnection() {
 const TRAMITES_COLLECTION = 'tramites';
 const PRESTADORES_COLLECTION = 'prestadores';
 const FOLLETOS_COLLECTION = 'folletos';
+const PRACTICAS_COLLECTION = 'practicas';
+const CENTROS_COORDINADORES_COLLECTION = 'centros_coordinadores';
 
 enum OperationType {
   CREATE = 'create',
@@ -319,6 +321,51 @@ export function subscribeToFolletos(callback: (folletos: Folleto[]) => void) {
   });
 }
 
+export function subscribeToPracticas(callback: (practicas: PracticaOME[]) => void) {
+  const q = query(collection(db, PRACTICAS_COLLECTION), orderBy('descripcion', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const practicas = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as PracticaOME[];
+    callback(practicas);
+  }, (error) => {
+    console.error("Error subscribing to practicas:", error);
+  });
+}
+
+export async function addPractica(practica: Omit<PracticaOME, 'id'>) {
+  try {
+    return await addDoc(collection(db, PRACTICAS_COLLECTION), {
+      ...practica,
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, PRACTICAS_COLLECTION);
+  }
+}
+
+export async function updatePractica(id: string, practica: Partial<PracticaOME>) {
+  try {
+    const docRef = doc(db, PRACTICAS_COLLECTION, id);
+    return await updateDoc(docRef, {
+      ...practica,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, PRACTICAS_COLLECTION);
+  }
+}
+
+export async function deletePractica(id: string) {
+  try {
+    const docRef = doc(db, PRACTICAS_COLLECTION, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, PRACTICAS_COLLECTION);
+  }
+}
+
 export async function addFolleto(folleto: Omit<Folleto, 'id'>) {
   try {
     return await addDoc(collection(db, FOLLETOS_COLLECTION), {
@@ -339,7 +386,52 @@ export async function deleteFolleto(id: string) {
   }
 }
 
-export async function seedDatabase(initialTramites: any[], initialPrestadores: any[], initialFolletos: any[] = []) {
+export function subscribeToCentrosCoordinadores(callback: (centros: CentroCoordinador[]) => void) {
+  const q = query(collection(db, CENTROS_COORDINADORES_COLLECTION), orderBy('hospital', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const centros = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CentroCoordinador[];
+    callback(centros);
+  }, (error) => {
+    console.error("Error subscribing to centros coordinadores:", error);
+  });
+}
+
+export async function addCentroCoordinador(centro: Omit<CentroCoordinador, 'id'>) {
+  try {
+    return await addDoc(collection(db, CENTROS_COORDINADORES_COLLECTION), {
+      ...centro,
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, CENTROS_COORDINADORES_COLLECTION);
+  }
+}
+
+export async function updateCentroCoordinador(id: string, centro: Partial<CentroCoordinador>) {
+  try {
+    const docRef = doc(db, CENTROS_COORDINADORES_COLLECTION, id);
+    return await updateDoc(docRef, {
+      ...centro,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, CENTROS_COORDINADORES_COLLECTION);
+  }
+}
+
+export async function deleteCentroCoordinador(id: string) {
+  try {
+    const docRef = doc(db, CENTROS_COORDINADORES_COLLECTION, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, CENTROS_COORDINADORES_COLLECTION);
+  }
+}
+
+export async function seedDatabase(initialTramites: any[], initialPrestadores: any[], initialFolletos: any[] = [], initialPracticas: any[] = [], initialCentros: any[] = []) {
   const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
   const existingTramiteNames = new Set(
     tramitesSnap.docs.map(doc => (doc.data().nombre || "").trim().toLowerCase())
@@ -355,9 +447,21 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     folletosSnap.docs.map(doc => (doc.data().nombre || "").trim().toLowerCase())
   );
 
+  const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
+  const existingPracticaCodes = new Set(
+    practicasSnap.docs.map(doc => (doc.data().codigo || "").trim())
+  );
+
+  const centrosSnap = await getDocs(collection(db, CENTROS_COORDINADORES_COLLECTION));
+  const existingCentroKeys = new Set(
+    centrosSnap.docs.map(doc => `${doc.data().hospital}|${doc.data().trabajador}`.toLowerCase())
+  );
+
   let addedTramites = 0;
   let addedPrestadores = 0;
   let addedFolletos = 0;
+  let addedPracticas = 0;
+  let addedCentros = 0;
 
   const chunks = [];
   let currentChunk = [];
@@ -440,6 +544,49 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
       }
     }
   });
+
+  initialPracticas.forEach(p => {
+    const code = (p.codigo || "").trim();
+    if (!existingPracticaCodes.has(code)) {
+      const docRef = doc(collection(db, PRACTICAS_COLLECTION));
+      currentChunk.push({
+        ref: docRef,
+        data: {
+          ...p,
+          createdAt: serverTimestamp()
+        }
+      });
+      // We don't add to existingPracticaCodes here because one code might have multiple descriptions/synonyms in the initial data
+      // Actually, looking at the data, some codes ARE duplicated with different descriptions.
+      // But for seeding, we might want to avoid exact duplicates if they are identical.
+      // Let's just seed them all for now as the initial data has them.
+      addedPracticas++;
+      if (currentChunk.length === 450) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+      }
+    }
+  });
+
+  initialCentros.forEach(c => {
+    const key = `${c.hospital}|${c.trabajador}`.toLowerCase();
+    if (!existingCentroKeys.has(key)) {
+      const docRef = doc(collection(db, CENTROS_COORDINADORES_COLLECTION));
+      currentChunk.push({
+        ref: docRef,
+        data: {
+          ...c,
+          createdAt: serverTimestamp()
+        }
+      });
+      existingCentroKeys.add(key);
+      addedCentros++;
+      if (currentChunk.length === 450) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+      }
+    }
+  });
   
   if (currentChunk.length > 0) {
     chunks.push(currentChunk);
@@ -453,5 +600,5 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     await batch.commit();
   }
 
-  return { addedTramites, addedPrestadores, addedFolletos };
+  return { addedTramites, addedPrestadores, addedFolletos, addedPracticas, addedCentros };
 }

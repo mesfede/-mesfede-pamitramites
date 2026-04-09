@@ -38,6 +38,25 @@ service cloud.firestore {
     //   - url: string (required)
     //   - createdAt: timestamp
     //
+    // Collection: practicas
+    // Fields:
+    //   - codigo: string (required)
+    //   - descripcion: string (required)
+    //   - modulo: string (required)
+    //   - responsable: string (required)
+    //   - sinonimo: string (optional)
+    //   - descImpresa: string (optional)
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //
+    // Collection: centros_coordinadores
+    // Fields:
+    //   - hospital: string (required)
+    //   - trabajador: string (required)
+    //   - telefono: string (required)
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //
     // ===============================================================
 
     // Helper Functions
@@ -87,6 +106,21 @@ service cloud.firestore {
              (!('especialidades' in data) || (data.especialidades is list && data.especialidades.size() < 50));
     }
 
+    function isValidPractica(data) {
+      return data.codigo is string && data.codigo.size() > 0 && data.codigo.size() < 50 &&
+             data.descripcion is string && data.descripcion.size() > 0 && data.descripcion.size() < 1000 &&
+             data.modulo is string && data.modulo.size() > 0 &&
+             data.responsable in ['Médico de Cabecera', 'Médico Auditor'] &&
+             (!('sinonimo' in data) || (data.sinonimo is string && data.sinonimo.size() < 1000)) &&
+             (!('descImpresa' in data) || (data.descImpresa is string && data.descImpresa.size() < 1000));
+    }
+
+    function isValidCentro(data) {
+      return data.hospital is string && data.hospital.size() > 0 && data.hospital.size() < 200 &&
+             data.trabajador is string && data.trabajador.size() > 0 && data.trabajador.size() < 200 &&
+             data.telefono is string && data.telefono.size() > 0 && data.telefono.size() < 50;
+    }
+
     match /prestadores/{prestadorId} {
       allow read: if true;
       allow create: if isAdmin() && isValidPrestador(request.resource.data) &&
@@ -94,6 +128,20 @@ service cloud.firestore {
       allow update: if isAdmin() && isValidPrestador(request.resource.data) &&
                       (request.resource.data.createdBy == resource.data.createdBy);
       allow delete: if isAdmin();
+    }
+
+    match /practicas/{practicaId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidPractica(request.resource.data);
+      allow update: if isAuthenticated() && isValidPractica(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /centros_coordinadores/{centroId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidCentro(request.resource.data);
+      allow update: if isAuthenticated() && isValidCentro(request.resource.data);
+      allow delete: if isAuthenticated();
     }
   }
 }

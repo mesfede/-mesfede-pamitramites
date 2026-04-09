@@ -6,12 +6,20 @@ export interface Folleto {
 }
 
 export interface PracticaOME {
+  id?: string;
   codigo: string;
   descripcion: string;
   descImpresa?: string;
   sinonimo?: string;
   modulo: string;
   responsable: 'Médico de Cabecera' | 'Médico Auditor';
+}
+
+export interface CentroCoordinador {
+  id?: string;
+  hospital: string;
+  trabajador: string;
+  telefono: string;
 }
 
 export interface Tramite {

@@ -63,23 +63,32 @@ import {
   subscribeToTramites, 
   subscribeToPrestadores, 
   subscribeToFolletos,
+  subscribeToPracticas,
   addTramite, 
   updateTramite, 
   deleteTramite,
   addPrestador,
   updatePrestador,
   deletePrestador,
+  addPractica,
+  updatePractica,
+  deletePractica,
   addFolleto,
   deleteFolleto,
   cleanupPrestadores,
   cleanupTramites,
   seedDatabase,
   uploadFile,
-  testConnection
+  testConnection,
+  subscribeToCentrosCoordinadores,
+  addCentroCoordinador,
+  updateCentroCoordinador,
+  deleteCentroCoordinador
 } from './services/firestore';
-import { Tramite, Prestador, PracticaOME, Folleto, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
+import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
 import { PRACTICAS_OME } from './data/practicasOME';
+import { INITIAL_CENTROS_COORDINADORES } from './data/centrosCoordinadores';
 import { cn } from './lib/utils';
 import { PamiLogo } from './components/PamiLogo';
 
@@ -240,13 +249,14 @@ export default function App() {
   const [tramites, setTramites] = useState<Tramite[]>([]);
   const [prestadores, setPrestadores] = useState<Prestador[]>([]);
   const [folletos, setFolletos] = useState<Folleto[]>([]);
+  const [practicas, setPracticas] = useState<PracticaOME[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [prestadorSearch, setPrestadorSearch] = useState('');
   const [folletoSearch, setFolletoSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'folletos' | 'admin'>('tramites');
+  const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'admin'>('tramites');
   const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -254,11 +264,19 @@ export default function App() {
   const [isDeleteFolletoModalOpen, setIsDeleteFolletoModalOpen] = useState(false);
   const [isPrestadorModalOpen, setIsPrestadorModalOpen] = useState(false);
   const [isFolletoModalOpen, setIsFolletoModalOpen] = useState(false);
+  const [isPracticaModalOpen, setIsPracticaModalOpen] = useState(false);
+  const [isCentroModalOpen, setIsCentroModalOpen] = useState(false);
+  const [isDeleteCentroModalOpen, setIsDeleteCentroModalOpen] = useState(false);
   const [editingTramite, setEditingTramite] = useState<Tramite | null>(null);
   const [tramiteToDelete, setTramiteToDelete] = useState<Tramite | null>(null);
   const [prestadorToDelete, setPrestadorToDelete] = useState<Prestador | null>(null);
   const [folletoToDelete, setFolletoToDelete] = useState<Folleto | null>(null);
+  const [practicaToDelete, setPracticaToDelete] = useState<PracticaOME | null>(null);
+  const [centroToDelete, setCentroToDelete] = useState<CentroCoordinador | null>(null);
+  const [isDeletePracticaModalOpen, setIsDeletePracticaModalOpen] = useState(false);
   const [editingPrestador, setEditingPrestador] = useState<Prestador | null>(null);
+  const [editingPractica, setEditingPractica] = useState<PracticaOME | null>(null);
+  const [editingCentro, setEditingCentro] = useState<CentroCoordinador | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPrintingFull, setIsPrintingFull] = useState<string | null>(null);
@@ -267,6 +285,8 @@ export default function App() {
   const [manualFileUrl, setManualFileUrl] = useState('');
   const [selectedPrestadoresIds, setSelectedPrestadoresIds] = useState<string[]>([]);
   const [practicaSearch, setPracticaSearch] = useState('');
+  const [centroSearch, setCentroSearch] = useState('');
+  const [centrosCoordinadores, setCentrosCoordinadores] = useState<CentroCoordinador[]>([]);
   const [aiSearch, setAiSearch] = useState('');
   const [formAddress, setFormAddress] = useState("");
   const [formLocality, setFormLocality] = useState("");
@@ -347,6 +367,8 @@ export default function App() {
     const unsubscribeTramites = subscribeToTramites(setTramites);
     const unsubscribePrestadores = subscribeToPrestadores(setPrestadores);
     const unsubscribeFolletos = subscribeToFolletos(setFolletos);
+    const unsubscribePracticas = subscribeToPracticas(setPracticas);
+    const unsubscribeCentros = subscribeToCentrosCoordinadores(setCentrosCoordinadores);
 
     testConnection();
 
@@ -355,6 +377,8 @@ export default function App() {
       unsubscribeTramites();
       unsubscribePrestadores();
       unsubscribeFolletos();
+      unsubscribePracticas();
+      unsubscribeCentros();
     };
   }, []);
 
@@ -530,11 +554,11 @@ export default function App() {
     
     const searchNorm = normalize(practicaSearch.trim());
 
-    if (!searchNorm) return PRACTICAS_OME;
+    if (!searchNorm) return practicas;
 
     const searchWords = searchNorm.split(/\s+/);
 
-    const filtered = PRACTICAS_OME.filter(p => {
+    const filtered = practicas.filter(p => {
       const rawFields = [
         p.codigo || "",
         p.descripcion || "",
@@ -576,7 +600,7 @@ export default function App() {
       }
       return descA.localeCompare(descB);
     });
-  }, [practicaSearch]);
+  }, [practicas, practicaSearch]);
 
   const filteredFolletos = useMemo(() => {
     const normalize = (str: string) => 
@@ -615,6 +639,30 @@ export default function App() {
       return nameA.localeCompare(nameB);
     });
   }, [folletos, folletoSearch]);
+
+  const filteredCentros = useMemo(() => {
+    const normalize = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    const searchNorm = normalize(centroSearch.trim());
+
+    if (!searchNorm) return centrosCoordinadores;
+
+    return centrosCoordinadores.filter(c => {
+      const hospitalNorm = normalize(c.hospital || "");
+      const trabajadorNorm = normalize(c.trabajador || "");
+      return hospitalNorm.includes(searchNorm) || trabajadorNorm.includes(searchNorm);
+    }).sort((a, b) => a.hospital.localeCompare(b.hospital));
+  }, [centrosCoordinadores, centroSearch]);
+
+  const groupedCentros = useMemo(() => {
+    const groups: { [hospital: string]: CentroCoordinador[] } = {};
+    filteredCentros.forEach(c => {
+      if (!groups[c.hospital]) groups[c.hospital] = [];
+      groups[c.hospital].push(c);
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredCentros]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -733,6 +781,89 @@ export default function App() {
     }
   };
 
+  const handleSavePractica = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const formData = new FormData(e.currentTarget);
+    
+    const practicaData: Omit<PracticaOME, 'id'> = {
+      codigo: formData.get('codigo') as string,
+      descripcion: formData.get('descripcion') as string,
+      modulo: formData.get('modulo') as string,
+      responsable: formData.get('responsable') as any,
+      sinonimo: formData.get('sinonimo') as string || undefined,
+      descImpresa: formData.get('descImpresa') as string || undefined,
+    };
+
+    try {
+      if (editingPractica && editingPractica.id) {
+        await updatePractica(editingPractica.id, practicaData);
+      } else {
+        await addPractica(practicaData);
+      }
+      setIsPracticaModalOpen(false);
+      setEditingPractica(null);
+    } catch (error) {
+      console.error("Error saving practica:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeletePractica = async () => {
+    if (!practicaToDelete || !practicaToDelete.id) return;
+    setIsSaving(true);
+    try {
+      await deletePractica(practicaToDelete.id);
+      setIsDeletePracticaModalOpen(false);
+      setPracticaToDelete(null);
+    } catch (error) {
+      console.error("Error deleting practica:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveCentro = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const formData = new FormData(e.currentTarget);
+    
+    const centroData: Omit<CentroCoordinador, 'id'> = {
+      hospital: formData.get('hospital') as string,
+      trabajador: formData.get('trabajador') as string,
+      telefono: formData.get('telefono') as string,
+    };
+
+    try {
+      if (editingCentro && editingCentro.id) {
+        await updateCentroCoordinador(editingCentro.id, centroData);
+      } else {
+        await addCentroCoordinador(centroData);
+      }
+      setIsCentroModalOpen(false);
+      setEditingCentro(null);
+    } catch (error) {
+      console.error("Error saving centro coordinador:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteCentro = async () => {
+    if (!centroToDelete || !centroToDelete.id) return;
+    setIsSaving(true);
+    try {
+      await deleteCentroCoordinador(centroToDelete.id);
+      setIsDeleteCentroModalOpen(false);
+      setCentroToDelete(null);
+    } catch (error) {
+      console.error("Error deleting centro coordinador:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSavePrestador = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -774,9 +905,9 @@ export default function App() {
     setIsSaving(true);
     setAdminMessage(null);
     try {
-      const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS);
+      const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS, PRACTICAS_OME, INITIAL_CENTROS_COORDINADORES);
       setAdminMessage({ 
-        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores y ${result.addedFolletos} folletos nuevos.`,
+        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas y ${result.addedCentros} centros nuevos.`,
         type: 'success'
       });
     } catch (err) {
@@ -913,6 +1044,16 @@ export default function App() {
           >
             <Activity size={16} />
             Prácticas OME
+          </button>
+          <button 
+            onClick={() => setActiveTab('centros')}
+            className={cn(
+              "px-6 py-3 text-sm font-medium transition-all border-b-2 flex items-center gap-2",
+              activeTab === 'centros' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+            )}
+          >
+            <Hospital size={16} />
+            Centros Coordinadores
           </button>
           <button 
             onClick={() => setActiveTab('folletos')}
@@ -1548,6 +1689,18 @@ export default function App() {
                 <h2 className="text-2xl font-semibold text-pami-text">Buscador de Prácticas OME</h2>
                 <p className="text-sm text-pami-muted">Identifica quién debe generar la Orden Médica Electrónica</p>
               </div>
+              {user && (
+                <Button 
+                  onClick={() => {
+                    setEditingPractica(null);
+                    setIsPracticaModalOpen(true);
+                  }}
+                  className="shrink-0"
+                >
+                  <Plus size={20} />
+                  Nueva Práctica
+                </Button>
+              )}
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
@@ -1581,6 +1734,7 @@ export default function App() {
                           <th className="px-6 py-4">Descripción</th>
                           <th className="px-6 py-4">Módulo</th>
                           <th className="px-6 py-4 text-center">Responsable</th>
+                          {user && <th className="px-6 py-4 text-right">Acciones</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1618,12 +1772,167 @@ export default function App() {
                                 {p.responsable}
                               </span>
                             </td>
+                            {user && (
+                              <td className="px-6 py-4">
+                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => {
+                                      setEditingPractica(p);
+                                      setIsPracticaModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-colors"
+                                    title="Editar"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      setPracticaToDelete(p);
+                                      setIsDeletePracticaModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Borrar"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'centros' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-pami-text">Centros Coordinadores</h2>
+                <p className="text-sm text-pami-muted">Hospitales y personal de contacto para consultas</p>
+              </div>
+              {user && (
+                <Button 
+                  onClick={() => {
+                    setEditingCentro(null);
+                    setIsCentroModalOpen(true);
+                  }}
+                  className="shrink-0"
+                >
+                  <Plus size={20} />
+                  Nuevo Registro
+                </Button>
+              )}
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-pami-muted uppercase tracking-wider">Buscar por Hospital o Trabajador</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                  <Input 
+                    placeholder="Ej: Gonnet, Fernanda, Rossi..." 
+                    className="pl-10"
+                    value={centroSearch}
+                    onChange={(e) => setCentroSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {groupedCentros.length === 0 ? (
+                <div className="col-span-full text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                  <Search size={48} className="mx-auto text-gray-200 mb-4" />
+                  <p className="text-pami-muted">No se encontraron registros con estos criterios.</p>
+                </div>
+              ) : (
+                groupedCentros.map(([hospital, workers]) => (
+                  <motion.div 
+                    key={hospital}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all"
+                  >
+                    <div className="p-5 space-y-4">
+                      <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+                        <div className="w-10 h-10 bg-pami-blue/10 rounded-xl flex items-center justify-center text-pami-blue">
+                          <Hospital size={20} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-pami-text uppercase text-sm leading-tight">{hospital}</h3>
+                          <p className="text-xs text-pami-muted font-medium mt-0.5">Centro Coordinador</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {workers.map((c) => (
+                          <div key={c.id} className="group relative bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-pami-cyan shadow-sm">
+                                  <Users size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[10px] font-bold text-pami-muted uppercase tracking-wider">Trabajador/a</p>
+                                  <p className="text-sm font-semibold text-pami-text truncate">{c.trabajador}</p>
+                                </div>
+                              </div>
+                              {user && (
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => {
+                                      setEditingCentro(c);
+                                      setIsCentroModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-colors"
+                                    title="Editar"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      setCentroToDelete(c);
+                                      setIsDeleteCentroModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Borrar"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3 p-2 bg-white rounded-lg border border-gray-100">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-6 h-6 flex items-center justify-center text-pami-blue">
+                                  <Phone size={14} />
+                                </div>
+                                <p className="text-sm font-bold text-pami-blue truncate">{c.telefono}</p>
+                              </div>
+                              <a 
+                                href={`https://wa.me/${c.telefono.replace(/\s+/g, '').replace(/-/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors shadow-sm"
+                                title="Enviar WhatsApp"
+                              >
+                                <MessageCircle size={14} />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
               )}
             </div>
           </div>
@@ -2253,6 +2562,143 @@ export default function App() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal for Practica OME */}
+      <Modal 
+        isOpen={isPracticaModalOpen} 
+        onClose={() => { setIsPracticaModalOpen(false); setEditingPractica(null); }}
+        title={editingPractica ? `Editar Práctica: ${editingPractica.codigo}` : "Nueva Práctica OME"}
+      >
+        <form onSubmit={handleSavePractica} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Código</label>
+              <Input name="codigo" defaultValue={editingPractica?.codigo} required placeholder="Ej: 660101" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Módulo</label>
+              <Input name="modulo" defaultValue={editingPractica?.modulo} required placeholder="Ej: MODULO 1" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Descripción</label>
+            <TextArea name="descripcion" defaultValue={editingPractica?.descripcion} required placeholder="Descripción completa de la práctica" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Descripción Impresa (opcional)</label>
+              <Input name="descImpresa" defaultValue={editingPractica?.descImpresa} placeholder="Como aparece en el sistema" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Sinónimo (opcional)</label>
+              <Input name="sinonimo" defaultValue={editingPractica?.sinonimo} placeholder="Nombre alternativo" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Responsable</label>
+            <select 
+              name="responsable" 
+              defaultValue={editingPractica?.responsable || 'Médico de Cabecera'}
+              className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all"
+              required
+            >
+              <option value="Médico de Cabecera">Médico de Cabecera</option>
+              <option value="Médico Auditor">Médico Auditor</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsPracticaModalOpen(false)}>Cancelar</Button>
+            <Button type="submit" isLoading={isSaving}>
+              <CheckCircle2 size={18} />
+              <span>{editingPractica ? 'Guardar Cambios' : 'Crear Práctica'}</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal for Practica Delete Confirmation */}
+      <Modal 
+        isOpen={isDeletePracticaModalOpen} 
+        onClose={() => { setIsDeletePracticaModalOpen(false); setPracticaToDelete(null); }}
+        title="Confirmar Eliminación de Práctica"
+      >
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl text-red-700 border border-red-100">
+            <AlertCircle className="shrink-0" size={24} />
+            <p className="text-sm font-medium">
+              ¿Estás seguro de que deseas eliminar la práctica <span className="font-bold uppercase">"{practicaToDelete?.codigo} - {practicaToDelete?.descripcion}"</span>? Esta acción no se puede deshacer.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsDeletePracticaModalOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="danger" onClick={handleDeletePractica} isLoading={isSaving}>
+              <Trash2 size={18} />
+              <span>Eliminar Práctica</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal for Centro Coordinador */}
+      <Modal 
+        isOpen={isCentroModalOpen} 
+        onClose={() => { setIsCentroModalOpen(false); setEditingCentro(null); }}
+        title={editingCentro ? `Editar Registro: ${editingCentro.hospital}` : "Nuevo Registro de Centro Coordinador"}
+      >
+        <form onSubmit={handleSaveCentro} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Hospital / Centro</label>
+            <Input name="hospital" defaultValue={editingCentro?.hospital} required placeholder="Ej: Hospital Gonnet" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Trabajador/a</label>
+            <Input name="trabajador" defaultValue={editingCentro?.trabajador} required placeholder="Ej: Fernanda Galeano" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Teléfono</label>
+            <Input name="telefono" defaultValue={editingCentro?.telefono} required placeholder="Ej: 221 605-9898" />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsCentroModalOpen(false)}>Cancelar</Button>
+            <Button type="submit" isLoading={isSaving}>
+              <CheckCircle2 size={18} />
+              <span>{editingCentro ? 'Guardar Cambios' : 'Crear Registro'}</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal for Centro Delete Confirmation */}
+      <Modal 
+        isOpen={isDeleteCentroModalOpen} 
+        onClose={() => { setIsDeleteCentroModalOpen(false); setCentroToDelete(null); }}
+        title="Confirmar Eliminación de Registro"
+      >
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl text-red-700 border border-red-100">
+            <AlertCircle className="shrink-0" size={24} />
+            <p className="text-sm font-medium">
+              ¿Estás seguro de que deseas eliminar el registro de <span className="font-bold uppercase">"{centroToDelete?.trabajador}"</span> en <span className="font-bold uppercase">"{centroToDelete?.hospital}"</span>? Esta acción no se puede deshacer.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsDeleteCentroModalOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="danger" onClick={handleDeleteCentro} isLoading={isSaving}>
+              <Trash2 size={18} />
+              <span>Eliminar Registro</span>
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Footer */}
