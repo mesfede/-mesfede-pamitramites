@@ -291,6 +291,8 @@ export default function App() {
   const [aiSearch, setAiSearch] = useState('');
   const [formAddress, setFormAddress] = useState("");
   const [formLocality, setFormLocality] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -508,6 +510,17 @@ export default function App() {
       return nameA.localeCompare(nameB); // Alphabetical fallback
     });
   }, [tramites, search, selectedCat]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedCat]);
+
+  const paginatedTramites = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredTramites.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredTramites, currentPage]);
+
+  const totalPages = Math.ceil(filteredTramites.length / ITEMS_PER_PAGE);
 
   const allSpecialties = useMemo(() => {
     const specs = new Set<string>();
@@ -1258,11 +1271,12 @@ export default function App() {
                   <p className="text-pami-muted">No se encontraron trámites con estos criterios.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {filteredTramites.map(t => (
-                    <motion.div 
-                      layout
-                      key={t.id}
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    {paginatedTramites.map(t => (
+                      <motion.div 
+                        layout
+                        key={t.id}
                       className={cn(
                         "rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all",
                         CATEGORY_LIGHT_COLORS[t.categoria] || "bg-white",
@@ -1540,7 +1554,73 @@ export default function App() {
                     </motion.div>
                   ))}
                 </div>
-              )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-4">
+                    <button
+                      onClick={() => {
+                        setCurrentPage(prev => Math.max(1, prev - 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg border border-gray-200 bg-white text-pami-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    >
+                      <ChevronDown className="rotate-90" size={20} />
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                        // Mostrar solo algunas páginas si hay muchas
+                        if (
+                          page === 1 || 
+                          page === totalPages || 
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => {
+                                setCurrentPage(page);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className={cn(
+                                "w-10 h-10 rounded-lg border text-sm font-bold transition-all",
+                                currentPage === page 
+                                  ? "bg-pami-blue border-pami-blue text-white shadow-md shadow-pami-blue/20" 
+                                  : "bg-white border-gray-200 text-pami-text hover:border-pami-blue/50"
+                              )}
+                            >
+                              {page}
+                            </button>
+                          );
+                        }
+                        
+                        if (
+                          (page === 2 && currentPage > 3) || 
+                          (page === totalPages - 1 && currentPage < totalPages - 2)
+                        ) {
+                          return <span key={page} className="px-1 text-gray-400">...</span>;
+                        }
+                        
+                        return null;
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg border border-gray-200 bg-white text-pami-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             </div>
           </div>
           </div>
