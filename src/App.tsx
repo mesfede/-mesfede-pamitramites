@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useLoadScript } from '@react-google-maps/api';
+import { AddressAutocomplete } from './components/AddressAutocomplete';
 import { 
   Search, 
   Plus, 
@@ -21,6 +23,7 @@ import {
   Phone, 
   Mail, 
   Globe,
+  MessageCircle,
   MessageSquare,
   Clock,
   AlertCircle,
@@ -225,7 +228,14 @@ const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose:
 
 // --- Main App ---
 
+const LIBRARIES: ("places")[] = ["places"];
+
 export default function App() {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: LIBRARIES,
+  });
+
   const [user, setUser] = useState<User | null>(null);
   const [tramites, setTramites] = useState<Tramite[]>([]);
   const [prestadores, setPrestadores] = useState<Prestador[]>([]);
@@ -258,7 +268,23 @@ export default function App() {
   const [selectedPrestadoresIds, setSelectedPrestadoresIds] = useState<string[]>([]);
   const [practicaSearch, setPracticaSearch] = useState('');
   const [aiSearch, setAiSearch] = useState('');
+  const [formAddress, setFormAddress] = useState("");
+  const [formLocality, setFormLocality] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isPrestadorModalOpen) {
+      setFormAddress(editingPrestador?.direccion || "");
+      setFormLocality(editingPrestador?.localidad || "");
+    }
+  }, [isPrestadorModalOpen, editingPrestador]);
+
+  const handleAddressSelect = (address: string, locality: string) => {
+    setFormAddress(address);
+    if (locality) {
+      setFormLocality(locality);
+    }
+  };
 
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
   const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
@@ -1473,8 +1499,8 @@ export default function App() {
                           </div>
                         )}
                         {p.whatsapp && (
-                          <div className="flex items-center gap-2 text-sm text-pami-cyan">
-                            <MessageSquare size={16} className="shrink-0 opacity-60" />
+                          <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+                            <MessageCircle size={16} className="shrink-0 fill-green-600/10" />
                             <span>{p.whatsapp}</span>
                           </div>
                         )}
@@ -2048,11 +2074,20 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-pami-muted">Dirección</label>
-              <Input name="direccion" defaultValue={editingPrestador?.direccion} placeholder="Ej: Calle 123" />
+              <AddressAutocomplete 
+                defaultValue={editingPrestador?.direccion} 
+                onAddressSelect={handleAddressSelect}
+                isLoaded={isLoaded}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-pami-muted">Localidad</label>
-              <Input name="localidad" defaultValue={editingPrestador?.localidad} placeholder="Ej: La Plata" />
+              <Input 
+                name="localidad" 
+                value={formLocality} 
+                onChange={(e) => setFormLocality(e.target.value)}
+                placeholder="Ej: La Plata" 
+              />
             </div>
           </div>
 
@@ -2062,7 +2097,10 @@ export default function App() {
               <Input name="telefono" defaultValue={editingPrestador?.telefono} placeholder="Ej: 0221-483..." />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-pami-muted">WhatsApp</label>
+              <label className="text-sm font-semibold text-pami-muted flex items-center gap-1.5">
+                <MessageCircle size={14} className="text-green-600" />
+                WhatsApp
+              </label>
               <Input name="whatsapp" defaultValue={editingPrestador?.whatsapp} placeholder="Ej: 11-6674..." />
             </div>
           </div>
