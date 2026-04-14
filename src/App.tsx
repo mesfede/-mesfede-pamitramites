@@ -54,11 +54,16 @@ import {
   ArrowRight,
   Users,
   Sparkles,
-  Dumbbell
+  Dumbbell,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import { Login } from './components/Login';
+import { AdminUsers } from './components/AdminUsers';
 import { generateFullTramitePdf } from './lib/pdfUtils';
 import { 
   subscribeToTramites, 
@@ -247,6 +252,7 @@ export default function App() {
   });
 
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'viewer' | null>(null);
   const [tramites, setTramites] = useState<Tramite[]>([]);
   const [prestadores, setPrestadores] = useState<Prestador[]>([]);
   const [folletos, setFolletos] = useState<Folleto[]>([]);
@@ -258,7 +264,7 @@ export default function App() {
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'admin'>('tramites');
-  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos'>('tramites');
+  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletePrestadorModalOpen, setIsDeletePrestadorModalOpen] = useState(false);
@@ -310,7 +316,8 @@ export default function App() {
   };
 
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const isAdmin = user?.email && (ADMIN_EMAILS.includes(user.email) || userRole === 'admin');
+  const isViewer = isAdmin || userRole === 'viewer';
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -380,8 +387,24 @@ export default function App() {
   };
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        // Fetch user role from Firestore
+        try {
+          const userDoc = await getDoc(doc(db, 'users', u.uid));
+          if (userDoc.exists()) {
+            setUserRole(userDoc.data().role);
+          } else {
+            setUserRole(null);
+          }
+        } catch (err) {
+          console.error("Error fetching user role:", err);
+          setUserRole(null);
+        }
+      } else {
+        setUserRole(null);
+      }
       setLoading(false);
     });
 
@@ -1023,18 +1046,23 @@ export default function App() {
           <div className="flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm hidden md:block opacity-80">{user.displayName}</span>
-                <img src={user.photoURL || ''} alt="User" className="w-8 h-8 rounded-full border-2 border-white/20" />
+                <div className="flex flex-col items-end">
+                  <span className="text-xs font-bold truncate max-w-[150px]">{user.displayName || user.email}</span>
+                  <span className="text-[9px] uppercase tracking-wider opacity-70 font-bold">
+                    {isAdmin ? 'Administrador' : 'Solo Lectura'}
+                  </span>
+                </div>
+                <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=random`} alt="User" className="w-8 h-8 rounded-full border-2 border-white/20" referrerPolicy="no-referrer" />
                 <Button variant="ghost" className="text-white hover:bg-white/10 p-2 h-8 w-8" onClick={logout}>
                   <LogOut size={14} />
                 </Button>
               </div>
             ) : (
               <div className="flex flex-col items-end gap-1">
-                <Button variant="outline" className="bg-white text-pami-blue border-white hover:bg-white/90 px-3 py-1 text-xs h-8" onClick={handleLogin}>
+                <div className="flex items-center gap-2 text-white/80">
                   <LogIn size={14} />
-                  <span>Ingresar</span>
-                </Button>
+                  <span className="text-xs font-medium">Inicia sesión para continuar</span>
+                </div>
                 {loginError && (
                   <span className="text-[10px] text-red-200 bg-red-900/50 px-2 py-1 rounded animate-pulse">
                     {loginError}
@@ -1184,6 +1212,26 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {!user ? (
+          <div className="py-12">
+            <Login />
+          </div>
+        ) : !isViewer ? (
+          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-2xl mx-auto">
+            <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Shield size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-pami-text mb-4">Acceso Restringido</h2>
+            <p className="text-pami-muted px-8">
+              Tu cuenta ({user.email}) aún no tiene permisos para ver el contenido. 
+              Por favor, contacta a un administrador para que te asigne el rol de "Solo Lectura".
+            </p>
+            <Button variant="ghost" onClick={() => logout()} className="mt-8">
+              Cerrar Sesión
+            </Button>
+          </div>
+        ) : (
+          <>
         {activeTab === 'tramites' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -2161,25 +2209,36 @@ export default function App() {
                 >
                   Folletos
                 </button>
+                <button 
+                  onClick={() => setAdminSubTab('usuarios')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    adminSubTab === 'usuarios' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
+                  )}
+                >
+                  Usuarios
+                </button>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-              <div className="flex gap-2 p-1 bg-gray-50 rounded-lg border border-gray-100">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-pami-muted px-2 py-1 flex items-center">Limpieza:</span>
-                <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanup} isLoading={isSaving}>
-                  Prestadores
-                </Button>
-                <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanupTramites} isLoading={isSaving}>
-                  Trámites y Prácticas
+            {adminSubTab !== 'usuarios' && (
+              <div className="flex flex-wrap gap-2 items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <div className="flex gap-2 p-1 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-pami-muted px-2 py-1 flex items-center">Limpieza:</span>
+                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanup} isLoading={isSaving}>
+                    Prestadores
+                  </Button>
+                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanupTramites} isLoading={isSaving}>
+                    Trámites y Prácticas
+                  </Button>
+                </div>
+                
+                <Button variant="outline" className="text-[10px] py-1 h-auto px-3 ml-auto" onClick={handleSeed} isLoading={isSaving}>
+                  <Activity size={12} className="mr-1" />
+                  Sincronizar Datos Iniciales
                 </Button>
               </div>
-              
-              <Button variant="outline" className="text-[10px] py-1 h-auto px-3 ml-auto" onClick={handleSeed} isLoading={isSaving}>
-                <Activity size={12} className="mr-1" />
-                Sincronizar Datos Iniciales
-              </Button>
-            </div>
+            )}
 
             {adminMessage && (
               <div className={`p-4 rounded-lg flex items-center gap-3 ${
@@ -2285,6 +2344,8 @@ export default function App() {
                     ))}
                   </tbody>
                 </table>
+              ) : adminSubTab === 'usuarios' ? (
+                <AdminUsers />
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -2319,6 +2380,8 @@ export default function App() {
               )}
             </div>
           </div>
+        )}
+        </>
         )}
       </main>
 
@@ -2491,7 +2554,7 @@ export default function App() {
               name="especialidades" 
               defaultValue={editingPrestador?.especialidades?.join('\n')} 
               required
-              placeholder="Ej: CARDIOLOGIA&#10;VIDEOCOLONOSCOPIA&#10;CLINICA MEDICA..." 
+              placeholder="Ej: CARDIOLOGÍA&#10;VIDEOCOLONOSCOPIA&#10;CLINICA MEDICA..." 
             />
           </div>
 

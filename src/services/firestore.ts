@@ -10,7 +10,8 @@ import {
   serverTimestamp,
   getDocs,
   writeBatch,
-  getDocFromServer
+  getDocFromServer,
+  setDoc
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
@@ -428,6 +429,41 @@ export async function deleteCentroCoordinador(id: string) {
     return await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, CENTROS_COORDINADORES_COLLECTION);
+  }
+}
+
+export function subscribeToUsers(callback: (users: any[]) => void) {
+  const q = query(collection(db, 'users'), orderBy('email', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(users);
+  }, (error) => {
+    console.error("Error subscribing to users:", error);
+  });
+}
+
+export async function setUserRole(uid: string, email: string, role: 'admin' | 'viewer') {
+  try {
+    const docRef = doc(db, 'users', uid);
+    return await setDoc(docRef, {
+      email,
+      role,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'users');
+  }
+}
+
+export async function deleteUser(uid: string) {
+  try {
+    const docRef = doc(db, 'users', uid);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'users');
   }
 }
 

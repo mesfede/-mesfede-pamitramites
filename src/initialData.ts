@@ -96,7 +96,7 @@ export const INITIAL_TRAMITES = [
     "fuente": "PDF Guía"
   },
   {
-    "nombre": "Aponia Kinesiologia",
+    "nombre": "Aponia Kinesiología",
     "categoria": "Kinesiología y rehabilitación",
     "descripcion": "Se realiza en Cien de Ensenada.",
     "fuente": "PDF Guía"
@@ -162,7 +162,7 @@ export const INITIAL_TRAMITES = [
     "fuente": "PDF Guía"
   },
   {
-    "nombre": "Kinesiologia a Domicilio",
+    "nombre": "Kinesiología a Domicilio",
     "categoria": "Kinesiología y rehabilitación",
     "descripcion": "OME por el Medico de Cabecera y con la justificación de por qué necesita a domicilio. Se HACE una OP desde coordinación médica. COD 240121 PRÁCTICA CON AUTORIZACIÓN.",
     "fuente": "PDF Guía"
@@ -228,7 +228,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Oxigenoterapia",
     "categoria": "Oxigenoterapia",
-    "descripcion": "Formulario NUEVO solicitud de oxigenoterapia (SIMAP) /Acta compromiso / Espirometria / - gasometría basal, estudio excluyente para la autorización de la prestación / Enviar la documentación requerida en sobre cerrado (cuando el expediente esta alla) al área PRESTACIONES ESPECIALES. Mariela Floch /",
+    "descripcion": "Formulario NUEVO solicitud de oxigenoterapia (SIMAP) /Acta compromiso / Espirometría / - gasometría basal, estudio excluyente para la autorización de la prestación / Enviar la documentación requerida en sobre cerrado (cuando el expediente esta alla) al área PRESTACIONES ESPECIALES. Mariela Floch /",
     "fuente": "Excel PAMI 2023"
   },
   {
@@ -448,7 +448,7 @@ export const INITIAL_TRAMITES = [
     "fuente": "PDF Guía"
   },
   {
-    "nombre": "Oftalmologia",
+    "nombre": "Oftalmología",
     "categoria": "Óptica y oftalmología",
     "descripcion": "OP 156 // Campo visual Campimetria OCT 300209 /// NO ESTAMOS DANDO LENTES DE CONTACTO (DICIEMBRE 2023)",
     "fuente": "Excel PAMI 2023"
@@ -459,27 +459,27 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "ALTHEA (EX VACCARINI)",
     "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS",
+      "ONCOLOGÍA - TRATAMIENTOS",
       "VIDEOENDOSCOPICAS GASTROINTESTINALES",
-      "HEMATOLOGIA",
-      "INFECTOLOGIA",
-      "REUMATOLOGIA",
-      "ENDOCRINOLOGIA",
-      "FLEBOLOGIA",
-      "OTORRINOLARINGOLOGIA",
-      "DERMATOLOGIA",
-      "ALERGIA E INMUNOLOGIA",
-      "NEUROLOGIA",
+      "HEMATOLOGÍA",
+      "INFECTOLOGÍA",
+      "REUMATOLOGÍA",
+      "ENDOCRINOLOGÍA",
+      "FLEBOLOGÍA",
+      "OTORRINOLARINGOLOGÍA",
+      "DERMATOLOGÍA",
+      "ALERGIA E INMUNOLOGÍA",
+      "NEUROLOGÍA",
       "ANATOMIA PATOLOGICA",
-      "CARDIOLOGIA",
-      "CIRUGIA GENERAL AMBULATORIA",
-      "UROLOGIA",
-      "TRAUMATOLOGIA",
-      "NEUMONOLOGIA",
-      "NEFROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "FONOAUDIOLOGIA"
+      "CARDIOLOGÍA",
+      "CIRUGÍA GENERAL AMBULATORIA",
+      "UROLOGÍA",
+      "TRAUMATOLOGÍA",
+      "NEUMONOLOGÍA",
+      "NEFROLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
+      "GASTROENTEROLOGÍA",
+      "FONOAUDIOLOGÍA"
     ],
     "direccion": "80 Nº 570 e/ 6 y 7",
     "telefono": "221 453-3765"
@@ -492,13 +492,13 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "BENGOA, Daniela",
-    "especialidades": ["DIABETOLOGIA"],
+    "especialidades": ["DIABETOLOGÍA"],
     "direccion": "35 Nº 318 e/ 1 y 2",
     "telefono": "221 482-5420"
   },
   {
     "nombre": "BRUNO, Azucena",
-    "especialidades": ["TRAUMATOLOGIA"],
+    "especialidades": ["TRAUMATOLOGÍA"],
     "direccion": "81 Nº 386 e/ 2 y 2bis",
     "telefono": "11 416-06041"
   },
@@ -534,14 +534,14 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "CLINICA MOSCONI DE BERISSO",
-    "especialidades": ["ENDOCRINOLOGIA", "GINECOLOGIA Y OBSTETRICIA"],
+    "especialidades": ["ENDOCRINOLOGÍA", "GINECOLOGÍA Y OBSTETRICIA"],
     "direccion": "8 Nº 3419",
     "telefono": "221 461-1898",
     "whatsapp": "6790114"
   },
   {
     "nombre": "CLINICA SITE",
-    "especialidades": ["ONCOLOGIA"],
+    "especialidades": ["ONCOLOGÍA"],
     "direccion": "7 Nº 505",
     "telefono": "221 427-0118 / 489-4822"
   },
@@ -553,13 +553,13 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "ELIZALDE, Daniel",
-    "especialidades": ["NEUMONOLOGIA"],
+    "especialidades": ["NEUMONOLOGÍA"],
     "direccion": "41 Nº 347 e/ 1 y 2",
     "telefono": "221 690-1662"
   },
   {
     "nombre": "FUNDACION QUARELLO",
-    "especialidades": ["FLEBOLOGIA", "NEUROLOGIA", "INTERNACIÓN CON EL FIN DE REHABILITACIÓN"],
+    "especialidades": ["FLEBOLOGÍA", "NEUROLOGÍA", "INTERNACIÓN CON EL FIN DE REHABILITACIÓN"],
     "direccion": "14a e/ 467 y 471",
     "telefono": "221 472-4040 / 11 3317-8480"
   },
@@ -578,23 +578,23 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "HTAL. GUTIERREZ",
     "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS",
-      "HEMATOLOGIA",
-      "INFECTOLOGIA",
-      "PEDIATRIA",
-      "REUMATOLOGIA",
-      "FLEBOLOGIA",
-      "OTORRINOLARINGOLOGIA",
-      "DERMATOLOGIA",
-      "ALERGIA E INMUNOLOGIA",
+      "ONCOLOGÍA - TRATAMIENTOS",
+      "HEMATOLOGÍA",
+      "INFECTOLOGÍA",
+      "PEDIATRÍA",
+      "REUMATOLOGÍA",
+      "FLEBOLOGÍA",
+      "OTORRINOLARINGOLOGÍA",
+      "DERMATOLOGÍA",
+      "ALERGIA E INMUNOLOGÍA",
       "ANATOMIA PATOLOGICA",
-      "CARDIOLOGIA",
-      "CIRUGIA GENERAL AMBULATORIA",
-      "UROLOGIA",
-      "TRAUMATOLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "NUTRICION"
+      "CARDIOLOGÍA",
+      "CIRUGÍA GENERAL AMBULATORIA",
+      "UROLOGÍA",
+      "TRAUMATOLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
+      "GASTROENTEROLOGÍA",
+      "NUTRICIÓN"
     ],
     "direccion": "Diag. 114 e/ 39 y 40 s/n",
     "telefono": "221 483-0171",
@@ -609,25 +609,25 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "HTAL. ITALIANO DE LA PLATA",
     "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS",
+      "ONCOLOGÍA - TRATAMIENTOS",
       "VIDEOENDOSCOPICAS GASTROINTESTINALES",
-      "HEMATOLOGIA",
-      "INFECTOLOGIA",
-      "REUMATOLOGIA",
-      "ENDOCRINOLOGIA",
-      "FLEBOLOGIA",
-      "OTORRINOLARINGOLOGIA",
-      "DERMATOLOGIA",
-      "ALERGIA E INMUNOLOGIA",
+      "HEMATOLOGÍA",
+      "INFECTOLOGÍA",
+      "REUMATOLOGÍA",
+      "ENDOCRINOLOGÍA",
+      "FLEBOLOGÍA",
+      "OTORRINOLARINGOLOGÍA",
+      "DERMATOLOGÍA",
+      "ALERGIA E INMUNOLOGÍA",
       "ANATOMIA PATOLOGICA",
-      "CARDIOLOGIA",
-      "CIRUGIA GENERAL AMBULATORIA",
-      "UROLOGIA",
-      "NEUMONOLOGIA",
-      "NEFROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "NUTRICION",
+      "CARDIOLOGÍA",
+      "CIRUGÍA GENERAL AMBULATORIA",
+      "UROLOGÍA",
+      "NEUMONOLOGÍA",
+      "NEFROLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
+      "GASTROENTEROLOGÍA",
+      "NUTRICIÓN",
       "ELECTROFISIOLOGIA"
     ],
     "direccion": "51 Nº 1725 e/ 30 y 29",
@@ -635,17 +635,17 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "HTAL. PRIVADO SUDAMERICANO",
-    "especialidades": ["UROLOGIA", "FISIATRIA - CONSULTAS"],
+    "especialidades": ["UROLOGÍA", "FISIATRÍA - CONSULTAS"],
     "direccion": "2 Nº 432 e/ 40 y 41",
     "telefono": "221 445-2121"
   },
   {
     "nombre": "HTAL. ROSSI",
     "especialidades": [
-      "OTORRINOLARINGOLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "FONOAUDIOLOGIA",
+      "OTORRINOLARINGOLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
+      "GASTROENTEROLOGÍA",
+      "FONOAUDIOLOGÍA",
       "PALIATIVOS Y DOLOR"
     ],
     "direccion": "116 Nº 228 e/ 36 y 37",
@@ -654,7 +654,7 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "HTAL. SAN JUAN DE DIOS",
-    "especialidades": ["INFECTOLOGIA", "HEPATOLOGIA"],
+    "especialidades": ["INFECTOLOGÍA", "HEPATOLOGIA"],
     "direccion": "27 y Calle 70 s/n",
     "telefono": "221 453-2476 / 451-0320",
     "notas": "Llevar imágenes previas lunes, jueves y viernes para que la médica evalúe. Otros tels: 457-7659 / 5800/02/04/06/08"
@@ -663,9 +663,9 @@ export const INITIAL_PRESTADORES = [
     "nombre": "HTAL. SAN MARTIN",
     "especialidades": [
       "HEPATOLOGIA",
-      "GASTROENTEROLOGIA",
-      "FONOAUDIOLOGIA",
-      "DIABETOLOGIA",
+      "GASTROENTEROLOGÍA",
+      "FONOAUDIOLOGÍA",
+      "DIABETOLOGÍA",
       "PALIATIVOS Y DOLOR",
       "ELECTROFISIOLOGIA"
     ],
@@ -677,11 +677,11 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "HTAL. SAN ROQUE",
     "especialidades": [
-      "OTORRINOLARINGOLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "FONOAUDIOLOGIA",
-      "NUTRICION"
+      "OTORRINOLARINGOLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
+      "GASTROENTEROLOGÍA",
+      "FONOAUDIOLOGÍA",
+      "NUTRICIÓN"
     ],
     "direccion": "508 e/ 18 y 19",
     "whatsapp": "221 364-2272",
@@ -696,30 +696,30 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "INST. DIAG. CARDIOVASCULAR",
     "especialidades": [
-      "HEMATOLOGIA",
-      "ENDOCRINOLOGIA",
-      "DERMATOLOGIA",
-      "CARDIOLOGIA",
-      "NUTRICION"
+      "HEMATOLOGÍA",
+      "ENDOCRINOLOGÍA",
+      "DERMATOLOGÍA",
+      "CARDIOLOGÍA",
+      "NUTRICIÓN"
     ],
     "direccion": "13 Nº 525",
     "telefono": "221 621-4354"
   },
   {
     "nombre": "INST. DEL DIAGNOSTICO",
-    "especialidades": ["ONCOLOGIA - TRATAMIENTOS"],
+    "especialidades": ["ONCOLOGÍA - TRATAMIENTOS"],
     "direccion": "62 Nº 370",
     "telefono": "221 425-9700"
   },
   {
     "nombre": "INST. MEDICO PLATENSE",
     "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS",
-      "HEMATOLOGIA",
-      "CARDIOLOGIA",
-      "CIRUGIA GENERAL AMBULATORIA",
-      "UROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
+      "ONCOLOGÍA - TRATAMIENTOS",
+      "HEMATOLOGÍA",
+      "CARDIOLOGÍA",
+      "CIRUGÍA GENERAL AMBULATORIA",
+      "UROLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
       "ELECTROFISIOLOGIA"
     ],
     "direccion": "51 Nº 315",
@@ -729,22 +729,22 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "IPENSA",
     "especialidades": [
-      "HEMATOLOGIA",
-      "INFECTOLOGIA",
-      "DERMATOLOGIA",
-      "ALERGIA E INMUNOLOGIA",
-      "NEUROLOGIA",
-      "CARDIOLOGIA",
-      "CIRUGIA GENERAL AMBULATORIA",
-      "UROLOGIA",
-      "NEUMONOLOGIA",
-      "NEFROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA",
-      "DIABETOLOGIA",
+      "HEMATOLOGÍA",
+      "INFECTOLOGÍA",
+      "DERMATOLOGÍA",
+      "ALERGIA E INMUNOLOGÍA",
+      "NEUROLOGÍA",
+      "CARDIOLOGÍA",
+      "CIRUGÍA GENERAL AMBULATORIA",
+      "UROLOGÍA",
+      "NEUMONOLOGÍA",
+      "NEFROLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
+      "GASTROENTEROLOGÍA",
+      "DIABETOLOGÍA",
       "HEMODINAMIA",
       "COLOCACION DE MARCAPASOS",
-      "CIRUGIA CARDIOVASCULAR CENTRAL Y PERIFERICA",
+      "CIRUGÍA CARDIOVASCULAR CENTRAL Y PERIFERICA",
       "ELECTROFISIOLOGIA"
     ],
     "direccion": "59 Nº 434",
@@ -754,21 +754,21 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "LOVARI, Juan",
-    "especialidades": ["DERMATOLOGIA"],
+    "especialidades": ["DERMATOLOGÍA"],
     "direccion": "60 Nº 2270 e/ 140 y 141",
     "whatsapp": "221 363-5770"
   },
   {
     "nombre": "PARRA, Natali",
-    "especialidades": ["ENDOCRINOLOGIA"],
+    "especialidades": ["ENDOCRINOLOGÍA"],
     "direccion": "18 Nº 252 e/ 37 y 38",
     "telefono": "221 423-7547"
   },
   {
     "nombre": "SANATORIO MEDICO LOS TILOS",
     "especialidades": [
-      "NEUROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
+      "NEUROLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
       "ELECTROFISIOLOGIA"
     ],
     "direccion": "41 Nº 347 e/ 1 y 2",
@@ -776,19 +776,19 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "SALIM, María Mercedes",
-    "especialidades": ["NEFROLOGIA"],
+    "especialidades": ["NEFROLOGÍA"],
     "direccion": "488 Nº 2681 e/ 20 y 22",
     "telefono": "221 471-3181"
   },
   {
     "nombre": "WRNICKE, Verónica",
-    "especialidades": ["REUMATOLOGIA"],
+    "especialidades": ["REUMATOLOGÍA"],
     "direccion": "18 Nº 252 e/ 37 y 38",
     "telefono": "221 423-7547"
   },
   {
     "nombre": "JAURE, Cecilia",
-    "especialidades": ["NUTRICIONISTA"],
+    "especialidades": ["NUTRICIÓNISTA"],
     "direccion": "4 Nº 304 (Ex Piria - V.E)",
     "telefono": "221 599-3682"
   },
@@ -837,7 +837,7 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "MED IMAGE",
-    "especialidades": ["ECOGRAFIA"],
+    "especialidades": ["ECOGRAFÍA"],
     "direccion": "45 Nº 915",
     "telefono": "221 489-1222"
   },
@@ -849,7 +849,7 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "OPEN IMAGE (Tolosa)",
-    "especialidades": ["ECODIAGNOSTICO - RMN"],
+    "especialidades": ["ECODIAGNÓSTICO - RMN"],
     "direccion": "4 Bis Nº 329",
     "telefono": "221 422-0639",
     "whatsapp": "319-7336"
@@ -876,57 +876,57 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "CTRO. DE LA VISIÓN LP",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "2 Nº 731 e/ 46 y 47",
     "telefono": "221 427-1452",
     "whatsapp": "590-3504"
   },
   {
     "nombre": "CLÍNICA MERONI",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "63 Nº 782 e/ 10 y 11",
     "telefono": "221 452-5551"
   },
   {
     "nombre": "COB",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "6 Nº 459 e/ 41 y 42",
     "telefono": "221 4405079"
   },
   {
     "nombre": "COB Berisso",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "12 Nº 4348 e/ 165 y 166",
     "telefono": "221 4645315 / 6796013"
   },
   {
     "nombre": "HANSEN ARIEL EDUARDO",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "42 Nº 763",
     "telefono": "221 482-1669"
   },
   {
     "nombre": "HTAL DR. A. KORN",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "520 S/N e/173 y 178",
     "telefono": "0-800 333433",
     "whatsapp": "5675-3580"
   },
   {
     "nombre": "INST. OFTAL. PRIETO DIAZ",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "53 Nº 693",
     "telefono": "221 425-7523 / 423-8178"
   },
   {
     "nombre": "INST. OFTAL. PLATENSE",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "2 Nº 609 e/ 44 y 45",
     "telefono": "221 483-1503 / 526-2112"
   },
   {
     "nombre": "SANTA LUCIA",
-    "especialidades": ["OFTALMOLOGIA"],
+    "especialidades": ["OFTALMOLOGÍA"],
     "direccion": "56 e/ 7 y 8 Nº 625",
     "telefono": "221 422-1617 / 445-2099"
   },
@@ -1040,15 +1040,15 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "Clinica Belgrano",
     "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS",
+      "ONCOLOGÍA - TRATAMIENTOS",
       "VIDEOENDOSCOPICAS GASTROINTESTINALES",
-      "HEMATOLOGIA",
-      "DERMATOLOGIA",
-      "ALERGIA E INMUNOLOGIA",
-      "TRAUMATOLOGIA",
-      "NEFROLOGIA",
-      "GINECOLOGIA Y OBSTETRICIA",
-      "GASTROENTEROLOGIA"
+      "HEMATOLOGÍA",
+      "DERMATOLOGÍA",
+      "ALERGIA E INMUNOLOGÍA",
+      "TRAUMATOLOGÍA",
+      "NEFROLOGÍA",
+      "GINECOLOGÍA Y OBSTETRICIA",
+      "GASTROENTEROLOGÍA"
     ],
     "direccion": "Cno Gral Belgrano 960",
     "localidad": "Quilmes Oeste",
@@ -1059,7 +1059,7 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "POLICLINICA PRIVADA S.A. SITE",
     "especialidades": [
-      "ONCOLOGIA - TRATAMIENTOS"
+      "ONCOLOGÍA - TRATAMIENTOS"
     ]
   },
   {
