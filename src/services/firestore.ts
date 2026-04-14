@@ -309,6 +309,30 @@ export async function cleanupTramites() {
   return deleted;
 }
 
+export async function cleanupPracticas() {
+  const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
+  const seen = new Set<string>();
+  const batch = writeBatch(db);
+  let deleted = 0;
+
+  practicasSnap.docs.forEach(doc => {
+    const data = doc.data();
+    const key = `${data.codigo}|${data.descripcion}|${data.descImpresa || ''}|${data.sinonimo || ''}`.trim().toLowerCase();
+    
+    if (seen.has(key)) {
+      batch.delete(doc.ref);
+      deleted++;
+    } else {
+      seen.add(key);
+    }
+  });
+
+  if (deleted > 0) {
+    await batch.commit();
+  }
+  return deleted;
+}
+
 export function subscribeToFolletos(callback: (folletos: Folleto[]) => void) {
   const q = query(collection(db, FOLLETOS_COLLECTION), orderBy('nombre', 'asc'));
   return onSnapshot(q, (snapshot) => {
@@ -484,8 +508,11 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   );
 
   const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
-  const existingPracticaCodes = new Set(
-    practicasSnap.docs.map(doc => (doc.data().codigo || "").trim())
+  const existingPracticaKeys = new Set(
+    practicasSnap.docs.map(doc => {
+      const data = doc.data();
+      return `${data.codigo}|${data.descripcion}|${data.descImpresa || ''}|${data.sinonimo || ''}`.trim().toLowerCase();
+    })
   );
 
   const centrosSnap = await getDocs(collection(db, CENTROS_COORDINADORES_COLLECTION));
@@ -582,8 +609,8 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   });
 
   initialPracticas.forEach(p => {
-    const code = (p.codigo || "").trim();
-    if (!existingPracticaCodes.has(code)) {
+    const key = `${p.codigo}|${p.descripcion}|${p.descImpresa || ''}|${p.sinonimo || ''}`.trim().toLowerCase();
+    if (!existingPracticaKeys.has(key)) {
       const docRef = doc(collection(db, PRACTICAS_COLLECTION));
       currentChunk.push({
         ref: docRef,
@@ -592,10 +619,7 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
           createdAt: serverTimestamp()
         }
       });
-      // We don't add to existingPracticaCodes here because one code might have multiple descriptions/synonyms in the initial data
-      // Actually, looking at the data, some codes ARE duplicated with different descriptions.
-      // But for seeding, we might want to avoid exact duplicates if they are identical.
-      // Let's just seed them all for now as the initial data has them.
+      existingPracticaKeys.add(key);
       addedPracticas++;
       if (currentChunk.length === 450) {
         chunks.push(currentChunk);
@@ -628,13 +652,104 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     chunks.push(currentChunk);
   }
 
-  for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
     const batch = writeBatch(db);
     chunk.forEach(op => {
       batch.set(op.ref, op.data);
     });
     await batch.commit();
+    console.log(`Batch ${i + 1}/${chunks.length} completado.`);
   }
 
   return { addedTramites, addedPrestadores, addedFolletos, addedPracticas, addedCentros };
+}
+
+export async function migrateData() {
+  const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
+  const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+  const batch = writeBatch(db);
+  let migrated = 0;
+
+  // 1. Migrate Tramites
+  tramitesSnap.docs.forEach(docSnap => {
+    const t = docSnap.data() as Tramite;
+    let needsUpdate = false;
+    const updates: any = {};
+
+    // 1. Migrate "Afiliaciones y expedientes" to "Afiliaciones"
+    if (t.categoria === 'Afiliaciones y expedientes') {
+      updates.categoria = 'Afiliaciones';
+      needsUpdate = true;
+    }
+
+    // 2. Fix Expedientes and Reintegros categories
+    if ((t.nombre === 'Expedientes' || t.nombre === 'Reintegros') && 
+        (t.categoria === 'Afiliaciones' || t.categoria === 'Afiliaciones y expedientes')) {
+      updates.categoria = t.nombre === 'Expedientes' ? 'Expediente GDE' : 'Reintegros';
+      needsUpdate = true;
+    }
+
+    // 3. Migrate Oxygen related trámites to "Oxigenoterapia"
+    if (t.nombre.toLowerCase().includes('oxigeno') && t.categoria !== 'Oxigenoterapia') {
+      updates.categoria = 'Oxigenoterapia';
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      batch.update(docSnap.ref, {
+        ...updates,
+        updatedAt: serverTimestamp()
+      });
+      migrated++;
+    }
+  });
+
+  // 2. Unify Audiology specialties in prestadores
+  const audiologySpecs = ['AUDÍFONOS', 'AUDIOMETRÍA', 'LOGOAUDIOMETRÍA'];
+  prestadoresSnap.docs.forEach(docSnap => {
+    const p = docSnap.data() as Prestador;
+    const specs = p.especialidades || [];
+    
+    // Check if it has any audiology related specialty (accented or not)
+    const hasAny = specs.some(s => {
+      const upper = s.toUpperCase();
+      return audiologySpecs.includes(upper) || 
+             upper === 'AUDIFONOS' || 
+             upper === 'AUDIOMETRIA' || 
+             upper === 'LOGOAUDIOMETRIA';
+    });
+
+    if (hasAny) {
+      // Create a new list of specialties:
+      // 1. Remove any unaccented or accented version of the three target specialties
+      // 2. Add the three canonical accented versions
+      const otherSpecs = specs.filter(s => {
+        const upper = s.toUpperCase();
+        return !audiologySpecs.includes(upper) && 
+               upper !== 'AUDIFONOS' && 
+               upper !== 'AUDIOMETRIA' && 
+               upper !== 'LOGOAUDIOMETRIA';
+      });
+
+      const newSpecs = [...otherSpecs, ...audiologySpecs];
+      
+      // Only update if the list actually changed (ignoring order)
+      const currentSorted = [...specs].sort();
+      const newSorted = [...newSpecs].sort();
+      
+      if (JSON.stringify(currentSorted) !== JSON.stringify(newSorted)) {
+        batch.update(docSnap.ref, {
+          especialidades: newSpecs,
+          updatedAt: serverTimestamp()
+        });
+        migrated++;
+      }
+    }
+  });
+
+  if (migrated > 0) {
+    await batch.commit();
+  }
+  return migrated;
 }

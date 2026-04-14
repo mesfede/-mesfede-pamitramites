@@ -479,7 +479,10 @@ export const INITIAL_PRESTADORES = [
       "NEFROLOGÍA",
       "GINECOLOGÍA Y OBSTETRICIA",
       "GASTROENTEROLOGÍA",
-      "FONOAUDIOLOGÍA"
+      "FONOAUDIOLOGÍA",
+      "AUDÍFONOS",
+      "AUDIOMETRÍA",
+      "LOGOAUDIOMETRÍA"
     ],
     "direccion": "80 Nº 570 e/ 6 y 7",
     "telefono": "221 453-3765"
@@ -646,6 +649,9 @@ export const INITIAL_PRESTADORES = [
       "GINECOLOGÍA Y OBSTETRICIA",
       "GASTROENTEROLOGÍA",
       "FONOAUDIOLOGÍA",
+      "AUDÍFONOS",
+      "AUDIOMETRÍA",
+      "LOGOAUDIOMETRÍA",
       "PALIATIVOS Y DOLOR"
     ],
     "direccion": "116 Nº 228 e/ 36 y 37",
@@ -665,6 +671,9 @@ export const INITIAL_PRESTADORES = [
       "HEPATOLOGIA",
       "GASTROENTEROLOGÍA",
       "FONOAUDIOLOGÍA",
+      "AUDÍFONOS",
+      "AUDIOMETRÍA",
+      "LOGOAUDIOMETRÍA",
       "DIABETOLOGÍA",
       "PALIATIVOS Y DOLOR",
       "ELECTROFISIOLOGIA"
@@ -681,6 +690,9 @@ export const INITIAL_PRESTADORES = [
       "GINECOLOGÍA Y OBSTETRICIA",
       "GASTROENTEROLOGÍA",
       "FONOAUDIOLOGÍA",
+      "AUDÍFONOS",
+      "AUDIOMETRÍA",
+      "LOGOAUDIOMETRÍA",
       "NUTRICIÓN"
     ],
     "direccion": "508 e/ 18 y 19",
@@ -794,7 +806,7 @@ export const INITIAL_PRESTADORES = [
   },
   {
     "nombre": "VISIONAIRE",
-    "especialidades": ["OTORRINO / FONOAUDIO"],
+    "especialidades": ["OTORRINO / FONOAUDIO", "AUDÍFONOS", "AUDIOMETRÍA", "LOGOAUDIOMETRÍA"],
     "direccion": "53 esq. 8",
     "whatsapp": "2214959953"
   },

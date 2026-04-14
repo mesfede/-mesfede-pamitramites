@@ -1028,7 +1028,7 @@ export const PRACTICAS_OME: PracticaOME[] = [
   { codigo: '660936', descripcion: 'TRASLADO EN AMBULANCIA (CON EQUIPAMIENTO / LARGA DISTANCIA)', descImpresa: 'TRASLADO AMBULANCIA EQUIPADA', modulo: 'TRASLADOS', responsable: 'Médico Auditor' },
   { codigo: '660937', descripcion: 'TRASLADO EN UNIDAD DE TRASLADO ESPECIAL (UTIM / OTROS)', descImpresa: 'TRASLADO UTIM', modulo: 'TRASLADOS', responsable: 'Médico Auditor', sinonimo: 'UTIM' },
   { codigo: '660938', descripcion: 'PROTESIS Y ORTESIS (PROVISION SEGUN PRESCRIPCION)', descImpresa: 'PROTESIS Y ORTESIS', modulo: 'OTROS SERVICIOS Y SUMINISTROS', responsable: 'Médico Auditor' },
-  { codigo: '660939', descripcion: 'AUDIFONOS (PROVISION SEGUN PRESCRIPCION)', descImpresa: 'AUDIFONOS', modulo: 'OTROS SERVICIOS Y SUMINISTROS', responsable: 'Médico Auditor' },
+  { codigo: '660939', descripcion: 'AUDÍFONOS (PROVISION SEGUN PRESCRIPCION)', descImpresa: 'AUDÍFONOS', modulo: 'OTROS SERVICIOS Y SUMINISTROS', responsable: 'Médico Auditor' },
   { codigo: '660940', descripcion: 'ELEMENTOS DE OPTICA (ANTEOJOS / LENTES DE CONTACTO)', descImpresa: 'ELEMENTOS DE OPTICA', modulo: 'OTROS SERVICIOS Y SUMINISTROS', responsable: 'Médico Auditor', sinonimo: 'ANTEOJOS LENTES DE CONTACTO' },
   { codigo: '660941', descripcion: 'MEDICAMENTOS (DISPENSACION SEGUN VADEMECUM)', descImpresa: 'MEDICAMENTOS', modulo: 'OTROS SERVICIOS Y SUMINISTROS', responsable: 'Médico Auditor', sinonimo: 'VADEMECUM' },
   { codigo: '660942', descripcion: 'DESCARTABLES Y MATERIALES ESPECIALES', descImpresa: 'DESCARTABLES', modulo: 'OTROS SERVICIOS Y SUMINISTROS', responsable: 'Médico Auditor' },

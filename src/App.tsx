@@ -83,13 +83,15 @@ import {
   deleteFolleto,
   cleanupPrestadores,
   cleanupTramites,
+  cleanupPracticas,
   seedDatabase,
   uploadFile,
   testConnection,
   subscribeToCentrosCoordinadores,
   addCentroCoordinador,
   updateCentroCoordinador,
-  deleteCentroCoordinador
+  deleteCentroCoordinador,
+  migrateData
 } from './services/firestore';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
@@ -298,6 +300,8 @@ export default function App() {
   const [formAddress, setFormAddress] = useState("");
   const [formLocality, setFormLocality] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLocalities, setSelectedLocalities] = useState<string[]>([]);
+  const [isPrintingPrestadores, setIsPrintingPrestadores] = useState(false);
   const ITEMS_PER_PAGE = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -427,6 +431,7 @@ export default function App() {
   }, []);
 
   // Auto-migrate Expedientes and Reintegros if they are still in the old category
+  const migrationRan = useRef(false);
   useEffect(() => {
     const migrateCategories = async () => {
       // 1. Migrate "Afiliaciones y expedientes" to "Afiliaciones"
@@ -469,7 +474,8 @@ export default function App() {
       }
     };
 
-    if (isAdmin && tramites.length > 0) {
+    if (isAdmin && tramites.length > 0 && !migrationRan.current) {
+      migrationRan.current = true;
       migrateCategories();
     }
   }, [tramites, isAdmin]);
@@ -577,7 +583,22 @@ export default function App() {
     });
 
     if (searchNorm === "") {
-      return filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      const sorted = [...filtered].sort((a, b) => a.nombre.localeCompare(b.nombre));
+      
+      // Priority sorting: La Plata, City Bell, Villa Elisa first
+      const priorityZones = ['LA PLATA', 'CITY BELL', 'VILLA ELISA', 'GONNET', 'TOLOSA', 'RINGUELET'];
+      
+      return sorted.sort((a, b) => {
+        const locA = (a.localidad || '').toUpperCase();
+        const locB = (b.localidad || '').toUpperCase();
+        
+        const isPriorityA = priorityZones.some(z => locA.includes(z));
+        const isPriorityB = priorityZones.some(z => locB.includes(z));
+        
+        if (isPriorityA && !isPriorityB) return -1;
+        if (!isPriorityA && isPriorityB) return 1;
+        return 0;
+      });
     }
 
     return filtered.sort((a, b) => {
@@ -602,6 +623,124 @@ export default function App() {
       return nameA.localeCompare(nameB);
     });
   }, [prestadores, prestadorSearch, selectedSpecialty]);
+
+  const availableLocalities = useMemo(() => {
+    const locs = new Set<string>();
+    filteredPrestadores.forEach(p => {
+      if (p.localidad) locs.add(p.localidad.trim().toUpperCase());
+    });
+    return Array.from(locs).sort();
+  }, [filteredPrestadores]);
+
+  const prestadoresToPrint = useMemo(() => {
+    return filteredPrestadores.filter(p => {
+      const loc = (p.localidad || '').trim().toUpperCase();
+      return selectedLocalities.includes(loc);
+    });
+  }, [filteredPrestadores, selectedLocalities]);
+
+  const handlePrintPrestadores = () => {
+    if (selectedLocalities.length === 0) {
+      alert("Por favor, selecciona al menos una localidad para imprimir.");
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const specialtyTitle = selectedSpecialty || prestadorSearch || 'Listado de Prestadores';
+    
+    // Group by locality for organized printing
+    const grouped = prestadoresToPrint.reduce((acc, p) => {
+      const loc = (p.localidad || 'OTRAS LOCALIDADES').toUpperCase();
+      if (!acc[loc]) acc[loc] = [];
+      acc[loc].push(p);
+      return acc;
+    }, {} as Record<string, Prestador[]>);
+
+    const localities = Object.keys(grouped).sort((a, b) => {
+      const priorityZones = ['LA PLATA', 'CITY BELL', 'VILLA ELISA', 'GONNET', 'TOLOSA', 'RINGUELET'];
+      const isPriorityA = priorityZones.some(z => a.includes(z));
+      const isPriorityB = priorityZones.some(z => b.includes(z));
+      if (isPriorityA && !isPriorityB) return -1;
+      if (!isPriorityA && isPriorityB) return 1;
+      return a.localeCompare(b);
+    });
+
+    const html = `
+      <html>
+        <head>
+          <title>Prestadores - ${specialtyTitle}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1a202c; line-height: 1.5; }
+            .header { border-bottom: 3px solid #0b2344; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .specialty-title { color: #0b2344; font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; }
+            .pami-info { text-align: right; color: #718096; line-height: 1.2; }
+            .pami-info .agency { font-size: 14px; font-weight: 700; color: #0b2344; }
+            .pami-info .ugl { font-size: 11px; }
+            .locality-section { margin-bottom: 30px; }
+            .locality-title { font-size: 18px; font-weight: 700; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; break-after: avoid; }
+            .locality-title::before { content: ""; display: inline-block; width: 4px; height: 18px; background: #0b2344; border-radius: 2px; }
+            .prestador-card { margin-bottom: 15px; padding: 12px; border: 1px solid #edf2f7; border-radius: 8px; break-inside: avoid; background-color: #fff; }
+            .prestador-name { font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 4px; text-transform: uppercase; }
+            .prestador-info { font-size: 13px; color: #4a5568; display: flex; flex-wrap: wrap; gap: 15px; }
+            .info-item { display: flex; align-items: center; gap: 5px; }
+            .footer { margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 10px; color: #a0aec0; text-align: center; }
+            @media print {
+              @page { margin: 1.5cm; }
+              body { padding: 0; margin: 0; }
+              .no-print { display: none; }
+              .header { margin-top: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="specialty-title">${specialtyTitle}</div>
+            <div class="pami-info">
+              <div class="agency">PAMI Agencia Citybell</div>
+              <div class="ugl">Guía de Prestadores - UGL VII La Plata</div>
+            </div>
+          </div>
+
+          ${localities.map(loc => `
+            <div class="locality-section">
+              <div class="locality-title">${loc}</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                ${grouped[loc].map(p => `
+                  <div class="prestador-card">
+                    <div class="prestador-name">${p.nombre}</div>
+                    <div class="prestador-info">
+                      ${p.direccion ? `<div class="info-item"><strong>Dir:</strong> ${p.direccion}</div>` : ''}
+                      ${p.telefono ? `<div class="info-item"><strong>Tel:</strong> ${p.telefono}</div>` : ''}
+                      ${p.whatsapp ? `<div class="info-item"><strong>WA:</strong> ${p.whatsapp}</div>` : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+
+          <div class="footer">
+            Guía de Trámites Agencia Citybell v1.0
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  const toggleLocality = (loc: string) => {
+    setSelectedLocalities(prev => 
+      prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
+    );
+  };
 
   const filteredPracticas = useMemo(() => {
     const normalize = (str: string) => 
@@ -961,8 +1100,10 @@ export default function App() {
     setAdminMessage(null);
     try {
       const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS, PRACTICAS_OME, INITIAL_CENTROS_COORDINADORES);
+      const migrated = await migrateData();
+      
       setAdminMessage({ 
-        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas y ${result.addedCentros} centros nuevos.`,
+        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas y ${result.addedCentros} centros nuevos. Se migraron ${migrated} registros.`,
         type: 'success'
       });
     } catch (err) {
@@ -991,11 +1132,15 @@ export default function App() {
     setIsSaving(true);
     setAdminMessage(null);
     try {
-      const deleted = await cleanupTramites();
-      setAdminMessage({ text: `Se eliminaron ${deleted} trámites duplicados.`, type: 'success' });
+      const deletedTramites = await cleanupTramites();
+      const deletedPracticas = await cleanupPracticas();
+      setAdminMessage({ 
+        text: `Se eliminaron ${deletedTramites} trámites y ${deletedPracticas} prácticas duplicadas.`, 
+        type: 'success' 
+      });
     } catch (err) {
-      console.error("Error cleaning up tramites duplicates:", err);
-      setAdminMessage({ text: "Error al limpiar trámites duplicados.", type: 'error' });
+      console.error("Error cleaning up duplicates:", err);
+      setAdminMessage({ text: "Error al limpiar duplicados.", type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -1029,208 +1174,196 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-pami-bg font-sans text-pami-text">
-      {/* Header */}
-      <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-y-2">
-          <div className="flex items-center gap-2 sm:gap-3 sm:pl-6">
-            <PamiLogo className="h-7 sm:h-8 text-white shrink-0" />
-            <div className="w-px h-6 bg-white/30 mx-1 sm:mx-2"></div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
-              <h1 className="text-sm sm:text-lg font-semibold leading-tight">
-                Guía de Trámites <span className="font-light block sm:inline">Agencia Citybell</span>
-              </h1>
-              <span className="text-[8px] sm:text-[9px] text-white/60 tracking-wider">Versión 1.0 @mesfede</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col items-end">
-                  <span className="text-xs font-bold truncate max-w-[150px]">{user.displayName || user.email}</span>
-                  <span className="text-[9px] uppercase tracking-wider opacity-70 font-bold">
-                    {isAdmin ? 'Administrador' : 'Solo Lectura'}
-                  </span>
+      {!user ? (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-pami-blue/5 to-pami-cyan/5">
+          <Login />
+        </div>
+      ) : (
+        <>
+          {/* Header */}
+          <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
+            <div className="max-w-7xl mx-auto px-4 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-y-2">
+              <div className="flex items-center gap-2 sm:gap-3 sm:pl-6">
+                <PamiLogo className="h-7 sm:h-8 text-white shrink-0" />
+                <div className="w-px h-6 bg-white/30 mx-1 sm:mx-2"></div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
+                  <h1 className="text-sm sm:text-lg font-semibold leading-tight">
+                    Guía de Trámites <span className="font-light block sm:inline">Agencia Citybell</span>
+                  </h1>
+                  <span className="text-[8px] sm:text-[9px] text-white/60 tracking-wider">Versión 1.0 @mesfede</span>
                 </div>
-                <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=random`} alt="User" className="w-8 h-8 rounded-full border-2 border-white/20" referrerPolicy="no-referrer" />
-                <Button variant="ghost" className="text-white hover:bg-white/10 p-2 h-8 w-8" onClick={logout}>
-                  <LogOut size={14} />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs font-bold truncate max-w-[150px]">{user.displayName || user.email}</span>
+                    <span className="text-[9px] uppercase tracking-wider opacity-70 font-bold">
+                      {isAdmin ? 'Administrador' : 'Solo Lectura'}
+                    </span>
+                  </div>
+                  <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=random`} alt="User" className="w-8 h-8 rounded-full border-2 border-white/20" referrerPolicy="no-referrer" />
+                  <Button variant="ghost" className="text-white hover:bg-white/10 p-2 h-8 w-8" onClick={logout}>
+                    <LogOut size={14} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Tabs */}
+            <div className="relative bg-pami-blue/95 backdrop-blur-sm border-t border-white/10">
+              <div className="max-w-7xl mx-auto px-2 sm:px-4 flex overflow-x-auto no-scrollbar scroll-smooth">
+                <button 
+                  onClick={() => setActiveTab('tramites')}
+                  className={cn(
+                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                    activeTab === 'tramites' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                  )}
+                >
+                  <FileText size={16} className="shrink-0" />
+                  Trámites y Prácticas
+                </button>
+                <button 
+                  onClick={() => setActiveTab('prestadores')}
+                  className={cn(
+                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                    activeTab === 'prestadores' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                  )}
+                >
+                  <Stethoscope size={16} className="shrink-0" />
+                  Prestadores
+                </button>
+                <button 
+                  onClick={() => setActiveTab('practicas')}
+                  className={cn(
+                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                    activeTab === 'practicas' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                  )}
+                >
+                  <Activity size={16} className="shrink-0" />
+                  Prácticas OME
+                </button>
+                <button 
+                  onClick={() => setActiveTab('centros')}
+                  className={cn(
+                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                    activeTab === 'centros' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                  )}
+                >
+                  <Hospital size={16} className="shrink-0" />
+                  C. Coordinadores
+                </button>
+                <button 
+                  onClick={() => setActiveTab('folletos')}
+                  className={cn(
+                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                    activeTab === 'folletos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                  )}
+                >
+                  <BookOpen size={16} className="shrink-0" />
+                  Folletos
+                </button>
+                {isAdmin && (
+                  <button 
+                    onClick={() => setActiveTab('admin')}
+                    className={cn(
+                      "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                      activeTab === 'admin' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                    )}
+                  >
+                    <Settings size={16} className="shrink-0" />
+                    Administrar
+                  </button>
+                )}
+              </div>
+              {/* Visual indicator for more content on mobile */}
+              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-pami-blue to-transparent pointer-events-none sm:hidden"></div>
+            </div>
+
+            {/* Integrated Search Bar for Tramites */}
+            {activeTab === 'tramites' && (
+              <div className="bg-white border-t border-gray-200 py-2 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-4 items-center">
+                  {/* Primary Search: Internal Tramites */}
+                  <div className="flex-grow flex items-center gap-3 w-full md:pl-6">
+                    <div className="flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
+                      <Search size={16} />
+                      <h3 className="text-sm font-medium">Buscar trámite</h3>
+                    </div>
+                    <div className="relative flex-grow">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={16} />
+                      <Input 
+                        placeholder="Ej: Reintegro, Pañales..." 
+                        className="pl-9 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-blue focus:border-pami-blue focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+
+                  {/* SIMAP Link */}
+                  <button 
+                    onClick={handleSimapClick}
+                    className="flex items-center gap-2 px-5 py-1.5 bg-pami-blue/5 hover:bg-pami-blue/10 text-[#1d438a] rounded-lg transition-all border border-pami-blue/10 shrink-0 group"
+                    title="Ir a SIMAP PAMI"
+                  >
+                    <span className="text-lg font-varela font-bold tracking-tight">SIMAP</span>
+                  </button>
+
+                  {/* Divider */}
+                  <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+
+                  {/* Secondary Search: Google Search */}
+                  <div className="md:w-[300px] flex items-center gap-3 w-full shrink-0">
+                    <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16px" height="16px" className="bg-transparent p-0">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                      </svg>
+                      <h3 className="text-sm font-medium text-pami-muted">Google</h3>
+                    </div>
+                    <form onSubmit={handleGoogleSearch} className="relative flex-grow">
+                      <Input 
+                        placeholder="Consulta externa..." 
+                        className="pr-10 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-cyan focus:border-pami-cyan focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
+                        value={aiSearch}
+                        onChange={(e) => setAiSearch(e.target.value)}
+                      />
+                      <button 
+                        type="submit"
+                        disabled={!aiSearch.trim()}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-pami-cyan hover:text-pami-blue hover:bg-pami-blue/5 rounded transition-colors disabled:opacity-30"
+                      >
+                        <ArrowRight size={16} />
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 py-8">
+            {!isViewer ? (
+              <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-2xl mx-auto">
+                <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Shield size={40} />
+                </div>
+                <h2 className="text-2xl font-bold text-pami-text mb-4">Acceso Restringido</h2>
+                <p className="text-pami-muted px-8">
+                  Tu cuenta ({user.email}) aún no tiene permisos para ver el contenido. 
+                  Por favor, contacta a un administrador para que te asigne el rol de "Solo Lectura".
+                </p>
+                <Button variant="ghost" onClick={() => logout()} className="mt-8">
+                  Cerrar Sesión
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col items-end gap-1">
-                <div className="flex items-center gap-2 text-white/80">
-                  <LogIn size={14} />
-                  <span className="text-xs font-medium">Inicia sesión para continuar</span>
-                </div>
-                {loginError && (
-                  <span className="text-[10px] text-red-200 bg-red-900/50 px-2 py-1 rounded animate-pulse">
-                    {loginError}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Tabs */}
-        <div className="relative bg-pami-blue/95 backdrop-blur-sm border-t border-white/10">
-          <div className="max-w-7xl mx-auto px-2 sm:px-4 flex overflow-x-auto no-scrollbar scroll-smooth">
-            <button 
-              onClick={() => setActiveTab('tramites')}
-              className={cn(
-                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                activeTab === 'tramites' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-              )}
-            >
-              <FileText size={16} className="shrink-0" />
-              Trámites y Prácticas
-            </button>
-            <button 
-              onClick={() => setActiveTab('prestadores')}
-              className={cn(
-                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                activeTab === 'prestadores' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-              )}
-            >
-              <Stethoscope size={16} className="shrink-0" />
-              Prestadores
-            </button>
-            <button 
-              onClick={() => setActiveTab('practicas')}
-              className={cn(
-                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                activeTab === 'practicas' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-              )}
-            >
-              <Activity size={16} className="shrink-0" />
-              Prácticas OME
-            </button>
-            <button 
-              onClick={() => setActiveTab('centros')}
-              className={cn(
-                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                activeTab === 'centros' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-              )}
-            >
-              <Hospital size={16} className="shrink-0" />
-              C. Coordinadores
-            </button>
-            <button 
-              onClick={() => setActiveTab('folletos')}
-              className={cn(
-                "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                activeTab === 'folletos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-              )}
-            >
-              <BookOpen size={16} className="shrink-0" />
-              Folletos
-            </button>
-            {isAdmin && (
-              <button 
-                onClick={() => setActiveTab('admin')}
-                className={cn(
-                  "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                  activeTab === 'admin' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
-                )}
-              >
-                <Settings size={16} className="shrink-0" />
-                Administrar
-              </button>
-            )}
-          </div>
-          {/* Visual indicator for more content on mobile */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-pami-blue to-transparent pointer-events-none sm:hidden"></div>
-        </div>
-
-        {/* Integrated Search Bar for Tramites */}
-        {activeTab === 'tramites' && (
-          <div className="bg-white border-t border-gray-200 py-2 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-4 items-center">
-              {/* Primary Search: Internal Tramites */}
-              <div className="flex-grow flex items-center gap-3 w-full md:pl-6">
-                <div className="flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
-                  <Search size={16} />
-                  <h3 className="text-sm font-medium">Buscar trámite</h3>
-                </div>
-                <div className="relative flex-grow">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={16} />
-                  <Input 
-                    placeholder="Ej: Reintegro, Pañales..." 
-                    className="pl-9 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-blue focus:border-pami-blue focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="hidden md:block w-px h-6 bg-gray-200"></div>
-
-              {/* SIMAP Link */}
-              <button 
-                onClick={handleSimapClick}
-                className="flex items-center gap-2 px-5 py-1.5 bg-pami-blue/5 hover:bg-pami-blue/10 text-[#1d438a] rounded-lg transition-all border border-pami-blue/10 shrink-0 group"
-                title="Ir a SIMAP PAMI"
-              >
-                <span className="text-lg font-varela font-bold tracking-tight">SIMAP</span>
-              </button>
-
-              {/* Divider */}
-              <div className="hidden md:block w-px h-6 bg-gray-200"></div>
-
-              {/* Secondary Search: Google Search */}
-              <div className="md:w-[300px] flex items-center gap-3 w-full shrink-0">
-                <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16px" height="16px" className="bg-transparent p-0">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                  </svg>
-                  <h3 className="text-sm font-medium text-pami-muted">Google</h3>
-                </div>
-                <form onSubmit={handleGoogleSearch} className="relative flex-grow">
-                  <Input 
-                    placeholder="Consulta externa..." 
-                    className="pr-10 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-cyan focus:border-pami-cyan focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
-                    value={aiSearch}
-                    onChange={(e) => setAiSearch(e.target.value)}
-                  />
-                  <button 
-                    type="submit"
-                    disabled={!aiSearch.trim()}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-pami-cyan hover:text-pami-blue hover:bg-pami-blue/5 rounded transition-colors disabled:opacity-30"
-                  >
-                    <ArrowRight size={16} />
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {!user ? (
-          <div className="py-12">
-            <Login />
-          </div>
-        ) : !isViewer ? (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-2xl mx-auto">
-            <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Shield size={40} />
-            </div>
-            <h2 className="text-2xl font-bold text-pami-text mb-4">Acceso Restringido</h2>
-            <p className="text-pami-muted px-8">
-              Tu cuenta ({user.email}) aún no tiene permisos para ver el contenido. 
-              Por favor, contacta a un administrador para que te asigne el rol de "Solo Lectura".
-            </p>
-            <Button variant="ghost" onClick={() => logout()} className="mt-8">
-              Cerrar Sesión
-            </Button>
-          </div>
-        ) : (
           <>
         {activeTab === 'tramites' && (
           <div className="space-y-6">
@@ -1685,15 +1818,92 @@ export default function App() {
                 <h2 className="text-2xl font-semibold text-pami-text">Cartilla de Prestadores</h2>
                 <p className="text-sm text-pami-muted">{filteredPrestadores.length} centros encontrados</p>
               </div>
-              {isAdmin && (
-                <Button 
-                  onClick={() => { setEditingPrestador(null); setIsPrestadorModalOpen(true); }}
-                >
-                  <Plus size={18} className="mr-2" />
-                  Nuevo Prestador
-                </Button>
-              )}
+              <div className="flex items-center gap-3">
+                {(selectedSpecialty || prestadorSearch) && filteredPrestadores.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    className="border-pami-cyan text-pami-cyan hover:bg-pami-cyan/5"
+                    onClick={() => {
+                      setSelectedLocalities([]);
+                      setIsPrintingPrestadores(true);
+                    }}
+                  >
+                    <Printer size={18} className="mr-2" />
+                    Preparar Impresión
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button 
+                    onClick={() => { setEditingPrestador(null); setIsPrestadorModalOpen(true); }}
+                  >
+                    <Plus size={18} className="mr-2" />
+                    Nuevo Prestador
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {isPrintingPrestadores && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-pami-blue/5 border border-pami-blue/20 rounded-2xl p-6 space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-pami-blue text-white rounded-full flex items-center justify-center">
+                      <Printer size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-pami-text">Opciones de Impresión</h3>
+                      <p className="text-xs text-pami-muted">Selecciona qué localidades incluir en el listado para el afiliado</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsPrintingPrestadores(false)}
+                    className="p-2 hover:bg-pami-blue/10 rounded-full text-pami-muted transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-pami-blue">Localidades Disponibles</p>
+                  <div className="flex flex-wrap gap-2">
+                    {availableLocalities.map(loc => (
+                      <button
+                        key={loc}
+                        onClick={() => toggleLocality(loc)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 border",
+                          selectedLocalities.includes(loc)
+                            ? "bg-pami-blue text-white border-pami-blue shadow-sm"
+                            : "bg-white text-pami-muted border-gray-200 hover:border-pami-blue/30"
+                        )}
+                      >
+                        {selectedLocalities.includes(loc) ? <CheckCircle2 size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-300" />}
+                        {loc}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 flex items-center justify-between border-t border-pami-blue/10">
+                  <span className="text-sm font-medium text-pami-blue">
+                    {prestadoresToPrint.length} prestadores seleccionados para imprimir
+                  </span>
+                  <div className="flex gap-3">
+                    <Button variant="ghost" onClick={() => setIsPrintingPrestadores(false)}>Cancelar</Button>
+                    <Button 
+                      onClick={handlePrintPrestadores}
+                    >
+                      <Printer size={18} className="mr-2" />
+                      Generar Listado para Imprimir
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2893,6 +3103,8 @@ export default function App() {
           </p>
         </div>
       </footer>
+      </>
+      )}
     </div>
   );
 }
