@@ -243,6 +243,176 @@ const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose:
   </AnimatePresence>
 );
 
+const PrestadorCard = ({ 
+  p, 
+  isAdmin, 
+  onEdit, 
+  onDelete, 
+  searchTerm, 
+  selectedSpecialty 
+}: { 
+  p: Prestador, 
+  isAdmin: boolean, 
+  onEdit: () => void, 
+  onDelete: (e: React.MouseEvent) => void,
+  searchTerm: string,
+  selectedSpecialty: string
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const normalize = (str: string) => 
+    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const searchNorm = normalize(searchTerm.trim());
+  const specialtyNorm = normalize(selectedSpecialty);
+
+  // Identify which specialties match the search
+  const matchingSpecs = p.especialidades.filter(s => {
+    const sNorm = normalize(s);
+    if (selectedSpecialty && sNorm === specialtyNorm) return true;
+    if (searchTerm && sNorm.includes(searchNorm)) return true;
+    return false;
+  });
+
+  // If no search, show the first one as primary
+  const primarySpecs = matchingSpecs.length > 0 ? matchingSpecs : [p.especialidades[0]];
+  const otherSpecs = p.especialidades.filter(s => !primarySpecs.includes(s));
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-lg font-bold text-pami-text flex items-center gap-2">
+          <Hospital size={18} className="text-pami-blue" />
+          {p.nombre}
+        </h3>
+        {isAdmin && (
+          <div className="flex gap-1">
+            <button 
+              onClick={onEdit}
+              className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
+              title="Editar prestador"
+            >
+              <Edit2 size={14} />
+            </button>
+            <button 
+              onClick={onDelete}
+              className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+              title="Eliminar prestador"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+      
+      <div className="space-y-4 flex-1">
+        {(p.direccion || p.localidad) && (
+          <div className="flex items-start gap-2 text-sm text-pami-muted">
+            {p.direccion ? (
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.direccion}${p.localidad ? `, ${p.localidad}` : ''}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 mt-0.5 text-pami-blue hover:scale-110 transition-transform"
+                title="Ver en Google Maps"
+              >
+                <MapPin size={18} />
+              </a>
+            ) : (
+              <Globe size={16} className="shrink-0 mt-0.5 opacity-60" />
+            )}
+            <span>{p.direccion}{p.localidad ? `, ${p.localidad}` : ''}</span>
+          </div>
+        )}
+
+        {(p.telefono || p.whatsapp) && (
+          <div className="flex flex-col gap-2">
+            {p.telefono && (
+              <div className="flex items-center gap-2 text-sm text-pami-muted">
+                <Phone size={16} className="shrink-0 opacity-60" />
+                <span>{p.telefono}</span>
+              </div>
+            )}
+            {p.whatsapp && (
+              <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+                <MessageCircle size={16} className="shrink-0 fill-green-600/10" />
+                <span>{p.whatsapp}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {p.email && (
+          <div className="flex items-center gap-2 text-sm text-pami-muted">
+            <Mail size={16} className="shrink-0 opacity-60" />
+            <span className="truncate">{p.email}</span>
+          </div>
+        )}
+
+        {p.especialidades && p.especialidades.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">Especialidades / Prácticas</p>
+            <div className="flex flex-wrap gap-1.5">
+              {primarySpecs.map((e, idx) => (
+                <span key={`${e}-${idx}`} className="text-[10px] bg-pami-blue/10 text-pami-blue px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-pami-blue/20">
+                  {e}
+                </span>
+              ))}
+              
+              {otherSpecs.length > 0 && (
+                <button 
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className={cn(
+                    "text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest transition-all flex items-center gap-2 border shadow-sm",
+                    isExpanded 
+                      ? "bg-pami-blue text-white border-pami-blue" 
+                      : "bg-white text-pami-blue border-pami-blue/30 hover:bg-pami-blue/5"
+                  )}
+                >
+                  {isExpanded ? 'VER MENOS' : `VER MÁS (${otherSpecs.length})`}
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="flex items-center justify-center"
+                  >
+                    <ChevronDown size={14} strokeWidth={3} />
+                  </motion.div>
+                </button>
+              )}
+            </div>
+
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {otherSpecs.map((e, idx) => (
+                      <span key={`${e}-${idx}`} className="text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full font-medium uppercase tracking-wide border border-gray-100">
+                        {e}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {p.notas && (
+          <div className="bg-gray-50 p-3 rounded-lg text-xs text-pami-muted flex gap-2">
+            <AlertCircle size={14} className="shrink-0 text-pami-muted" />
+            <p>{p.notas}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // --- Main App ---
 
 const LIBRARIES: ("places")[] = ["places"];
@@ -260,6 +430,7 @@ export default function App() {
   const [folletos, setFolletos] = useState<Folleto[]>([]);
   const [practicas, setPracticas] = useState<PracticaOME[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [search, setSearch] = useState('');
   const [prestadorSearch, setPrestadorSearch] = useState('');
   const [folletoSearch, setFolletoSearch] = useState('');
@@ -394,7 +565,6 @@ export default function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        // Fetch user role from Firestore
         try {
           const userDoc = await getDoc(doc(db, 'users', u.uid));
           if (userDoc.exists()) {
@@ -409,8 +579,26 @@ export default function App() {
       } else {
         setUserRole(null);
       }
+      setIsAuthReady(true);
       setLoading(false);
     });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    // Wait until auth state is determined
+    if (!isAuthReady) return;
+
+    // Only subscribe if we have a user
+    if (!user) {
+      setTramites([]);
+      setPrestadores([]);
+      setFolletos([]);
+      setPracticas([]);
+      setCentrosCoordinadores([]);
+      return;
+    }
 
     const unsubscribeTramites = subscribeToTramites(setTramites);
     const unsubscribePrestadores = subscribeToPrestadores(setPrestadores);
@@ -421,14 +609,13 @@ export default function App() {
     testConnection();
 
     return () => {
-      unsubscribeAuth();
       unsubscribeTramites();
       unsubscribePrestadores();
       unsubscribeFolletos();
       unsubscribePracticas();
       unsubscribeCentros();
     };
-  }, []);
+  }, [isAuthReady, user]);
 
   // Auto-migrate Expedientes and Reintegros if they are still in the old category
   const migrationRan = useRef(false);
@@ -672,22 +859,22 @@ export default function App() {
           <title>Prestadores - ${specialtyTitle}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1a202c; line-height: 1.5; }
-            .header { border-bottom: 3px solid #0b2344; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .specialty-title { color: #0b2344; font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; }
-            .pami-info { text-align: right; color: #718096; line-height: 1.2; }
-            .pami-info .agency { font-size: 14px; font-weight: 700; color: #0b2344; }
-            .pami-info .ugl { font-size: 11px; }
-            .locality-section { margin-bottom: 30px; }
-            .locality-title { font-size: 18px; font-weight: 700; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; break-after: avoid; }
-            .locality-title::before { content: ""; display: inline-block; width: 4px; height: 18px; background: #0b2344; border-radius: 2px; }
-            .prestador-card { margin-bottom: 15px; padding: 12px; border: 1px solid #edf2f7; border-radius: 8px; break-inside: avoid; background-color: #fff; }
-            .prestador-name { font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 4px; text-transform: uppercase; }
-            .prestador-info { font-size: 13px; color: #4a5568; display: flex; flex-wrap: wrap; gap: 15px; }
-            .info-item { display: flex; align-items: center; gap: 5px; }
-            .footer { margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 10px; color: #a0aec0; text-align: center; }
+            body { font-family: 'Inter', sans-serif; padding: 30px; color: #1a202c; line-height: 1.3; }
+            .header { border-bottom: 2px solid #0b2344; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .specialty-title { color: #0b2344; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; }
+            .pami-info { text-align: right; color: #718096; line-height: 1.1; }
+            .pami-info .agency { font-size: 12px; font-weight: 700; color: #0b2344; }
+            .pami-info .ugl { font-size: 10px; }
+            .locality-section { margin-bottom: 20px; }
+            .locality-title { font-size: 14px; font-weight: 700; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; break-after: avoid; }
+            .locality-title::before { content: ""; display: inline-block; width: 3px; height: 14px; background: #0b2344; border-radius: 1px; }
+            .prestador-card { margin-bottom: 8px; padding: 8px; border: 1px solid #edf2f7; border-radius: 6px; break-inside: avoid; background-color: #fff; }
+            .prestador-name { font-size: 12px; font-weight: 700; color: #1a202c; margin-bottom: 2px; text-transform: uppercase; }
+            .prestador-info { font-size: 11px; color: #4a5568; display: flex; flex-direction: column; gap: 2px; }
+            .info-item { display: block; }
+            .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 9px; color: #a0aec0; text-align: center; }
             @media print {
-              @page { margin: 1.5cm; }
+              @page { margin: 1cm; }
               body { padding: 0; margin: 0; }
               .no-print { display: none; }
               .header { margin-top: 0; }
@@ -706,7 +893,7 @@ export default function App() {
           ${localities.map(loc => `
             <div class="locality-section">
               <div class="locality-title">${loc}</div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                 ${grouped[loc].map(p => `
                   <div class="prestador-card">
                     <div class="prestador-name">${p.nombre}</div>
@@ -1177,6 +1364,20 @@ export default function App() {
       {!user ? (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-pami-blue/5 to-pami-cyan/5">
           <Login />
+        </div>
+      ) : !isViewer ? (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-pami-bg">
+          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4 border border-gray-100">
+            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-pami-text">Acceso Restringido</h2>
+            <p className="text-pami-muted">Tu cuenta ({user.email}) no tiene permisos para acceder a esta aplicación.</p>
+            <p className="text-sm text-pami-muted">Por favor, contacta al administrador para solicitar acceso.</p>
+            <Button variant="outline" className="w-full mt-4" onClick={logout}>
+              Cerrar Sesión
+            </Button>
+          </div>
         </div>
       ) : (
         <>
@@ -1958,99 +2159,17 @@ export default function App() {
                 </div>
               ) : (
                 filteredPrestadores.map(p => (
-                  <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all flex flex-col">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-lg font-bold text-pami-text flex items-center gap-2">
-                      <Hospital size={18} className="text-pami-blue" />
-                      {p.nombre}
-                    </h3>
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <button 
-                          onClick={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
-                          className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
-                          title="Editar prestador"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button 
-                          onClick={(e) => handleDeletePrestador(p, e)}
-                          className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          title="Eliminar prestador"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-4 flex-1">
-                    {(p.direccion || p.localidad) && (
-                      <div className="flex items-start gap-2 text-sm text-pami-muted">
-                        {p.direccion ? (
-                          <a 
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.direccion}${p.localidad ? `, ${p.localidad}` : ''}`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="shrink-0 mt-0.5 text-pami-blue hover:scale-110 transition-transform"
-                            title="Ver en Google Maps"
-                          >
-                            <MapPin size={18} />
-                          </a>
-                        ) : (
-                          <Globe size={16} className="shrink-0 mt-0.5 opacity-60" />
-                        )}
-                        <span>{p.direccion}{p.localidad ? `, ${p.localidad}` : ''}</span>
-                      </div>
-                    )}
-
-                    {(p.telefono || p.whatsapp) && (
-                      <div className="flex flex-col gap-2">
-                        {p.telefono && (
-                          <div className="flex items-center gap-2 text-sm text-pami-muted">
-                            <Phone size={16} className="shrink-0 opacity-60" />
-                            <span>{p.telefono}</span>
-                          </div>
-                        )}
-                        {p.whatsapp && (
-                          <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-                            <MessageCircle size={16} className="shrink-0 fill-green-600/10" />
-                            <span>{p.whatsapp}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {p.email && (
-                      <div className="flex items-center gap-2 text-sm text-pami-muted">
-                        <Mail size={16} className="shrink-0 opacity-60" />
-                        <span className="truncate">{p.email}</span>
-                      </div>
-                    )}
-
-                    {p.especialidades && p.especialidades.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">Especialidades / Prácticas</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {p.especialidades.map((e, idx) => (
-                            <span key={`${e}-${idx}`} className="text-[10px] bg-pami-blue/5 text-pami-blue px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                              {e}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {p.notas && (
-                      <div className="bg-gray-50 p-3 rounded-lg text-xs text-pami-muted flex gap-2">
-                        <AlertCircle size={14} className="shrink-0 text-pami-muted" />
-                        <p>{p.notas}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+                  <PrestadorCard 
+                    key={p.id}
+                    p={p}
+                    isAdmin={isAdmin || false}
+                    onEdit={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
+                    onDelete={(e) => handleDeletePrestador(p, e)}
+                    searchTerm={prestadorSearch}
+                    selectedSpecialty={selectedSpecialty}
+                  />
+                ))
+              )}
             </div>
           </div>
         )}
