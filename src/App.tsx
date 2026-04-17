@@ -2670,7 +2670,10 @@ export default function App() {
                           </div>
 
                           <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0">
-                            <div className="text-right">
+                            <div className="text-right flex items-center gap-1.5">
+                              {t.interno !== 'NO FUNCIONA' && (
+                                <span className="text-pami-muted text-sm font-semibold opacity-70">439</span>
+                              )}
                               <span className={cn(
                                 "inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-md font-black tracking-wider shadow-sm border",
                                 t.interno === 'NO FUNCIONA' 
