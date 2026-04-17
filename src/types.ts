@@ -1,3 +1,12 @@
+export interface TelefonoInterno {
+  id?: string;
+  area: string;
+  nombre: string;
+  interno: string;
+  nroInventario?: string;
+  descripcionBien?: string;
+}
+
 export interface Folleto {
   id: string;
   nombre: string;

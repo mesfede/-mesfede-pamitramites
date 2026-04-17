@@ -90,6 +90,22 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["hospital", "trabajador", "telefono"]
+    },
+    "TelefonoInterno": {
+      "title": "Teléfono Interno",
+      "description": "Información sobre teléfonos internos y áreas de la agencia.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "area": { "type": "string" },
+        "nombre": { "type": "string" },
+        "interno": { "type": "string" },
+        "nroInventario": { "type": "string" },
+        "descripcionBien": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["area", "nombre", "interno"]
     }
   },
   "firestore": {
@@ -112,6 +128,10 @@
     "/centros_coordinadores/{centroId}": {
       "schema": "CentroCoordinador",
       "description": "Colección de centros coordinadores."
+    },
+    "/telefonos/{telefonoId}": {
+      "schema": "TelefonoInterno",
+      "description": "Colección de teléfonos internos."
     }
   }
 }

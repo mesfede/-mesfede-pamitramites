@@ -91,12 +91,18 @@ import {
   addCentroCoordinador,
   updateCentroCoordinador,
   deleteCentroCoordinador,
+  subscribeToTelefonos,
+  addTelefono,
+  updateTelefono,
+  deleteTelefono,
+  deleteAllTelefonos,
   migrateData
 } from './services/firestore';
-import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
+import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
 import { PRACTICAS_OME } from './data/practicasOME';
 import { INITIAL_CENTROS_COORDINADORES } from './data/centrosCoordinadores';
+import { INITIAL_TELEFONOS } from './data/telefonos';
 import { cn } from './lib/utils';
 import { PamiLogo } from './components/PamiLogo';
 
@@ -436,7 +442,7 @@ export default function App() {
   const [folletoSearch, setFolletoSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'admin'>('tramites');
+  const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin'>('tramites');
   const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -467,12 +473,18 @@ export default function App() {
   const [practicaSearch, setPracticaSearch] = useState('');
   const [centroSearch, setCentroSearch] = useState('');
   const [centrosCoordinadores, setCentrosCoordinadores] = useState<CentroCoordinador[]>([]);
+  const [telefonos, setTelefonos] = useState<TelefonoInterno[]>([]);
   const [aiSearch, setAiSearch] = useState('');
   const [formAddress, setFormAddress] = useState("");
   const [formLocality, setFormLocality] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLocalities, setSelectedLocalities] = useState<string[]>([]);
   const [isPrintingPrestadores, setIsPrintingPrestadores] = useState(false);
+  const [telefonoSearch, setTelefonoSearch] = useState('');
+  const [isTelefonoModalOpen, setIsTelefonoModalOpen] = useState(false);
+  const [isDeleteTelefonoModalOpen, setIsDeleteTelefonoModalOpen] = useState(false);
+  const [editingTelefono, setEditingTelefono] = useState<TelefonoInterno | null>(null);
+  const [telefonoToDelete, setTelefonoToDelete] = useState<TelefonoInterno | null>(null);
   const ITEMS_PER_PAGE = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -605,6 +617,7 @@ export default function App() {
     const unsubscribeFolletos = subscribeToFolletos(setFolletos);
     const unsubscribePracticas = subscribeToPracticas(setPracticas);
     const unsubscribeCentros = subscribeToCentrosCoordinadores(setCentrosCoordinadores);
+    const unsubscribeTelefonos = subscribeToTelefonos(setTelefonos);
 
     testConnection();
 
@@ -614,6 +627,7 @@ export default function App() {
       unsubscribeFolletos();
       unsubscribePracticas();
       unsubscribeCentros();
+      unsubscribeTelefonos();
     };
   }, [isAuthReady, user]);
 
@@ -1021,6 +1035,32 @@ export default function App() {
     });
   }, [folletos, folletoSearch]);
 
+  const filteredTelefonos = useMemo(() => {
+    const normalize = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    const searchNorm = normalize(telefonoSearch.trim());
+
+    if (!searchNorm) {
+      return [...telefonos].sort((a, b) => a.area.localeCompare(b.area));
+    }
+
+    return telefonos.filter(t => 
+      normalize(t.area).includes(searchNorm) ||
+      normalize(t.nombre).includes(searchNorm) ||
+      normalize(t.interno).includes(searchNorm)
+    ).sort((a, b) => a.area.localeCompare(b.area));
+  }, [telefonos, telefonoSearch]);
+
+  const groupedTelefonos = useMemo(() => {
+    const groups: Record<string, TelefonoInterno[]> = {};
+    filteredTelefonos.forEach(t => {
+      if (!groups[t.area]) groups[t.area] = [];
+      groups[t.area].push(t);
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredTelefonos]);
+
   const filteredCentros = useMemo(() => {
     const normalize = (str: string) => 
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -1245,6 +1285,48 @@ export default function App() {
     }
   };
 
+  const handleSaveTelefono = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const formData = new FormData(e.currentTarget);
+    
+    const telefonoData: Omit<TelefonoInterno, 'id'> = {
+      area: formData.get('area') as string,
+      nombre: formData.get('nombre') as string,
+      interno: formData.get('interno') as string,
+      nroInventario: formData.get('nroInventario') as string,
+      descripcionBien: formData.get('descripcionBien') as string,
+    };
+
+    try {
+      if (editingTelefono && editingTelefono.id) {
+        await updateTelefono(editingTelefono.id, telefonoData);
+      } else {
+        await addTelefono(telefonoData);
+      }
+      setIsTelefonoModalOpen(false);
+      setEditingTelefono(null);
+    } catch (error) {
+      console.error("Error saving telefono interno:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteTelefono = async () => {
+    if (!telefonoToDelete || !telefonoToDelete.id) return;
+    setIsSaving(true);
+    try {
+      await deleteTelefono(telefonoToDelete.id);
+      setIsDeleteTelefonoModalOpen(false);
+      setTelefonoToDelete(null);
+    } catch (error) {
+      console.error("Error deleting telefono interno:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSavePrestador = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -1286,11 +1368,11 @@ export default function App() {
     setIsSaving(true);
     setAdminMessage(null);
     try {
-      const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS, PRACTICAS_OME, INITIAL_CENTROS_COORDINADORES);
+      const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS, PRACTICAS_OME, INITIAL_CENTROS_COORDINADORES, INITIAL_TELEFONOS);
       const migrated = await migrateData();
       
       setAdminMessage({ 
-        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas y ${result.addedCentros} centros nuevos. Se migraron ${migrated} registros.`,
+        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas, ${result.addedCentros} centros y ${result.addedTelefonos} teléfonos nuevos. Se migraron ${migrated} registros.`,
         type: 'success'
       });
     } catch (err) {
@@ -1463,6 +1545,16 @@ export default function App() {
                 >
                   <BookOpen size={16} className="shrink-0" />
                   Folletos
+                </button>
+                <button 
+                  onClick={() => setActiveTab('telefonos')}
+                  className={cn(
+                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
+                    activeTab === 'telefonos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                  )}
+                >
+                  <Phone size={16} className="shrink-0" />
+                  Tel
                 </button>
                 {isAdmin && (
                   <button 
@@ -2503,6 +2595,127 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'telefonos' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-pami-text">Teléfonos Internos</h2>
+                <p className="text-sm text-pami-muted">Listado de internos y áreas de la agencia</p>
+              </div>
+              {user && (
+                <Button 
+                  onClick={() => {
+                    setEditingTelefono(null);
+                    setIsTelefonoModalOpen(true);
+                  }}
+                  className="shrink-0"
+                >
+                  <Phone size={20} className="mr-2" />
+                  Nuevo Interno
+                </Button>
+              )}
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-pami-muted uppercase tracking-wider">Buscar por Área, Nombre o Interno</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                  <Input 
+                    placeholder="Ej: Sistemas, 1093, Recursos Humanos..." 
+                    className="pl-10"
+                    value={telefonoSearch}
+                    onChange={(e) => setTelefonoSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-8">
+              {groupedTelefonos.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                  <Search size={48} className="mx-auto text-gray-200 mb-4" />
+                  <p className="text-pami-muted">No se encontraron teléfonos con estos criterios.</p>
+                </div>
+              ) : (
+                groupedTelefonos.map(([area, items]) => (
+                  <motion.div 
+                    key={area}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center gap-3 px-1">
+                      <div className="w-8 h-8 bg-pami-blue/10 text-pami-blue rounded-lg flex items-center justify-center shrink-0">
+                        <Phone size={14} />
+                      </div>
+                      <h3 className="font-bold text-pami-blue uppercase text-xs tracking-[0.2em]">{area}</h3>
+                      <div className="h-px bg-pami-blue/10 flex-1"></div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+                      {items.map((t) => (
+                        <div key={t.id} className="p-4 group hover:bg-pami-blue/[0.02] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-pami-muted shrink-0 group-hover:bg-white transition-colors">
+                              <span className="text-xs font-bold">{t.nombre.charAt(0).toUpperCase()}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-pami-text leading-tight uppercase tracking-tight truncate">{t.nombre}</p>
+                              {t.nroInventario && (
+                                <p className="text-[10px] text-pami-muted font-mono mt-1">S/N: {t.nroInventario} {t.descripcionBien ? `| ${t.descripcionBien}` : ''}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0">
+                            <div className="text-right">
+                              <span className={cn(
+                                "inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-md font-black tracking-wider shadow-sm border",
+                                t.interno === 'NO FUNCIONA' 
+                                  ? "bg-red-50 text-red-600 border-red-100" 
+                                  : "bg-pami-blue text-white border-pami-blue shadow-pami-blue/20"
+                              )}>
+                                {t.interno}
+                              </span>
+                            </div>
+
+                            {user && (
+                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                  onClick={() => {
+                                    setEditingTelefono(t);
+                                    setIsTelefonoModalOpen(true);
+                                  }}
+                                  className="p-2 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-xl transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setTelefonoToDelete(t);
+                                    setIsDeleteTelefonoModalOpen(true);
+                                  }}
+                                  className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                                  title="Borrar"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'admin' && isAdmin && (
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3203,6 +3416,73 @@ export default function App() {
             <Button type="button" variant="danger" onClick={handleDeleteCentro} isLoading={isSaving}>
               <Trash2 size={18} />
               <span>Eliminar Registro</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal for Telefono Interno */}
+      <Modal 
+        isOpen={isTelefonoModalOpen} 
+        onClose={() => { setIsTelefonoModalOpen(false); setEditingTelefono(null); }}
+        title={editingTelefono ? `Editar Interno: ${editingTelefono.nombre}` : "Nuevo Interno"}
+      >
+        <form onSubmit={handleSaveTelefono} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted uppercase tracking-wider">Área / Sección</label>
+            <Input name="area" defaultValue={editingTelefono?.area} required placeholder="Ej: AUDITORIA MEDICA" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted uppercase tracking-wider">Nombre / Sub-área</label>
+            <Input name="nombre" defaultValue={editingTelefono?.nombre} required placeholder="Ej: JEFATURA" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted uppercase tracking-wider">Nro. de Interno</label>
+              <Input name="interno" defaultValue={editingTelefono?.interno} required placeholder="Ej: 1093" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted uppercase tracking-wider">Nro. de Inventario</label>
+              <Input name="nroInventario" defaultValue={editingTelefono?.nroInventario} placeholder="Ej: 595306" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted uppercase tracking-wider">Descripción del Bien</label>
+            <Input name="descripcionBien" defaultValue={editingTelefono?.descripcionBien} placeholder="Ej: TELEFONO CISCO" />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsTelefonoModalOpen(false)}>Cancelar</Button>
+            <Button type="submit" isLoading={isSaving}>
+              <CheckCircle2 size={18} />
+              <span>{editingTelefono ? "Guardar Cambios" : "Agregar Interno"}</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal for Telefono Delete Confirmation */}
+      <Modal 
+        isOpen={isDeleteTelefonoModalOpen} 
+        onClose={() => { setIsDeleteTelefonoModalOpen(false); setTelefonoToDelete(null); }}
+        title="Confirmar Eliminación de Interno"
+      >
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl text-red-700 border border-red-100">
+            <AlertCircle className="shrink-0" size={24} />
+            <p className="text-sm font-medium">
+              ¿Estás seguro de que deseas eliminar el interno <span className="font-bold uppercase">"{telefonoToDelete?.interno}"</span> de <span className="font-bold uppercase">"{telefonoToDelete?.area}"</span>? Esta acción no se puede deshacer.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsDeleteTelefonoModalOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="danger" onClick={handleDeleteTelefono} isLoading={isSaving}>
+              <Trash2 size={18} />
+              <span>Eliminar Interno</span>
             </Button>
           </div>
         </div>

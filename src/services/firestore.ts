@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import { Tramite, Prestador, Folleto, PracticaOME, CentroCoordinador } from '../types';
+import { Tramite, Prestador, Folleto, PracticaOME, CentroCoordinador, TelefonoInterno } from '../types';
 
 export async function testConnection() {
   try {
@@ -33,6 +33,7 @@ const PRESTADORES_COLLECTION = 'prestadores';
 const FOLLETOS_COLLECTION = 'folletos';
 const PRACTICAS_COLLECTION = 'practicas';
 const CENTROS_COORDINADORES_COLLECTION = 'centros_coordinadores';
+const TELEFONOS_COLLECTION = 'telefonos';
 
 enum OperationType {
   CREATE = 'create',
@@ -456,6 +457,75 @@ export async function deleteCentroCoordinador(id: string) {
   }
 }
 
+export function subscribeToTelefonos(callback: (telefonos: TelefonoInterno[]) => void) {
+  const q = query(collection(db, TELEFONOS_COLLECTION), orderBy('area', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const telefonos = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as TelefonoInterno[];
+    callback(telefonos);
+  }, (error) => {
+    handleFirestoreError(error, OperationType.LIST, TELEFONOS_COLLECTION);
+  });
+}
+
+export async function addTelefono(telefono: Omit<TelefonoInterno, 'id'>) {
+  try {
+    return await addDoc(collection(db, TELEFONOS_COLLECTION), {
+      ...telefono,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, TELEFONOS_COLLECTION);
+  }
+}
+
+export async function updateTelefono(id: string, telefono: Partial<TelefonoInterno>) {
+  try {
+    const docRef = doc(db, TELEFONOS_COLLECTION, id);
+    return await updateDoc(docRef, {
+      ...telefono,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, TELEFONOS_COLLECTION);
+  }
+}
+
+export async function deleteTelefono(id: string) {
+  try {
+    const docRef = doc(db, TELEFONOS_COLLECTION, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, TELEFONOS_COLLECTION);
+  }
+}
+
+export async function deleteAllTelefonos() {
+  try {
+    const telefonosSnap = await getDocs(collection(db, TELEFONOS_COLLECTION));
+    let deleted = 0;
+    const docs = telefonosSnap.docs;
+    
+    for (let i = 0; i < docs.length; i += 500) {
+      const batch = writeBatch(db);
+      const chunk = docs.slice(i, i + 500);
+      chunk.forEach(doc => {
+        batch.delete(doc.ref);
+        deleted++;
+      });
+      await batch.commit();
+    }
+    
+    return deleted;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, TELEFONOS_COLLECTION);
+    return 0;
+  }
+}
+
 export function subscribeToUsers(callback: (users: any[]) => void) {
   const q = query(collection(db, 'users'), orderBy('email', 'asc'));
   return onSnapshot(q, (snapshot) => {
@@ -491,7 +561,7 @@ export async function deleteUser(uid: string) {
   }
 }
 
-export async function seedDatabase(initialTramites: any[], initialPrestadores: any[], initialFolletos: any[] = [], initialPracticas: any[] = [], initialCentros: any[] = []) {
+export async function seedDatabase(initialTramites: any[], initialPrestadores: any[], initialFolletos: any[] = [], initialPracticas: any[] = [], initialCentros: any[] = [], initialTelefonos: any[] = []) {
   const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
   const existingTramiteNames = new Set(
     tramitesSnap.docs.map(doc => (doc.data().nombre || "").trim().toLowerCase())
@@ -520,11 +590,17 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     centrosSnap.docs.map(doc => `${doc.data().hospital}|${doc.data().trabajador}`.toLowerCase())
   );
 
+  const telefonosSnap = await getDocs(collection(db, TELEFONOS_COLLECTION));
+  const existingTelefonoKeys = new Set(
+    telefonosSnap.docs.map(doc => `${doc.data().area}|${doc.data().nombre}|${doc.data().interno}`.toLowerCase())
+  );
+
   let addedTramites = 0;
   let addedPrestadores = 0;
   let addedFolletos = 0;
   let addedPracticas = 0;
   let addedCentros = 0;
+  let addedTelefonos = 0;
 
   const chunks = [];
   let currentChunk = [];
@@ -647,6 +723,27 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
       }
     }
   });
+
+  initialTelefonos.forEach(t => {
+    const key = `${t.area}|${t.nombre}|${t.interno}`.toLowerCase();
+    if (!existingTelefonoKeys.has(key)) {
+      const docRef = doc(collection(db, TELEFONOS_COLLECTION));
+      currentChunk.push({
+        ref: docRef,
+        data: {
+          ...t,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }
+      });
+      existingTelefonoKeys.add(key);
+      addedTelefonos++;
+      if (currentChunk.length === 450) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+      }
+    }
+  });
   
   if (currentChunk.length > 0) {
     chunks.push(currentChunk);
@@ -662,7 +759,7 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     console.log(`Batch ${i + 1}/${chunks.length} completado.`);
   }
 
-  return { addedTramites, addedPrestadores, addedFolletos, addedPracticas, addedCentros };
+  return { addedTramites, addedPrestadores, addedFolletos, addedPracticas, addedCentros, addedTelefonos };
 }
 
 export async function migrateData() {

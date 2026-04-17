@@ -57,6 +57,16 @@ service cloud.firestore {
     //   - createdAt: timestamp
     //   - updatedAt: timestamp
     //
+    // Collection: telefonos
+    // Fields:
+    //   - area: string (required)
+    //   - nombre: string (required)
+    //   - interno: string (required)
+    //   - nroInventario: string (optional)
+    //   - descripcionBien: string (optional)
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //
     // ===============================================================
 
     // Helper Functions
@@ -71,8 +81,8 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (
-          request.auth.token.email in ["mesfede@gmail.com", "lizasomariajose@gmail.com"] ||
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == "admin")
+          request.auth.token.email.matches("(?i)^(mesfede@gmail\\.com|lizasomariajose@gmail\\.com)$") ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin")
         );
     }
 
@@ -80,7 +90,7 @@ service cloud.firestore {
       return isAuthenticated() && 
         (
           isAdmin() || 
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == "viewer")
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "viewer")
         );
     }
 
@@ -116,7 +126,18 @@ service cloud.firestore {
     function isValidCentro(data) {
       return data.hospital is string && data.hospital.size() > 0 && data.hospital.size() < 200 &&
              data.trabajador is string && data.trabajador.size() > 0 && data.trabajador.size() < 200 &&
-             data.telefono is string && data.telefono.size() > 0 && data.telefono.size() < 50;
+             data.telefono is string && data.telefono.size() > 0 && data.telefono.size() < 50 &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidTelefono(data) {
+      return data.area is string && data.area.size() > 0 && data.area.size() < 200 &&
+             data.nombre is string && data.nombre.size() > 0 && data.nombre.size() < 200 &&
+             data.interno is string && data.interno.size() > 0 && data.interno.size() < 50 &&
+             (!('nroInventario' in data) || (data.nroInventario is string && data.nroInventario.size() < 100)) &&
+             (!('descripcionBien' in data) || (data.descripcionBien is string && data.descripcionBien.size() < 500)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
     match /users/{userId} {
@@ -157,9 +178,16 @@ service cloud.firestore {
     }
 
     match /centros_coordinadores/{centroId} {
-      allow read: if isViewer();
+      allow read: if isAuthenticated();
       allow create: if isAdmin() && isValidCentro(request.resource.data);
       allow update: if isAdmin() && isValidCentro(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /telefonos/{telefonoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidTelefono(request.resource.data);
+      allow update: if isAdmin() && isValidTelefono(request.resource.data);
       allow delete: if isAdmin();
     }
   }
