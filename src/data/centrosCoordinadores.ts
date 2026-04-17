@@ -12,7 +12,7 @@ export const INITIAL_CENTROS_COORDINADORES: Omit<CentroCoordinador, 'id'>[] = [
     telefono: "221 564-2949"
   },
   {
-    hospital: "Hospital San Martin",
+    hospital: "HTAL. SAN MARTIN",
     trabajador: "Marisa Marron",
     telefono: "221 481-7159"
   },

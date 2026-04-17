@@ -122,7 +122,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Endocrinologo",
     "categoria": "Consultas con especialistas",
-    "descripcion": "Consultar en San Martin / Gutierrez.",
+    "descripcion": "Consultar en HTAL. SAN MARTIN / Gutierrez.",
     "fuente": "PDF Guía"
   },
   {

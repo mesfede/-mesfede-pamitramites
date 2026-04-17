@@ -765,6 +765,7 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
 export async function migrateData() {
   const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
   const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+  const centrosSnap = await getDocs(collection(db, CENTROS_COORDINADORES_COLLECTION));
   const batch = writeBatch(db);
   let migrated = 0;
 
@@ -842,6 +843,40 @@ export async function migrateData() {
         });
         migrated++;
       }
+    }
+  });
+
+  // 3. Unify San Martin Hospital names
+  const canonicalName = "HTAL. SAN MARTIN";
+  const variants = [
+    "HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN",
+    "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN", // With potential typo user showed
+    "HOSPITAL SAN MARTIN",
+    "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN",
+    "Hospital San Martin"
+  ].map(v => v.toLowerCase());
+
+  prestadoresSnap.docs.forEach(docSnap => {
+    const p = docSnap.data();
+    const currentName = (p.nombre || "").trim();
+    if (variants.includes(currentName.toLowerCase()) && currentName !== canonicalName) {
+      batch.update(docSnap.ref, {
+        nombre: canonicalName,
+        updatedAt: serverTimestamp()
+      });
+      migrated++;
+    }
+  });
+
+  centrosSnap.docs.forEach(docSnap => {
+    const c = docSnap.data();
+    const currentHospital = (c.hospital || "").trim();
+    if (variants.includes(currentHospital.toLowerCase()) && currentHospital !== canonicalName) {
+      batch.update(docSnap.ref, {
+        hospital: canonicalName,
+        updatedAt: serverTimestamp()
+      });
+      migrated++;
     }
   });
 
