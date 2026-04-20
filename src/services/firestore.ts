@@ -846,39 +846,120 @@ export async function migrateData() {
     }
   });
 
-  // 3. Unify San Martin Hospital names
-  const canonicalName = "HTAL. SAN MARTIN";
-  const variants = [
+  // 3. Unify and Merge San Martin Hospital / Althea
+  const sanMartinCanonical = "HTAL. SAN MARTIN";
+  const sanMartinVariants = [
     "HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN",
-    "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN", // With potential typo user showed
+    "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN",
     "HOSPITAL SAN MARTIN",
     "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN",
     "Hospital San Martin"
-  ].map(v => v.toLowerCase());
+  ];
 
-  prestadoresSnap.docs.forEach(docSnap => {
-    const p = docSnap.data();
-    const currentName = (p.nombre || "").trim();
-    if (variants.includes(currentName.toLowerCase()) && currentName !== canonicalName) {
-      batch.update(docSnap.ref, {
-        nombre: canonicalName,
-        updatedAt: serverTimestamp()
-      });
-      migrated++;
-    }
-  });
+  const altheaCanonical = "ALTHEA (EX VACCARINI)";
+  const altheaVariants = [
+    "ALTHEA CLINICA PRIVADA",
+    "CL PR VACCARINI SA",
+    "ALTHEA",
+    "CLINICA VACCARINI",
+    "VACCARINI",
+    "VACARINI"
+  ];
 
-  centrosSnap.docs.forEach(docSnap => {
-    const c = docSnap.data();
-    const currentHospital = (c.hospital || "").trim();
-    if (variants.includes(currentHospital.toLowerCase()) && currentHospital !== canonicalName) {
-      batch.update(docSnap.ref, {
-        hospital: canonicalName,
-        updatedAt: serverTimestamp()
-      });
-      migrated++;
+  const groupsConfig = [
+    { canonical: sanMartinCanonical, variants: sanMartinVariants },
+    { canonical: altheaCanonical, variants: altheaVariants }
+  ];
+
+  const replacementsMap: Record<string, string> = {};
+
+  for (const group of groupsConfig) {
+    const lowerVariants = group.variants.map(v => v.toLowerCase());
+    const lowerCanonical = group.canonical.toLowerCase();
+
+    // Group matching prestadores
+    const matchingPrestadores = prestadoresSnap.docs.filter(docSnap => {
+      const name = (docSnap.data().nombre || "").trim().toLowerCase();
+      return name === lowerCanonical || lowerVariants.includes(name);
+    });
+
+    if (matchingPrestadores.length > 0) {
+      // Pick primary doc: the one already named canonical OR the first one
+      let primaryDocSnap = matchingPrestadores.find(d => (d.data().nombre || "").trim() === group.canonical);
+      if (!primaryDocSnap) primaryDocSnap = matchingPrestadores[0];
+
+      const others = matchingPrestadores.filter(d => d.id !== primaryDocSnap!.id);
+      
+      // Merge specialties
+      const primaryData = primaryDocSnap.data() as Prestador;
+      let mergedSpecs = [...(primaryData.especialidades || [])];
+      let needsUpdate = primaryData.nombre !== group.canonical;
+
+      for (const otherDoc of others) {
+        const otherData = otherDoc.data() as Prestador;
+        mergedSpecs = [...mergedSpecs, ...(otherData.especialidades || [])];
+        replacementsMap[otherDoc.id] = primaryDocSnap!.id;
+        batch.delete(otherDoc.ref);
+        needsUpdate = true;
+      }
+
+      const uniqueSpecs = Array.from(new Set(mergedSpecs.map(s => s.trim().toUpperCase()))).sort();
+      
+      // Check if specs changed
+      const currentSpecsSorted = [...(primaryData.especialidades || [])].map(s => s.trim().toUpperCase()).sort();
+      if (JSON.stringify(uniqueSpecs) !== JSON.stringify(currentSpecsSorted)) {
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        batch.update(primaryDocSnap.ref, {
+          nombre: group.canonical,
+          especialidades: uniqueSpecs,
+          updatedAt: serverTimestamp()
+        });
+        migrated++;
+      }
     }
-  });
+
+    // Unify names in Centros Coordinadores (no merge needed per-se, but rename)
+    centrosSnap.docs.forEach(docSnap => {
+      const c = docSnap.data();
+      const currentHospital = (c.hospital || "").trim();
+      if ((currentHospital.toLowerCase() === lowerCanonical || lowerVariants.includes(currentHospital.toLowerCase())) && 
+          currentHospital !== group.canonical) {
+        batch.update(docSnap.ref, {
+          hospital: group.canonical,
+          updatedAt: serverTimestamp()
+        });
+        migrated++;
+      }
+    });
+  }
+
+  // 4. Update Tramites referencing deleted prestadores
+  if (Object.keys(replacementsMap).length > 0) {
+    tramitesSnap.docs.forEach(docSnap => {
+      const t = docSnap.data() as Tramite;
+      if (t.prestadoresIds && t.prestadoresIds.length > 0) {
+        let changed = false;
+        const newIds = t.prestadoresIds.map(id => {
+          if (replacementsMap[id]) {
+            changed = true;
+            return replacementsMap[id];
+          }
+          return id;
+        });
+
+        if (changed) {
+          batch.update(docSnap.ref, {
+            prestadoresIds: Array.from(new Set(newIds)),
+            updatedAt: serverTimestamp()
+          });
+          migrated++;
+        }
+      }
+    });
+  }
 
   if (migrated > 0) {
     await batch.commit();

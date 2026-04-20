@@ -86,7 +86,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Angioresonancia",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Lo hacen en Vacarini (Althea) va a necesitar la OME + Otra OME interconsulta con UROLOGO.",
+    "descripcion": "Lo hacen en ALTHEA (EX VACCARINI), va a necesitar la OME + Otra OME interconsulta con UROLOGO.",
     "fuente": "PDF Guía"
   },
   {
@@ -116,7 +116,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Electromiografia",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Hospital Rossi/ Vaccarini /Instituto Médico Platense // IAMA S.A. - CENTRO DE DIAGNOSTICO DE ALTA COMPLEJIDAD.",
+    "descripcion": "Hospital Rossi / ALTHEA (EX VACCARINI) / Instituto Médico Platense // IAMA S.A. - CENTRO DE DIAGNOSTICO DE ALTA COMPLEJIDAD.",
     "fuente": "PDF Guía"
   },
   {
