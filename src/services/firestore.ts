@@ -866,9 +866,28 @@ export async function migrateData() {
     "VACARINI"
   ];
 
+  const gutierrezCanonical = "HTAL. GUTIERREZ";
+  const gutierrezVariants = [
+    "Htal Zonal Ricardo Gutierrez",
+    "HOSPITAL RICARDO GUTIERREZ",
+    "HOSPITAL GUTIERREZ",
+    "GUTIERREZ",
+    "RICARDO GUTIERREZ"
+  ];
+
+  const sanRoqueCanonical = "HTAL. SAN ROQUE";
+  const sanRoqueVariants = [
+    "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE",
+    "HOSPITAL SAN ROQUE",
+    "SAN ROQUE",
+    "Hospital San Roque"
+  ];
+
   const groupsConfig = [
     { canonical: sanMartinCanonical, variants: sanMartinVariants },
-    { canonical: altheaCanonical, variants: altheaVariants }
+    { canonical: altheaCanonical, variants: altheaVariants },
+    { canonical: gutierrezCanonical, variants: gutierrezVariants },
+    { canonical: sanRoqueCanonical, variants: sanRoqueVariants }
   ];
 
   const replacementsMap: Record<string, string> = {};

@@ -92,7 +92,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Angiotomografia",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Lo hacen en Vacarini, Primero necesita interconsulta.",
+    "descripcion": "Lo hacen en ALTHEA (EX VACCARINI), primero necesita interconsulta.",
     "fuente": "PDF Guía"
   },
   {
@@ -104,7 +104,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Arteriografia",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Se realiza en Hospital Rossi (HTL. GUTIERREZ).",
+    "descripcion": "Se realiza en HTAL. GUTIERREZ.",
     "fuente": "PDF Guía"
   },
   {
@@ -122,7 +122,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Endocrinologo",
     "categoria": "Consultas con especialistas",
-    "descripcion": "Consultar en HTAL. SAN MARTIN / Gutierrez.",
+    "descripcion": "Consultar en HTAL. SAN MARTIN / HTAL. GUTIERREZ.",
     "fuente": "PDF Guía"
   },
   {
@@ -140,7 +140,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "Espinograma",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "OME en Cien de Ensenada // GUTIERREZ // LOPARDO REPETTO (Flores CABA).",
+    "descripcion": "OME en Cien de Ensenada // HTAL. GUTIERREZ // LOPARDO REPETTO (Flores CABA).",
     "fuente": "PDF Guía"
   },
   {
@@ -276,7 +276,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "CAMARAGAMA",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Medicina Nuclear. OME en Cien de Ensenada // GUTIERREZ // LOPARDO REPETTO (Flores CABA).",
+    "descripcion": "Medicina Nuclear. OME en Cien de Ensenada // HTAL. GUTIERREZ // LOPARDO REPETTO (Flores CABA).",
     "fuente": "PDF Guía"
   },
   {
@@ -288,7 +288,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "CENTELLOGRAMA",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Medicina Nuclear. OME en Cien de Ensenada // GUTIERREZ // LOPARDO REPETTO (Flores CABA).",
+    "descripcion": "Medicina Nuclear. OME en Cien de Ensenada // HTAL. GUTIERREZ // LOPARDO REPETTO (Flores CABA).",
     "fuente": "PDF Guía"
   },
   {
@@ -318,13 +318,13 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "ECOENDOSCOPÍA DIGESTIVA",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Hospital San Roque Gonnet con OME de gastro. Hospital Rossi con OME.",
+    "descripcion": "HTAL. SAN ROQUE (Gonnet) con OME de gastro. Hospital Rossi con OME.",
     "fuente": "PDF Guía"
   },
   {
     "nombre": "ELECTROENCEFALOGRAMA",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Rossi // S.Martin // Italiano // Gutierrez 4830171/75 (int 317 turnos).",
+    "descripcion": "Rossi // HTAL. SAN MARTIN // Italiano // HTAL. GUTIERREZ 4830171/75 (int 317 turnos).",
     "fuente": "PDF Guía"
   },
   {
@@ -378,7 +378,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "MAPA // PRESUROMETRIA",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Rossi, que hable con Lorena y lleve todos los estudios y le dan un turno. Gonnet también lo hacen.",
+    "descripcion": "Rossi, que hable con Lorena y lleve todos los estudios y le dan un turno. HTAL. SAN ROQUE (Gonnet) también lo hacen.",
     "fuente": "PDF Guía"
   },
   {
@@ -408,7 +408,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "PUNCION BIOPSIA (PRÓSTATA, MAMA, HÍGADO, PULMÓN)",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Se realizan en Hospitales Públicos (Rossi, San Martín, San Roque) con OME. En el caso de Próstata, bajo ecografía.",
+    "descripcion": "Se realizan en Hospitales Públicos (Rossi, HTAL. SAN MARTIN, HTAL. SAN ROQUE) con OME. En el caso de Próstata, bajo ecografía.",
     "fuente": "PDF Guía"
   },
   {
@@ -438,7 +438,7 @@ export const INITIAL_TRAMITES = [
   {
     "nombre": "URODINAMICO ESTUDIO",
     "categoria": "Estudios diagnósticos e imágenes",
-    "descripcion": "Hospital Rossi o San Martín con OME de urología.",
+    "descripcion": "Hospital Rossi o HTAL. SAN MARTIN con OME de urología.",
     "fuente": "PDF Guía"
   },
   {

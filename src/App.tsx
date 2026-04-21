@@ -899,8 +899,7 @@ export default function App() {
           <div class="header">
             <div class="specialty-title">${specialtyTitle}</div>
             <div class="pami-info">
-              <div class="agency">PAMI Agencia Citybell</div>
-              <div class="ugl">Guía de Prestadores - UGL VII La Plata</div>
+              <div class="agency" style="font-size: 24px; font-family: 'Varela Round', sans-serif; color: #0b2344;">GuíaP</div>
             </div>
           </div>
 
@@ -923,7 +922,7 @@ export default function App() {
           `).join('')}
 
           <div class="footer">
-            Guía de Trámites Agencia Citybell v1.0
+            GuíaP - Consulta de Trámites y Prestadores
           </div>
         </body>
       </html>
@@ -1467,14 +1466,9 @@ export default function App() {
           <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
             <div className="max-w-7xl mx-auto px-4 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-y-2">
               <div className="flex items-center gap-2 sm:gap-3 sm:pl-6">
-                <PamiLogo className="h-7 sm:h-8 text-white shrink-0" />
-                <div className="w-px h-6 bg-white/30 mx-1 sm:mx-2"></div>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
-                  <h1 className="text-sm sm:text-lg font-semibold leading-tight">
-                    Guía de Trámites <span className="font-light block sm:inline">Agencia Citybell</span>
-                  </h1>
-                  <span className="text-[8px] sm:text-[9px] text-white/60 tracking-wider">Versión 1.0 @mesfede</span>
-                </div>
+                <h1 className="text-2xl sm:text-3xl font-varela font-bold tracking-tight text-white mb-0">
+                  GuíaP
+                </h1>
               </div>
 
               <div className="flex items-center gap-4">
@@ -3495,10 +3489,9 @@ export default function App() {
       <footer className="bg-white border-t border-gray-200 py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-6">
-            <PamiLogo className="h-8 text-pami-blue" />
-          </div>
-          <div className="bg-pami-blue text-white inline-block px-4 py-1 rounded-full text-xs font-bold mb-4">
-            Agencia Citybell - UGLVII - La Plata
+            <span className="text-4xl font-varela font-bold tracking-tight text-pami-blue">
+              GuíaP
+            </span>
           </div>
           <p className="text-sm text-pami-muted">
             Esta es una herramienta de consulta interna para facilitar la gestión de trámites. Desarrollada por F.M

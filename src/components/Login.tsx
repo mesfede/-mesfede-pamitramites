@@ -52,18 +52,13 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
   return (
     <div className="w-full max-w-md mx-auto p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
       <div className="text-center mb-8">
-        <div className="flex justify-center mb-6">
-          <PamiLogo className="h-12 text-pami-blue" />
-        </div>
-        <h2 className="text-xl font-bold text-pami-text leading-tight">
-          Guía de Trámites <br />
-          <span className="text-pami-blue font-light">Agencia Citybell</span>
-        </h2>
-        <div className="mt-2 flex flex-col items-center gap-1">
-          <span className="text-[10px] text-pami-muted uppercase tracking-widest font-bold bg-gray-100 px-2 py-0.5 rounded">
-            Versión 1.0 @mesfede
+        <div className="flex justify-center mb-4">
+          <span className="text-5xl font-varela font-bold tracking-tight text-pami-blue">
+            GuíaP
           </span>
-          <p className="text-sm text-pami-muted mt-4">Inicia sesión para acceder a la plataforma</p>
+        </div>
+        <div className="mt-2 flex flex-col items-center gap-1">
+          <p className="text-sm text-pami-muted mt-2">Inicia sesión para acceder a la plataforma</p>
         </div>
       </div>
 

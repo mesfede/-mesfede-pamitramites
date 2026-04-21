@@ -2,12 +2,12 @@ import { CentroCoordinador } from '../types';
 
 export const INITIAL_CENTROS_COORDINADORES: Omit<CentroCoordinador, 'id'>[] = [
   {
-    hospital: "Hospital Gonnet",
+    hospital: "HTAL. SAN ROQUE",
     trabajador: "Fernanda Galeano",
     telefono: "221 605-9898"
   },
   {
-    hospital: "Hospital Gonnet",
+    hospital: "HTAL. SAN ROQUE",
     trabajador: "Fernando Pelais",
     telefono: "221 564-2949"
   },
