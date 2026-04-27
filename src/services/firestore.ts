@@ -887,7 +887,11 @@ export async function migrateData() {
     { canonical: sanMartinCanonical, variants: sanMartinVariants },
     { canonical: altheaCanonical, variants: altheaVariants },
     { canonical: gutierrezCanonical, variants: gutierrezVariants },
-    { canonical: sanRoqueCanonical, variants: sanRoqueVariants }
+    { canonical: sanRoqueCanonical, variants: sanRoqueVariants },
+    { 
+      canonical: "HTAL. PRIVADO SUSAMERICANO", 
+      variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] 
+    }
   ];
 
   const replacementsMap: Record<string, string> = {};

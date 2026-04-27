@@ -767,6 +767,10 @@ export default function App() {
     const searchNorm = normalize(prestadorSearch.trim());
     const specialtyNorm = normalize(selectedSpecialty);
 
+    if (searchNorm === "" && specialtyNorm === "") {
+      return [];
+    }
+
     const filtered = prestadores.filter(p => {
       const nameNorm = normalize(p.nombre);
       const specsNorm = (p.especialidades || []).map(s => normalize(s)).join(' ');
@@ -1409,6 +1413,23 @@ export default function App() {
     } catch (err) {
       console.error("Error cleaning up duplicates:", err);
       setAdminMessage({ text: "Error al limpiar duplicados.", type: 'error' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleMigrate = async () => {
+    setIsSaving(true);
+    setAdminMessage(null);
+    try {
+      const migrated = await migrateData();
+      setAdminMessage({ 
+        text: `Se unificaron y corrigieron ${migrated} registros (Hospitales, Especialidades y Vínculos).`, 
+        type: 'success' 
+      });
+    } catch (err) {
+      console.error("Error migrating data:", err);
+      setAdminMessage({ text: "Error al unificar registros.", type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -2103,7 +2124,11 @@ export default function App() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-semibold text-pami-text">Cartilla de Prestadores</h2>
-                <p className="text-sm text-pami-muted">{filteredPrestadores.length} centros encontrados</p>
+                {(!prestadorSearch.trim() && !selectedSpecialty) ? (
+                  <p className="text-sm text-pami-muted">Busque por nombre o especialidad para ver resultados</p>
+                ) : (
+                  <p className="text-sm text-pami-muted">{filteredPrestadores.length} centros encontrados</p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 {(selectedSpecialty || prestadorSearch) && filteredPrestadores.length > 0 && (
@@ -2238,7 +2263,13 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPrestadores.length === 0 ? (
+              {(!prestadorSearch.trim() && !selectedSpecialty) ? (
+                <div className="col-span-full text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                  <Search size={48} className="mx-auto text-gray-200 mb-4" />
+                  <p className="text-pami-muted text-lg font-medium">Utilice el buscador para encontrar prestadores.</p>
+                  <p className="text-pami-muted text-sm mt-2">Puede buscar por nombre o filtrar por especialidad.</p>
+                </div>
+              ) : filteredPrestadores.length === 0 ? (
                 <div className="col-span-full text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
                   <Search size={48} className="mx-auto text-gray-200 mb-4" />
                   <p className="text-pami-muted">No se encontraron prestadores con estos criterios.</p>
@@ -2769,6 +2800,9 @@ export default function App() {
                   </Button>
                   <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanupTramites} isLoading={isSaving}>
                     Trámites y Prácticas
+                  </Button>
+                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3 bg-pami-blue/5 border-pami-blue/20 text-pami-blue" onClick={handleMigrate} isLoading={isSaving} title="Unifica nombres de hospitales (Gutierrez, San Roque, etc)">
+                    Unificar Nombres
                   </Button>
                 </div>
                 

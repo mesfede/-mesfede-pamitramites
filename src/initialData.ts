@@ -637,7 +637,7 @@ export const INITIAL_PRESTADORES = [
     "telefono": "221 512-9500 / 457-3001"
   },
   {
-    "nombre": "HTAL. PRIVADO SUDAMERICANO",
+    "nombre": "HTAL. PRIVADO SUSAMERICANO",
     "especialidades": ["UROLOGÍA", "FISIATRÍA - CONSULTAS"],
     "direccion": "2 Nº 432 e/ 40 y 41",
     "telefono": "221 445-2121"
