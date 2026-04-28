@@ -360,11 +360,18 @@ const PrestadorCard = ({
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">Especialidades / Prácticas</p>
             <div className="flex flex-wrap gap-1.5">
-              {primarySpecs.map((e, idx) => (
-                <span key={`${e}-${idx}`} className="text-[10px] bg-pami-blue/10 text-pami-blue px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-pami-blue/20">
-                  {e}
-                </span>
-              ))}
+              {primarySpecs.map((e, idx) => {
+                const isTopeada = p.especialidadesTopeadas?.includes(e);
+                return (
+                  <span key={`${e}-${idx}`} className={cn(
+                    "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border flex items-center gap-1",
+                    isTopeada ? "bg-red-50 text-red-600 border-red-200" : "bg-pami-blue/10 text-pami-blue border-pami-blue/20"
+                  )}>
+                    {e}
+                    {isTopeada && <span className="text-[8px] bg-red-600 text-white px-1 rounded-sm uppercase tracking-wider">Tope Excedido</span>}
+                  </span>
+                );
+              })}
               
               {otherSpecs.length > 0 && (
                 <button 
@@ -397,11 +404,18 @@ const PrestadorCard = ({
                   className="overflow-hidden"
                 >
                   <div className="flex flex-wrap gap-1.5 pt-2">
-                    {otherSpecs.map((e, idx) => (
-                      <span key={`${e}-${idx}`} className="text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full font-medium uppercase tracking-wide border border-gray-100">
-                        {e}
-                      </span>
-                    ))}
+                    {otherSpecs.map((e, idx) => {
+                      const isTopeada = p.especialidadesTopeadas?.includes(e);
+                      return (
+                        <span key={`${e}-${idx}`} className={cn(
+                          "text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide border flex items-center gap-1",
+                          isTopeada ? "bg-red-50 text-red-600 border-red-200" : "bg-gray-50 text-gray-500 border-gray-100"
+                        )}>
+                          {e}
+                          {isTopeada && <span className="text-[8px] bg-red-500 text-white px-1 rounded-sm font-bold tracking-wider">Tope Excedido</span>}
+                        </span>
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}
@@ -778,15 +792,15 @@ export default function App() {
       const specsNorm = (p.especialidades || []).map(s => normalize(s)).join(' ');
       const notasNorm = normalize(p.notas || '');
       
-      const matchesSearch = nameNorm.includes(searchNorm) || 
-                           specsNorm.includes(searchNorm) || 
-                           notasNorm.includes(searchNorm);
+      const matchesText = searchNorm === "" || 
+                         nameNorm.includes(searchNorm) || 
+                         specsNorm.includes(searchNorm) || 
+                         notasNorm.includes(searchNorm);
 
-      const matchesSpecialty = searchNorm !== "" || 
-                              !selectedSpecialty || 
-                              specsNorm.includes(specialtyNorm);
+      const matchesDropdown = !selectedSpecialty || 
+                             (p.especialidades || []).some(s => normalize(s) === specialtyNorm);
 
-      return matchesSearch && matchesSpecialty;
+      return matchesText && matchesDropdown;
     });
 
     if (searchNorm === "") {
@@ -1340,6 +1354,7 @@ export default function App() {
     const data = {
       nombre: formData.get('nombre') as string,
       especialidades: (formData.get('especialidades') as string).split('\n').filter(p => p.trim() !== ''),
+      especialidadesTopeadas: (formData.get('especialidadesTopeadas') as string | null)?.split('\n').filter(p => p.trim() !== '') || [],
       notas: formData.get('notas') as string,
       telefono: formData.get('telefono') as string,
       whatsapp: formData.get('whatsapp') as string,
@@ -2853,11 +2868,11 @@ export default function App() {
                 <h2 className="text-2xl font-semibold text-pami-text">Panel de Administración</h2>
                 <p className="text-sm text-pami-muted">Gestiona el contenido de la plataforma</p>
               </div>
-              <div className="flex bg-gray-100 p-1 rounded-xl">
+              <div className="flex flex-wrap sm:flex-nowrap bg-gray-100 p-1 rounded-xl overflow-x-auto no-scrollbar">
                 <button 
                   onClick={() => setAdminSubTab('tramites')}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
                     adminSubTab === 'tramites' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
                   )}
                 >
@@ -2866,7 +2881,7 @@ export default function App() {
                 <button 
                   onClick={() => setAdminSubTab('prestadores')}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
                     adminSubTab === 'prestadores' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
                   )}
                 >
@@ -2875,7 +2890,7 @@ export default function App() {
                 <button 
                   onClick={() => setAdminSubTab('folletos')}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
                     adminSubTab === 'folletos' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
                   )}
                 >
@@ -2884,7 +2899,7 @@ export default function App() {
                 <button 
                   onClick={() => setAdminSubTab('usuarios')}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
                     adminSubTab === 'usuarios' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
                   )}
                 >
@@ -2987,11 +3002,17 @@ export default function App() {
                         <td className="px-6 py-4 text-sm text-pami-muted uppercase">{p.localidad || '-'}</td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1 max-w-xs">
-                            {p.especialidades?.slice(0, 3).map((e, idx) => (
-                              <span key={`${e}-${idx}`} className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase font-bold">
-                                {e}
-                              </span>
-                            ))}
+                            {p.especialidades?.slice(0, 3).map((e, idx) => {
+                              const isTopeada = p.especialidadesTopeadas?.includes(e);
+                              return (
+                                <span key={`${e}-${idx}`} className={cn(
+                                  "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold",
+                                  isTopeada ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-600"
+                                )}>
+                                  {e}
+                                </span>
+                              );
+                            })}
                             {(p.especialidades?.length || 0) > 3 && (
                               <span className="text-[9px] text-pami-muted">+{p.especialidades!.length - 3}</span>
                             )}
@@ -3230,6 +3251,16 @@ export default function App() {
               defaultValue={editingPrestador?.especialidades?.join('\n')} 
               required
               placeholder="Ej: CARDIOLOGÍA&#10;VIDEOCOLONOSCOPIA&#10;CLINICA MEDICA..." 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-pami-muted">Especialidades Topeadas (opcional, una por línea)</label>
+            <p className="text-xs text-pami-muted mb-1">Deben coincidir exactamente con el texto de arriba. Se mostrarán con un indicador "EXCEDIÓ TOPES".</p>
+            <TextArea 
+              name="especialidadesTopeadas" 
+              defaultValue={editingPrestador?.especialidadesTopeadas?.join('\n')} 
+              placeholder="Ej: TOMOGRAFIA&#10;RESONANCIA..." 
             />
           </div>
 

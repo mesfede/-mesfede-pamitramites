@@ -49,6 +49,7 @@ export interface Prestador {
   id: string;
   nombre: string;
   especialidades: string[];
+  especialidadesTopeadas?: string[];
   telefono?: string;
   whatsapp?: string;
   email?: string;

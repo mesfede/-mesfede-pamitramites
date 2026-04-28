@@ -883,11 +883,20 @@ export async function migrateData() {
     "Hospital San Roque"
   ];
 
+  const losTilosCanonical = "SANATORIO MÉDICO LOS TILOS";
+  const losTilosVariants = [
+    "SANATORIO MÉDICO LOS TILOS SA",
+    "SANATORIO MEDICO LOS TILOS",
+    "SANATORIO MEDICO LOS TILOS SA",
+    "LOS TILOS"
+  ];
+
   const groupsConfig = [
     { canonical: sanMartinCanonical, variants: sanMartinVariants },
     { canonical: altheaCanonical, variants: altheaVariants },
     { canonical: gutierrezCanonical, variants: gutierrezVariants },
     { canonical: sanRoqueCanonical, variants: sanRoqueVariants },
+    { canonical: losTilosCanonical, variants: losTilosVariants },
     { 
       canonical: "HTAL. PRIVADO SUSAMERICANO", 
       variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] 

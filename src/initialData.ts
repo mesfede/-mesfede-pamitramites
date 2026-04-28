@@ -832,6 +832,7 @@ export const INITIAL_PRESTADORES = [
   {
     "nombre": "CIMED",
     "especialidades": ["TAC DE 64 O + / MAMOTONNE / PET"],
+    "especialidadesTopeadas": ["TAC DE 64 O + / MAMOTONNE / PET"],
     "direccion": "5 Nº 416 e/ 40 y 41",
     "telefono": "221 439-1111"
   },
