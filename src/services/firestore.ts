@@ -883,7 +883,7 @@ export async function migrateData() {
     "Hospital San Roque"
   ];
 
-  const losTilosCanonical = "SANATORIO MÉDICO LOS TILOS";
+  const losTilosCanonical = "SANATORIO MEDICO LOS TILOS";
   const losTilosVariants = [
     "SANATORIO MÉDICO LOS TILOS SA",
     "SANATORIO MEDICO LOS TILOS",
