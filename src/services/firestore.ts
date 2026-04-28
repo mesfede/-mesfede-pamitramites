@@ -891,12 +891,21 @@ export async function migrateData() {
     "LOS TILOS"
   ];
 
+  const rossiCanonical = "HTAL. ROSSI";
+  const rossiVariants = [
+    "HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI",
+    "HOSPITAL INTERZONAL ROSSI",
+    "HTAL. ROSSI",
+    "HOSPITAL ROSSI"
+  ];
+
   const groupsConfig = [
     { canonical: sanMartinCanonical, variants: sanMartinVariants },
     { canonical: altheaCanonical, variants: altheaVariants },
     { canonical: gutierrezCanonical, variants: gutierrezVariants },
     { canonical: sanRoqueCanonical, variants: sanRoqueVariants },
     { canonical: losTilosCanonical, variants: losTilosVariants },
+    { canonical: rossiCanonical, variants: rossiVariants },
     { 
       canonical: "HTAL. PRIVADO SUSAMERICANO", 
       variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] 
