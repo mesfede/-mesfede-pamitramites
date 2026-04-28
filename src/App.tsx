@@ -55,7 +55,8 @@ import {
   Users,
   Sparkles,
   Dumbbell,
-  Shield
+  Shield,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -443,6 +444,7 @@ export default function App() {
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin'>('tramites');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -1487,6 +1489,13 @@ export default function App() {
           <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
             <div className="max-w-7xl mx-auto px-4 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-y-2">
               <div className="flex items-center gap-2 sm:gap-3 sm:pl-6">
+                <button
+                  className="md:hidden p-2 -ml-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  aria-label="Menu"
+                >
+                  {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
                 <h1 className="text-2xl sm:text-3xl font-varela font-bold tracking-tight text-white mb-0">
                   GuíaP
                 </h1>
@@ -1509,13 +1518,13 @@ export default function App() {
             </div>
             
             {/* Tabs */}
-            <div className="relative bg-pami-blue/95 backdrop-blur-sm border-t border-white/10">
-              <div className="max-w-7xl mx-auto px-2 sm:px-4 flex overflow-x-auto no-scrollbar scroll-smooth">
+            <div className="relative bg-pami-blue/95 backdrop-blur-sm border-t border-white/10 hidden md:block">
+              <div className="max-w-7xl mx-auto px-0 sm:px-4 flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory overscroll-x-contain">
                 <button 
                   onClick={() => setActiveTab('tramites')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                    activeTab === 'tramites' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    activeTab === 'tramites' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <FileText size={16} className="shrink-0" />
@@ -1524,8 +1533,8 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('prestadores')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                    activeTab === 'prestadores' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    activeTab === 'prestadores' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <Stethoscope size={16} className="shrink-0" />
@@ -1534,8 +1543,8 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('practicas')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                    activeTab === 'practicas' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    activeTab === 'practicas' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <Activity size={16} className="shrink-0" />
@@ -1544,8 +1553,8 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('centros')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                    activeTab === 'centros' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    activeTab === 'centros' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <Hospital size={16} className="shrink-0" />
@@ -1554,8 +1563,8 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('folletos')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                    activeTab === 'folletos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    activeTab === 'folletos' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <BookOpen size={16} className="shrink-0" />
@@ -1564,8 +1573,8 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('telefonos')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                    activeTab === 'telefonos' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    activeTab === 'telefonos' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <Phone size={16} className="shrink-0" />
@@ -1575,8 +1584,8 @@ export default function App() {
                   <button 
                     onClick={() => setActiveTab('admin')}
                     className={cn(
-                      "px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0",
-                      activeTab === 'admin' ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"
+                      "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                      activeTab === 'admin' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                     )}
                   >
                     <Settings size={16} className="shrink-0" />
@@ -1584,72 +1593,160 @@ export default function App() {
                   </button>
                 )}
               </div>
-              {/* Visual indicator for more content on mobile */}
-              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-pami-blue to-transparent pointer-events-none sm:hidden"></div>
             </div>
+
+            {/* Mobile Menu */}
+            <AnimatePresence>
+              {isMobileMenuOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="md:hidden bg-[#0a1e38] overflow-hidden border-t border-white/10"
+                >
+                  <div className="flex flex-col py-2 shadow-inner">
+                    <button 
+                      onClick={() => { setActiveTab('tramites'); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        activeTab === 'tramites' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <FileText size={18} className={activeTab === 'tramites' ? "text-white" : "text-white/50"} />
+                      Trámites y Prácticas
+                    </button>
+                    <button 
+                      onClick={() => { setActiveTab('prestadores'); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        activeTab === 'prestadores' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <Stethoscope size={18} className={activeTab === 'prestadores' ? "text-white" : "text-white/50"} />
+                      Prestadores
+                    </button>
+                    <button 
+                      onClick={() => { setActiveTab('practicas'); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        activeTab === 'practicas' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <Activity size={18} className={activeTab === 'practicas' ? "text-white" : "text-white/50"} />
+                      Prácticas OME
+                    </button>
+                    <button 
+                      onClick={() => { setActiveTab('centros'); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        activeTab === 'centros' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <Hospital size={18} className={activeTab === 'centros' ? "text-white" : "text-white/50"} />
+                      C. Coordinadores
+                    </button>
+                    <button 
+                      onClick={() => { setActiveTab('folletos'); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        activeTab === 'folletos' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <BookOpen size={18} className={activeTab === 'folletos' ? "text-white" : "text-white/50"} />
+                      Folletos
+                    </button>
+                    <button 
+                      onClick={() => { setActiveTab('telefonos'); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        activeTab === 'telefonos' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <Phone size={18} className={activeTab === 'telefonos' ? "text-white" : "text-white/50"} />
+                      Tel
+                    </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={() => { setActiveTab('admin'); setIsMobileMenuOpen(false); }}
+                        className={cn(
+                          "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 border-t border-white/10 mt-2 pt-4",
+                          activeTab === 'admin' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        <Settings size={18} className={activeTab === 'admin' ? "text-white" : "text-white/50"} />
+                        Administrar
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Integrated Search Bar for Tramites */}
             {activeTab === 'tramites' && (
-              <div className="bg-white border-t border-gray-200 py-2 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-4 items-center">
+              <div className="bg-white border-t border-gray-200 py-2 sm:py-2 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-2 sm:gap-4 items-center">
                   {/* Primary Search: Internal Tramites */}
-                  <div className="flex-grow flex items-center gap-3 w-full md:pl-6">
-                    <div className="flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
+                  <div className="flex-grow flex items-center gap-2 sm:gap-3 w-full md:pl-6">
+                    <div className="hidden sm:flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
                       <Search size={16} />
                       <h3 className="text-sm font-medium">Buscar trámite</h3>
                     </div>
                     <div className="relative flex-grow">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={16} />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted sm:text-pami-muted/70" size={16} />
                       <Input 
-                        placeholder="Ej: Reintegro, Pañales..." 
-                        className="pl-9 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-blue focus:border-pami-blue focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
+                        placeholder="Buscar trámite..." 
+                        className="pl-9 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-blue focus:border-pami-blue focus:bg-white h-10 sm:h-9 text-sm sm:text-sm w-full transition-colors shadow-inner"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                       />
                     </div>
                   </div>
 
-                  {/* Divider */}
+                  {/* Divider Desktop */}
                   <div className="hidden md:block w-px h-6 bg-gray-200"></div>
 
-                  {/* SIMAP Link */}
-                  <button 
-                    onClick={handleSimapClick}
-                    className="flex items-center gap-2 px-5 py-1.5 bg-pami-blue/5 hover:bg-pami-blue/10 text-[#1d438a] rounded-lg transition-all border border-pami-blue/10 shrink-0 group"
-                    title="Ir a SIMAP PAMI"
-                  >
-                    <span className="text-lg font-varela font-bold tracking-tight">SIMAP</span>
-                  </button>
+                  <div className="flex w-full md:w-auto gap-2 sm:gap-4 items-center">
+                    {/* SIMAP Link */}
+                    <button 
+                      onClick={handleSimapClick}
+                      className="flex-1 md:flex-none flex justify-center items-center gap-2 px-3 sm:px-5 py-1.5 h-10 sm:h-9 bg-pami-blue/5 hover:bg-pami-blue/10 text-[#1d438a] rounded-lg transition-all border border-pami-blue/10 shrink-0 group"
+                      title="Ir a SIMAP PAMI"
+                    >
+                      <span className="text-base sm:text-lg font-varela font-bold tracking-tight">SIMAP</span>
+                    </button>
 
-                  {/* Divider */}
-                  <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+                    {/* Divider Desktop */}
+                    <div className="hidden md:block w-px h-6 bg-gray-200"></div>
 
-                  {/* Secondary Search: Google Search */}
-                  <div className="md:w-[300px] flex items-center gap-3 w-full shrink-0">
-                    <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16px" height="16px" className="bg-transparent p-0">
-                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                      </svg>
-                      <h3 className="text-sm font-medium text-pami-muted">Google</h3>
+                    {/* Secondary Search: Google Search */}
+                    <div className="flex-[2] md:w-[250px] lg:w-[300px] flex items-center gap-2 sm:gap-3 shrink-0">
+                      <div className="hidden sm:flex items-center gap-2 whitespace-nowrap shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16px" height="16px" className="bg-transparent p-0">
+                          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                        </svg>
+                        <h3 className="text-sm font-medium text-pami-muted">Google</h3>
+                      </div>
+                      <form onSubmit={handleGoogleSearch} className="relative flex-grow">
+                        <Input 
+                          placeholder="Consulta externa..." 
+                          className="pr-10 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-cyan focus:border-pami-cyan focus:bg-white h-10 sm:h-9 text-sm w-full transition-colors shadow-inner"
+                          value={aiSearch}
+                          onChange={(e) => setAiSearch(e.target.value)}
+                        />
+                        <button 
+                          type="submit"
+                          disabled={!aiSearch.trim()}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-pami-cyan hover:text-pami-blue hover:bg-pami-blue/5 rounded transition-colors disabled:opacity-30"
+                        >
+                          <ArrowRight size={16} />
+                        </button>
+                      </form>
                     </div>
-                    <form onSubmit={handleGoogleSearch} className="relative flex-grow">
-                      <Input 
-                        placeholder="Consulta externa..." 
-                        className="pr-10 bg-gray-50 border-gray-200 text-pami-text placeholder:text-pami-muted focus:ring-pami-cyan focus:border-pami-cyan focus:bg-white h-9 text-sm w-full transition-colors shadow-inner"
-                        value={aiSearch}
-                        onChange={(e) => setAiSearch(e.target.value)}
-                      />
-                      <button 
-                        type="submit"
-                        disabled={!aiSearch.trim()}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-pami-cyan hover:text-pami-blue hover:bg-pami-blue/5 rounded transition-colors disabled:opacity-30"
-                      >
-                        <ArrowRight size={16} />
-                      </button>
-                    </form>
                   </div>
                 </div>
               </div>
@@ -1738,24 +1835,29 @@ export default function App() {
 
             {/* Content */}
             <div className="lg:col-span-8 space-y-4">
-              <div className="flex items-baseline justify-between mb-2">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-2xl font-semibold text-pami-text">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-grow">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-pami-text leading-tight">
                     {selectedCat === 'all' ? 'Todos los trámites y prácticas' : selectedCat}
                   </h2>
-                  {isAdmin && (
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between w-full sm:w-auto">
+                    {isAdmin && (
                       <Button 
-                        className="text-xs py-1 h-auto"
+                        className="text-xs py-1.5 h-auto shrink-0"
                         onClick={() => { setEditingTramite(null); setIsModalOpen(true); }}
                       >
                         <Plus size={14} className="mr-1" />
-                        Nuevo Trámite
+                        Nuevo
                       </Button>
-                    </div>
-                  )}
+                    )}
+                    <span className="text-sm text-pami-muted sm:hidden shrink-0">
+                      {filteredTramites.length} {filteredTramites.length === 1 ? 'trámite' : 'trámites'}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-sm text-pami-muted">{filteredTramites.length} trámites encontrados</span>
+                <span className="hidden sm:block text-sm text-pami-muted shrink-0">
+                  {filteredTramites.length} {filteredTramites.length === 1 ? 'trámite encontrado' : 'trámites encontrados'}
+                </span>
               </div>
 
               {filteredTramites.length === 0 ? (
