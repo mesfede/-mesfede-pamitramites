@@ -198,15 +198,17 @@ const Button = ({
   );
 };
 
-const Input = ({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) => (
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...props }, ref) => (
   <input 
+    ref={ref}
     className={cn(
       'w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all',
       className
     )}
     {...props}
   />
-);
+));
+Input.displayName = 'Input';
 
 const TextArea = ({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea 
@@ -217,6 +219,161 @@ const TextArea = ({ className, ...props }: React.TextareaHTMLAttributes<HTMLText
     {...props}
   />
 );
+
+const AutocompleteTagInput = ({
+  name,
+  defaultValue = "",
+  placeholder,
+  suggestions = [],
+  className
+}: {
+  name: string,
+  defaultValue?: string,
+  placeholder?: string,
+  suggestions?: string[],
+  className?: string
+}) => {
+  const [tags, setTags] = useState<string[]>(defaultValue ? defaultValue.split('\n').filter(t => t.trim() !== '') : []);
+  const [inputValue, setInputValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const filteredSuggestions = suggestions.filter(s => 
+    s.toLowerCase().includes(inputValue.toLowerCase()) && !tags.includes(s)
+  );
+
+  // Take exact match to top if exists, then limit to 10
+  const exactMatchIndex = filteredSuggestions.findIndex(s => s.toLowerCase() === inputValue.toLowerCase());
+  const suggestionsToDisplay = exactMatchIndex !== -1 
+    ? [filteredSuggestions[exactMatchIndex], ...filteredSuggestions.filter((_, i) => i !== exactMatchIndex)].slice(0, 15)
+    : filteredSuggestions.slice(0, 15);
+
+  const addTag = (tag: string) => {
+    if (tag.trim() !== '' && !tags.includes(tag.trim().toUpperCase())) {
+      setTags([...tags, tag.trim().toUpperCase()]);
+    }
+    setInputValue("");
+    setShowSuggestions(false);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 10);
+  };
+
+  const currentStringFromMap = tags.join('\n');
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className={cn("relative flex w-full flex-col gap-1", className)} ref={containerRef}>
+      {/* Hidden textarea to submit the actual value natively with the form */}
+      <textarea name={name} value={currentStringFromMap} readOnly className="hidden" />
+      
+      <div className="flex flex-wrap gap-2 mb-2 empty:hidden">
+        {tags.map((tag, i) => (
+          <span key={i} className="bg-pami-cyan/10 text-pami-cyan px-2 py-1 rounded-md text-xs font-bold uppercase flex items-center gap-1 group">
+            {tag}
+            <button 
+              type="button" 
+              onClick={() => setTags(tags.filter((_, idx) => idx !== i))} 
+              className="text-pami-cyan/50 hover:text-red-500 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </span>
+        ))}
+      </div>
+      
+      <div className="relative">
+        <Input 
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            setShowSuggestions(true);
+          }}
+          onFocus={() => setShowSuggestions(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault(); // prevent form submit
+              if (inputValue.trim()) {
+                addTag(inputValue);
+              }
+            } else if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) {
+              setTags(tags.slice(0, -1));
+            }
+          }}
+          placeholder={tags.length === 0 ? placeholder : "Escribe para añadir más (Enter para guardar)..."}
+          className="pr-10"
+        />
+        <button
+          type="button"
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-pami-blue bg-white"
+          onClick={() => {
+             if (inputValue.trim()) {
+                addTag(inputValue);
+             } else {
+                setShowSuggestions(true);
+                inputRef.current?.focus();
+             }
+          }}
+        >
+          <ChevronDown size={18} className={cn("transition-transform duration-200", showSuggestions ? "rotate-180" : "")}/>
+        </button>
+        
+        {showSuggestions && (inputValue.trim() !== '' || suggestionsToDisplay.length > 0) && (
+          <div className="absolute z-[99] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto outline-none divide-y divide-gray-50">
+            {suggestionsToDisplay.map((suggestion, i) => {
+              // Highlight matched text
+              const index = suggestion.toLowerCase().indexOf(inputValue.toLowerCase());
+              const beforeStr = suggestion.substring(0, index);
+              const matchStr = suggestion.substring(index, index + inputValue.length);
+              const afterStr = suggestion.substring(index + inputValue.length);
+
+              return (
+                <div 
+                  key={i}
+                  className="px-4 py-2.5 hover:bg-pami-cyan/5 cursor-pointer text-sm font-medium uppercase text-gray-700 hover:text-pami-blue transition-colors flex items-center justify-between group"
+                  onMouseDown={(e) => { e.preventDefault(); addTag(suggestion); }}
+                >
+                  <div>
+                    {index >= 0 && inputValue ? (
+                      <>
+                        {beforeStr}
+                        <span className="font-extrabold text-pami-blue">{matchStr}</span>
+                        {afterStr}
+                      </>
+                    ) : (
+                      suggestion
+                    )}
+                  </div>
+                  <Plus size={14} className="opacity-0 group-hover:opacity-100 text-pami-blue" />
+                </div>
+              );
+            })}
+            {inputValue.trim() !== '' && !suggestions.some(s => s.toLowerCase() === inputValue.trim().toLowerCase()) && (
+              <div 
+                className="px-4 py-3 bg-gray-50 hover:bg-gray-100 cursor-pointer text-sm font-bold uppercase text-pami-blue flex items-center gap-2 border-t-2 border-gray-100"
+                onMouseDown={(e) => { e.preventDefault(); addTag(inputValue); }}
+              >
+                <Plus size={16} /> 
+                Añadir nuevo: <span className="underline">{inputValue.trim()}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => (
   <AnimatePresence>
@@ -270,14 +427,13 @@ const PrestadorCard = ({
   const normalize = (str: string) => 
     str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-  const searchNorm = normalize(searchTerm.trim());
-  const specialtyNorm = normalize(selectedSpecialty);
+  const searchNorm = normalize(searchTerm.trim().replace(/\s+/g, ' '));
+  const specialtyNorm = normalize(selectedSpecialty.replace(/\s+/g, ' '));
 
   // Identify which specialties match the search
   const matchingSpecs = p.especialidades.filter(s => {
-    const sNorm = normalize(s);
+    const sNorm = normalize(s.replace(/\s+/g, ' '));
     if (selectedSpecialty && sNorm === specialtyNorm) return true;
-    if (searchTerm && sNorm.includes(searchNorm)) return true;
     return false;
   });
 
@@ -771,7 +927,7 @@ export default function App() {
   const allSpecialties = useMemo(() => {
     const specs = new Set<string>();
     prestadores.forEach(p => {
-      (p.especialidades || []).forEach(s => specs.add(s.trim().toUpperCase()));
+      (p.especialidades || []).forEach(s => specs.add(s.trim().toUpperCase().replace(/\s+/g, ' ')));
     });
     return Array.from(specs).sort();
   }, [prestadores]);
@@ -780,25 +936,24 @@ export default function App() {
     const normalize = (str: string) => 
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     
-    const searchNorm = normalize(prestadorSearch.trim());
-    const specialtyNorm = normalize(selectedSpecialty);
+    const searchNorm = normalize(prestadorSearch.trim().replace(/\s+/g, ' '));
+    const specialtyNorm = normalize(selectedSpecialty.replace(/\s+/g, ' '));
 
     if (searchNorm === "" && specialtyNorm === "") {
       return [];
     }
 
     const filtered = prestadores.filter(p => {
-      const nameNorm = normalize(p.nombre);
-      const specsNorm = (p.especialidades || []).map(s => normalize(s)).join(' ');
-      const notasNorm = normalize(p.notas || '');
+      const nameNorm = normalize(p.nombre.replace(/\s+/g, ' '));
+      const specsNorm = (p.especialidades || []).map(s => normalize(s.replace(/\s+/g, ' '))).join(' ');
+      const notasNorm = normalize((p.notas || '').replace(/\s+/g, ' '));
       
       const matchesText = searchNorm === "" || 
                          nameNorm.includes(searchNorm) || 
-                         specsNorm.includes(searchNorm) || 
                          notasNorm.includes(searchNorm);
 
       const matchesDropdown = !selectedSpecialty || 
-                             (p.especialidades || []).some(s => normalize(s) === specialtyNorm);
+                             (p.especialidades || []).some(s => normalize(s.replace(/\s+/g, ' ')) === specialtyNorm);
 
       return matchesText && matchesDropdown;
     });
@@ -2350,7 +2505,17 @@ export default function App() {
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted pointer-events-none" size={18} />
+                    {selectedSpecialty ? (
+                      <button 
+                        onClick={() => setSelectedSpecialty('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted hover:text-red-500 transition-colors"
+                        title="Limpiar filtro"
+                      >
+                        <X size={18} />
+                      </button>
+                    ) : (
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted pointer-events-none" size={18} />
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -2363,6 +2528,15 @@ export default function App() {
                       value={prestadorSearch}
                       onChange={(e) => setPrestadorSearch(e.target.value)}
                     />
+                    {prestadorSearch && (
+                      <button 
+                        onClick={() => setPrestadorSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted hover:text-red-500 transition-colors"
+                        title="Limpiar búsqueda"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3245,22 +3419,23 @@ export default function App() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-pami-muted">Especialidades / Prácticas (una por línea)</label>
-            <TextArea 
+            <label className="text-sm font-semibold text-pami-muted">Especialidades / Prácticas</label>
+            <AutocompleteTagInput 
               name="especialidades" 
               defaultValue={editingPrestador?.especialidades?.join('\n')} 
-              required
-              placeholder="Ej: CARDIOLOGÍA&#10;VIDEOCOLONOSCOPIA&#10;CLINICA MEDICA..." 
+              suggestions={allSpecialties}
+              placeholder="Ej: CARDIOLOGÍA, VIDEOCOLONOSCOPIA..." 
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-pami-muted">Especialidades Topeadas (opcional, una por línea)</label>
+            <label className="text-sm font-semibold text-pami-muted">Especialidades Topeadas (opcional)</label>
             <p className="text-xs text-pami-muted mb-1">Deben coincidir exactamente con el texto de arriba. Se mostrarán con un indicador "EXCEDIÓ TOPES".</p>
-            <TextArea 
+            <AutocompleteTagInput 
               name="especialidadesTopeadas" 
               defaultValue={editingPrestador?.especialidadesTopeadas?.join('\n')} 
-              placeholder="Ej: TOMOGRAFIA&#10;RESONANCIA..." 
+              suggestions={allSpecialties}
+              placeholder="Ej: TOMOGRAFIA, RESONANCIA..." 
             />
           </div>
 

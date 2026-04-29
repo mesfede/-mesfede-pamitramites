@@ -844,6 +844,107 @@ export async function migrateData() {
         migrated++;
       }
     }
+
+    // Generic Term Unification
+    const unifyTerms = (specs: string[]): string[] => {
+      let mapped: string[] = [];
+      const rmnExactMatches = ['RESONANCIA', 'RESONANCIA MAGNETICA', 'RMN'];
+      const tacExactMatches = ['TAC', 'TOMOGRAFIA', 'TOMOGRAFIA COMPUTADA'];
+      
+      for (const s of specs) {
+        const upper = s.toUpperCase().trim();
+        
+        // Split combined terms
+        if (upper === 'TAC - RMN') {
+          mapped.push('TOMOGRAFIA', 'RESONANCIA MAGNETICA');
+          continue;
+        }
+        if (upper === 'RX - TAC') {
+          mapped.push('RX', 'TOMOGRAFIA');
+          continue;
+        }
+
+        // RMN Unification
+        if (rmnExactMatches.includes(upper)) {
+          mapped.push('RESONANCIA MAGNETICA');
+          continue;
+        }
+
+        // Resonancia + 130 Unification
+        if (upper === 'RESONANCIA +130' || upper === 'RESONANCIA+ 130' || upper === 'RESONANCIA+130') {
+          mapped.push('RESONANCIA + 130');
+          continue;
+        }
+        
+        // TAC Unification
+        if (tacExactMatches.includes(upper) || upper === 'TOMOGRAFÍA' || upper === 'TOMOGRAFÍA COMPUTADA') {
+          mapped.push('TOMOGRAFIA');
+          continue;
+        }
+
+        // Fisiatria Unification
+        if (upper === 'FISIOKINESIO' || upper === 'FISIATRIA' || upper === 'FISIATRÍA' || upper === 'FISIATRIA CONSULTAS' || upper === 'FISIATRÍA CONSULTAS' || upper === 'FISIATRIA - CONSULTAS' || upper === 'FISIATRÍA - CONSULTAS') {
+          mapped.push('FISIATRÍA');
+          continue;
+        }
+
+        // Espinografia Unification
+        if (upper === 'ESPINOGRAMA' || upper === 'ESPINOGRAFIA' || upper === 'ESPINOGRAFÍA') {
+          mapped.push('ESPINOGRAFÍA');
+          continue;
+        }
+
+        // Audiometria / Audifonos Unification
+        if (upper === 'AUDIOMETRIA' || upper === 'AUDIOMETRÍA' || upper === 'AUDIFONOS' || upper === 'AUDÍFONOS' || upper === 'AUDIOMETRIA / AUDIFONOS' || upper === 'AUDIOMETRÍA / AUDÍFONOS' || upper === 'AUDIOMETRIA / AUDÍFONOS' || upper === 'AUDIOMETRÍA / AUDIFONOS') {
+          mapped.push('AUDIOMETRÍA / AUDÍFONOS');
+          continue;
+        }
+
+        // Mamotonne Unification
+        if (upper === 'MAMMOTONNE' || upper === 'MAMMOTONE' || upper === 'MAMOTONE') {
+          mapped.push('MAMOTONNE');
+          continue;
+        }
+
+        // Neurologia Unification
+        if (upper === 'NEUROLOGIA' || upper === 'NEUROLOGÍA') {
+          mapped.push('NEUROLOGÍA');
+          continue;
+        }
+        
+        // Default
+        let finalString = s.trim().toUpperCase();
+        if (finalString.includes('MAMMOTONNE')) finalString = finalString.replace('MAMMOTONNE', 'MAMOTONNE');
+        if (finalString.includes('MAMMOTONE')) finalString = finalString.replace('MAMMOTONE', 'MAMOTONNE');
+        if (finalString.includes('MAMOTONE') && !finalString.includes('MAMOTONNE')) finalString = finalString.replace('MAMOTONE', 'MAMOTONNE');
+        
+        mapped.push(finalString);
+      }
+      
+      // Remove duplicates
+      return Array.from(new Set(mapped));
+    };
+
+    const currentSpecs = p.especialidades || [];
+    const currentTopeadas = p.especialidadesTopeadas || [];
+    
+    const newSpecs = unifyTerms(currentSpecs);
+    const newTopeadas = unifyTerms(currentTopeadas);
+    
+    const currentSpecsSorted = [...currentSpecs].map(s => s.trim().toUpperCase()).sort();
+    const newSpecsSorted = [...newSpecs].sort();
+    const currentTopeadasSorted = [...currentTopeadas].map(s => s.trim().toUpperCase()).sort();
+    const newTopeadasSorted = [...newTopeadas].sort();
+    
+    if (JSON.stringify(currentSpecsSorted) !== JSON.stringify(newSpecsSorted) || 
+        JSON.stringify(currentTopeadasSorted) !== JSON.stringify(newTopeadasSorted)) {
+      batch.update(docSnap.ref, {
+        especialidades: newSpecs,
+        especialidadesTopeadas: newTopeadas,
+        updatedAt: serverTimestamp()
+      });
+      migrated++;
+    }
   });
 
   // 3. Unify and Merge San Martin Hospital / Althea
