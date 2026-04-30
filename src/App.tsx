@@ -927,7 +927,16 @@ export default function App() {
   const allSpecialties = useMemo(() => {
     const specs = new Set<string>();
     prestadores.forEach(p => {
-      (p.especialidades || []).forEach(s => specs.add(s.trim().toUpperCase().replace(/\s+/g, ' ')));
+      (p.especialidades || []).forEach(s => {
+        let clean = s.trim().toUpperCase().replace(/\s+/g, ' ');
+        if (clean === 'UROLOGIA') clean = 'UROLOGÍA';
+        if (clean === 'NEUROLOGIA') clean = 'NEUROLOGÍA';
+        if (clean.includes('MAMMOTONNE') || clean.includes('MAMMOTONE') || clean === 'MAMOTONE') clean = 'MAMOTONNE';
+        if (clean === 'ESPINOGRAMA' || clean === 'ESPINOGRAFIA') clean = 'ESPINOGRAFÍA';
+        if (clean === 'AUDIOMETRIA' || clean === 'AUDIFONOS' || clean.includes('AUDIOMETR') && clean.includes('AUDIFONO')) clean = 'AUDIOMETRÍA / AUDÍFONOS';
+        if (clean === 'FISIATRIA' || clean === 'FISIOKINESIO' || clean.includes('FISIATRIA')) clean = 'FISIATRÍA';
+        specs.add(clean);
+      });
     });
     return Array.from(specs).sort();
   }, [prestadores]);
@@ -1003,14 +1012,15 @@ export default function App() {
   const availableLocalities = useMemo(() => {
     const locs = new Set<string>();
     filteredPrestadores.forEach(p => {
-      if (p.localidad) locs.add(p.localidad.trim().toUpperCase());
+      const loc = (p.localidad || 'OTRAS LOCALIDADES').trim().toUpperCase();
+      locs.add(loc);
     });
     return Array.from(locs).sort();
   }, [filteredPrestadores]);
 
   const prestadoresToPrint = useMemo(() => {
     return filteredPrestadores.filter(p => {
-      const loc = (p.localidad || '').trim().toUpperCase();
+      const loc = (p.localidad || 'OTRAS LOCALIDADES').trim().toUpperCase();
       return selectedLocalities.includes(loc);
     });
   }, [filteredPrestadores, selectedLocalities]);

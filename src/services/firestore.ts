@@ -911,6 +911,12 @@ export async function migrateData() {
           mapped.push('NEUROLOGÍA');
           continue;
         }
+
+        // Urologia Unification
+        if (upper === 'UROLOGIA' || upper === 'UROLOGÍA') {
+          mapped.push('UROLOGÍA');
+          continue;
+        }
         
         // Default
         let finalString = s.trim().toUpperCase();
