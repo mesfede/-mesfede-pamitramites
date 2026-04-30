@@ -412,6 +412,7 @@ const PrestadorCard = ({
   isAdmin, 
   onEdit, 
   onDelete, 
+  onPrint,
   searchTerm, 
   selectedSpecialty 
 }: { 
@@ -419,6 +420,7 @@ const PrestadorCard = ({
   isAdmin: boolean, 
   onEdit: () => void, 
   onDelete: (e: React.MouseEvent) => void,
+  onPrint: () => void,
   searchTerm: string,
   selectedSpecialty: string
 }) => {
@@ -445,27 +447,36 @@ const PrestadorCard = ({
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-lg font-bold text-pami-text flex items-center gap-2">
-          <Hospital size={18} className="text-pami-blue" />
-          {p.nombre}
+          <Hospital size={18} className="text-pami-blue shrink-0" />
+          <span className="line-clamp-2">{p.nombre}</span>
         </h3>
-        {isAdmin && (
-          <div className="flex gap-1">
-            <button 
-              onClick={onEdit}
-              className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
-              title="Editar prestador"
-            >
-              <Edit2 size={14} />
-            </button>
-            <button 
-              onClick={onDelete}
-              className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-              title="Eliminar prestador"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        )}
+        <div className="flex gap-1 shrink-0 ml-2">
+          <button 
+            onClick={onPrint}
+            className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
+            title="Imprimir prestador"
+          >
+            <Printer size={14} />
+          </button>
+          {isAdmin && (
+            <>
+              <button 
+                onClick={onEdit}
+                className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
+                title="Editar prestador"
+              >
+                <Edit2 size={14} />
+              </button>
+              <button 
+                onClick={onDelete}
+                className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                title="Eliminar prestador"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
       
       <div className="space-y-4 flex-1">
@@ -1084,7 +1095,7 @@ export default function App() {
           <div class="header">
             <div class="specialty-title">${specialtyTitle}</div>
             <div class="pami-info">
-              <div class="agency" style="font-size: 24px; font-family: 'Varela Round', sans-serif; color: #0b2344;">GuíaP</div>
+              <div class="agency" style="font-size: 24px; font-family: 'Varela Round', sans-serif; color: #0b2344;"></div>
             </div>
           </div>
 
@@ -1107,7 +1118,78 @@ export default function App() {
           `).join('')}
 
           <div class="footer">
-            GuíaP - Consulta de Trámites y Prestadores
+            Consulta de Trámites y Prestadores
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  const handlePrintSinglePrestador = (p: Prestador) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const html = `
+      <html>
+        <head>
+          <title>${p.nombre} - Prestador</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 30px; color: #1a202c; line-height: 1.3; }
+            .header { border-bottom: 2px solid #0b2344; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .specialty-title { color: #0b2344; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; }
+            .pami-info { text-align: right; color: #718096; line-height: 1.1; }
+            .pami-info .agency { font-size: 24px; font-weight: 700; color: #0b2344; font-family: 'Varela Round', sans-serif; }
+            .prestador-card { padding: 15px; border: 1px solid #edf2f7; border-radius: 6px; background-color: #fff; }
+            .prestador-name { font-size: 18px; font-weight: 700; color: #1a202c; margin-bottom: 5px; text-transform: uppercase; }
+            .prestador-info { font-size: 14px; color: #4a5568; display: flex; flex-direction: column; gap: 5px; }
+            .info-item { display: block; }
+            .specs-list { margin-top: 15px; font-size: 12px; }
+            .specs-title { font-weight: 700; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+            .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 9px; color: #a0aec0; text-align: center; }
+            @media print {
+              @page { margin: 1cm; }
+              body { padding: 0; margin: 0; }
+              .header { margin-top: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="specialty-title">Información del Prestador</div>
+            <div class="pami-info">
+              <div class="agency"></div>
+            </div>
+          </div>
+
+          <div class="prestador-card">
+            <div class="prestador-name">${p.nombre}</div>
+            <div class="prestador-info">
+              ${p.localidad ? `<div class="info-item"><strong>Localidad:</strong> ${p.localidad}</div>` : ''}
+              ${p.direccion ? `<div class="info-item"><strong>Dirección:</strong> ${p.direccion}</div>` : ''}
+              ${p.telefono ? `<div class="info-item"><strong>Teléfono:</strong> ${p.telefono}</div>` : ''}
+              ${p.whatsapp ? `<div class="info-item"><strong>WhatsApp:</strong> ${p.whatsapp}</div>` : ''}
+              ${p.email ? `<div class="info-item"><strong>Email:</strong> ${p.email}</div>` : ''}
+              ${p.notas ? `<div class="info-item" style="margin-top: 10px;"><strong>Notas:</strong><br>${p.notas}</div>` : ''}
+            </div>
+            
+            ${p.especialidades && p.especialidades.length > 0 ? `
+              <div class="specs-list">
+                <div class="specs-title">Especialidades / Prácticas:</div>
+                ${p.especialidades.join(', ')}
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="footer">
+            Consulta de Trámites y Prestadores
           </div>
         </body>
       </html>
@@ -2583,6 +2665,7 @@ export default function App() {
                     isAdmin={isAdmin || false}
                     onEdit={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
                     onDelete={(e) => handleDeletePrestador(p, e)}
+                    onPrint={() => handlePrintSinglePrestador(p)}
                     searchTerm={prestadorSearch}
                     selectedSpecialty={selectedSpecialty}
                   />
