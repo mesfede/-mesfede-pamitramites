@@ -86,6 +86,7 @@ import {
   cleanupPrestadores,
   cleanupTramites,
   cleanupPracticas,
+  cleanupCentrosCoordinadores,
   seedDatabase,
   uploadFile,
   testConnection,
@@ -618,9 +619,17 @@ const PrestadorCard = ({
               {['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
                 const horario = p.horariosAtencion![dia as keyof typeof p.horariosAtencion];
                 if (!horario) return null;
+                const diaDisplay = {
+                  lunes: 'Lunes',
+                  martes: 'Martes',
+                  miercoles: 'Miércoles',
+                  jueves: 'Jueves',
+                  viernes: 'Viernes',
+                  sabado: 'Sábado'
+                }[dia];
                 return (
                   <div key={dia} className="flex justify-between items-center bg-white px-2 py-1 rounded shadow-sm border border-gray-100">
-                    <span className="font-bold text-gray-500 uppercase text-[10px] tracking-wider">{dia}</span>
+                    <span className="font-bold text-gray-500 uppercase text-[10px] tracking-wider">{diaDisplay}</span>
                     <span className="font-medium text-pami-blue text-[11px]">{horario}</span>
                   </div>
                 );
@@ -1212,12 +1221,17 @@ export default function App() {
                       ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
                         <div class="horarios-grid">
                           <div class="horarios-title-mini">Horarios de Atención</div>
-                          ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion] ? `
-                            <div class="horario-item">
-                              <span class="dia">${dia}</span>
-                              <span class="hora">${p.horariosAtencion[dia as keyof typeof p.horariosAtencion]}</span>
-                            </div>
-                          ` : '').join('')}
+                          ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                            const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
+                            if (!hValue) return '';
+                            const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
+                            return `
+                              <div class="horario-item">
+                                <span class="dia">${diaName}</span>
+                                <span class="hora">${hValue}</span>
+                              </div>
+                            `;
+                          }).join('')}
                         </div>
                       ` : ''}
                     </div>
@@ -1298,12 +1312,17 @@ export default function App() {
             ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
               <div class="horarios-grid">
                 <div class="horarios-title">Horarios de Atención</div>
-                ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion] ? `
-                  <div class="horario-item">
-                    <span class="dia">${dia}</span>
-                    <span class="hora">${p.horariosAtencion[dia as keyof typeof p.horariosAtencion]}</span>
-                  </div>
-                ` : '').join('')}
+                ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                  const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
+                  if (!hValue) return '';
+                  const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
+                  return `
+                    <div class="horario-item">
+                      <span class="dia">${diaName}</span>
+                      <span class="hora">${hValue}</span>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             ` : ''}
             
@@ -1838,8 +1857,9 @@ export default function App() {
     setAdminMessage(null);
     try {
       const migrated = await migrateData();
+      const deletedCentros = await cleanupCentrosCoordinadores();
       setAdminMessage({ 
-        text: `Se unificaron y corrigieron ${migrated} registros (Hospitales, Especialidades y Vínculos).`, 
+        text: `Se unificaron y corrigieron ${migrated + deletedCentros} registros (Hospitales, Especialidades y Vínculos).`, 
         type: 'success' 
       });
     } catch (err) {
@@ -1964,7 +1984,10 @@ export default function App() {
                   Prácticas OME
                 </button>
                 <button 
-                  onClick={() => setActiveTab('centros')}
+                  onClick={() => {
+                    setActiveTab('centros');
+                    setCentroSearch("");
+                  }}
                   className={cn(
                     "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
                     activeTab === 'centros' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
@@ -2050,7 +2073,11 @@ export default function App() {
                       Prácticas OME
                     </button>
                     <button 
-                      onClick={() => { setActiveTab('centros'); setIsMobileMenuOpen(false); }}
+                      onClick={() => { 
+                        setActiveTab('centros'); 
+                        setCentroSearch("");
+                        setIsMobileMenuOpen(false); 
+                      }}
                       className={cn(
                         "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
                         activeTab === 'centros' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"

@@ -416,6 +416,39 @@ export async function cleanupPracticas() {
   return deleted;
 }
 
+export async function cleanupCentrosCoordinadores() {
+  const centrosSnap = await getDocs(collection(db, CENTROS_COORDINADORES_COLLECTION));
+  const seen = new Set<string>();
+  let deletedCount = 0;
+  
+  // Collect IDs of duplicates
+  const idsToDelete: string[] = [];
+
+  centrosSnap.docs.forEach(doc => {
+    const data = doc.data();
+    const key = `${(data.hospital || "").trim()}|${(data.trabajador || "").trim()}|${(data.localidad || "").trim()}`.toLowerCase();
+    
+    if (seen.has(key)) {
+      idsToDelete.push(doc.id);
+    } else {
+      seen.add(key);
+    }
+  });
+
+  // Delete in batches of 500 (Firestore limit)
+  for (let i = 0; i < idsToDelete.length; i += 500) {
+    const batch = writeBatch(db);
+    const chunk = idsToDelete.slice(i, i + 500);
+    chunk.forEach(id => {
+      batch.delete(doc(db, CENTROS_COORDINADORES_COLLECTION, id));
+    });
+    await batch.commit();
+    deletedCount += chunk.length;
+  }
+
+  return deletedCount;
+}
+
 export function subscribeToFolletos(callback: (folletos: Folleto[]) => void) {
   const q = query(collection(db, FOLLETOS_COLLECTION), orderBy('nombre', 'asc'));
   return onSnapshot(q, (snapshot) => {
@@ -1131,6 +1164,7 @@ export async function migrateData() {
     { canonical: sanRoqueCanonical, variants: sanRoqueVariants },
     { canonical: losTilosCanonical, variants: losTilosVariants },
     { canonical: rossiCanonical, variants: rossiVariants },
+    { canonical: "GUSTAVO DILORETTO", variants: ["DI LORETO GUSTAVO", "GUSTAVO DI LORETTO"] },
     { 
       canonical: "HTAL. PRIVADO SUSAMERICANO", 
       variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] 
