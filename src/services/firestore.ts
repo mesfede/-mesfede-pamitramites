@@ -37,6 +37,31 @@ const PRACTICAS_COLLECTION = 'practicas';
 const CENTROS_COORDINADORES_COLLECTION = 'centros_coordinadores';
 const TELEFONOS_COLLECTION = 'telefonos';
 
+const HOSPITAL_CANONICAL_GROUPS = [
+  { canonical: "HTAL. SAN MARTIN", variants: ["HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL SAN MARTIN", "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN", "Hospital San Martin"] },
+  { canonical: "ALTHEA (EX VACCARINI)", variants: ["ALTHEA CLINICA PRIVADA", "CL PR VACCARINI SA", "ALTHEA", "CLINICA VACCARINI", "VACCARINI", "VACARINI"] },
+  { canonical: "HTAL. GUTIERREZ", variants: ["Htal Zonal Ricardo Gutierrez", "HOSPITAL RICARDO GUTIERREZ", "HOSPITAL GUTIERREZ", "GUTIERREZ", "RICARDO GUTIERREZ"] },
+  { canonical: "HTAL. SAN ROQUE", variants: ["HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE", "HOSPITAL SAN ROQUE", "SAN ROQUE", "Hospital San Roque"] },
+  { canonical: "SANATORIO MEDICO LOS TILOS", variants: ["SANATORIO MÉDICO LOS TILOS SA", "SANATORIO MEDICO LOS TILOS", "SANATORIO MEDICO LOS TILOS SA", "LOS TILOS"] },
+  { canonical: "HTAL. ROSSI", variants: ["HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI", "HOSPITAL INTERZONAL ROSSI", "HTAL. ROSSI", "HOSPITAL ROSSI"] },
+  { canonical: "GUSTAVO DILORETTO", variants: ["DI LORETO GUSTAVO", "GUSTAVO DI LORETTO"] },
+  { canonical: "HTAL. PRIVADO SUSAMERICANO", variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] },
+  { canonical: "HTAL. SAN JUAN DE DIOS", variants: ["HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] }
+];
+
+function normalizeHospitalName(name: string): string {
+  if (!name) return "";
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+  
+  for (const group of HOSPITAL_CANONICAL_GROUPS) {
+    if (lower === group.canonical.toLowerCase() || group.variants.map(v => v.toLowerCase()).includes(lower)) {
+      return group.canonical;
+    }
+  }
+  return trimmed;
+}
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -426,7 +451,8 @@ export async function cleanupCentrosCoordinadores() {
 
   centrosSnap.docs.forEach(doc => {
     const data = doc.data();
-    const key = `${(data.hospital || "").trim()}|${(data.trabajador || "").trim()}|${(data.localidad || "").trim()}`.toLowerCase();
+    const hospital = normalizeHospitalName(data.hospital || "");
+    const key = `${hospital.trim()}|${(data.trabajador || "").trim()}`.toLowerCase();
     
     if (seen.has(key)) {
       idsToDelete.push(doc.id);
@@ -738,7 +764,12 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
 
   const centrosSnap = await getDocs(collection(db, CENTROS_COORDINADORES_COLLECTION));
   const existingCentroKeys = new Set(
-    centrosSnap.docs.map(doc => `${doc.data().hospital}|${doc.data().trabajador}`.toLowerCase())
+    centrosSnap.docs.map(doc => {
+      const data = doc.data();
+      const hospitalRaw = (data.hospital || "").trim().toUpperCase();
+      // Use the same normalization logic as migrateData if possible, or just trim/upper
+      return `${hospitalRaw}|${(data.trabajador || "").trim().toUpperCase()}`.toLowerCase();
+    })
   );
 
   const telefonosSnap = await getDocs(collection(db, TELEFONOS_COLLECTION));
@@ -856,13 +887,18 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   });
 
   initialCentros.forEach(c => {
-    const key = `${c.hospital}|${c.trabajador}`.toLowerCase();
+    const hospital = normalizeHospitalName(c.hospital || "");
+    const trabajador = (c.trabajador || "").trim();
+    
+    const key = `${hospital.toUpperCase()}|${trabajador.toUpperCase()}`.toLowerCase();
+
     if (!existingCentroKeys.has(key)) {
       const docRef = doc(collection(db, CENTROS_COORDINADORES_COLLECTION));
       currentChunk.push({
         ref: docRef,
         data: {
           ...c,
+          hospital: hospital, // Use normalized name
           createdAt: serverTimestamp()
         }
       });
