@@ -1270,6 +1270,47 @@ export async function migrateData() {
     });
   }
 
+  // 5. Update ITEM procedure
+  const itemProcedData = `COORDINADOR | rgiugnoli@pami.org.ar | 
+CARDIOLOGÍA / TAVI / V-E | cardio@pami.org.ar | 
+NEUROLOGÍA | gnano@proyectos.pami.org.ar | Prácticas, Expedientes VE, neuroestimulación
+NEUROCIRUGIA (insumos T.2 y V/E) | aconde@proyectos.pami.org.ar / flferraro@proyectos.pami.org.ar / ftonero@proyectos.pami.org.ar | 
+ALTA COMPLEJIDAD (Cx Gral. - Gastro - M. Invasiva) | cirugia@pami.org.ar | 
+NEUMONOLOGÍA | rcarpio@proyectos.pami.org.ar | Cánulas traqueales - insumos de pulmón o pedidos por neumólogo
+UROLOGÍA | jreyesolivera@proyectos.pami.org.ar / lschneider@proyectos.pami.org.ar | 
+DERMATOLOGÍA / DERCARTABLES HERIDAS / VAC | arocchese@proyectos.pami.org.ar | 
+OBESIDAD | pcatellani@pami.org.ar | 
+OSTOMÍA | ostomia@pami.org.ar | 
+OXIGENO | oxigenoterapia@pami.org.ar | 
+OFTALMOLOGÍA | divisionoptica@pami.org.ar | 
+AUDITORIA TRAUMATOLOGÍA (EVALUACION T.2 - VE) | auditoriatraumatonc@pami.org.ar | 
+RECLAMO PROVISIÓN TRAUMATOLOGÍA | traumatologia@pami.org.ar | 
+DIABETES | mcrodi@pami.org.ar / bioquimica@pami.org.ar | 
+BOMBAS DE ALIMENTACIÓN Y GUÍAS | recuperacionnutricional@pami.org.ar | va por OP MODULO 400 ENTERAL
+FONOAUDIOLOGÍA Y AUDÍFONOS | spalladino@pami.org.ar / programas_audifonos@pami.org.ar | INSUMOS SOLICITADOS POR ORL
+PAÑALES | insumosdeincontinencias@pami.org.ar | 
+PRESUPUESTOS DE PRÁCTICAS VE (EXPEDIENTES) | contrataciones.especiales@pami.org.ar | 
+MESA DE ENTRADAS | mffernandez@pami.org.ar / masuan@pami.org.ar | 
+GINECOLOGÍA / ANTICONCEPCIÓN | rgiugnoli@pami.org.ar | 
+RECLAMOS | subgciaprestyprov@pami.org.ar | 
+LICITACIONES | gestiondecomprasylicitaciones@pami.org.ar | 
+SUBGERENCIA DE PRESTACIONES MÉDICAS | subgciapresmedicas@pami.org.ar | 
+FISIATRÍA / AYUDA EXTERNA (VE) Y REHABILITACIÓN | ayudastecnicas@pami.org.ar |`;
+
+  const itemTramites = tramitesSnap.docs.filter(d => {
+    const name = d.data().nombre?.toUpperCase();
+    return name === 'ITEM' || name === 'ITEM / INSUMOS VE';
+  });
+
+  itemTramites.forEach(d => {
+    batch.update(d.ref, {
+      descripcion: itemProcedData,
+      nombre: 'ITEM / INSUMOS VE',
+      updatedAt: serverTimestamp()
+    });
+    migrated++;
+  });
+
   if (migrated > 0) {
     await batch.commit();
   }

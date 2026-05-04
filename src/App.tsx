@@ -2413,8 +2413,9 @@ export default function App() {
                                       <table className="w-full text-sm text-left border-collapse">
                                         <thead>
                                           <tr className="border-b border-gray-200">
-                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Práctica</th>
-                                            <th className="py-2 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Dirección de mail</th>
+                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Área / Especialidad</th>
+                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Correo Electrónico</th>
+                                            <th className="py-2 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Observaciones</th>
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
@@ -2422,44 +2423,46 @@ export default function App() {
                                             if (!line.trim()) return null;
                                             if (line.includes('Área / \tContactos') || line.toLowerCase().startsWith('área /') && line.toLowerCase().includes('contacto')) return null;
                                             if (line.includes('Práctica') && line.includes('Dirección de mail')) return null;
+                                            if (line.toLowerCase().includes('área/especialidad') && line.toLowerCase().includes('correo')) return null;
                                             
                                             let area = '';
                                             let contacto = '';
+                                            let obs = '';
                                             
                                             if (line.includes('|')) {
-                                              const parts = line.split('|');
-                                              area = parts[0];
-                                              contacto = parts.slice(1).join('|');
+                                              const parts = line.split('|').map(p => p.trim());
+                                              area = parts[0] || '';
+                                              contacto = parts[1] || '';
+                                              obs = parts[2] || '';
                                             } else if (line.includes('\t')) {
-                                              const parts = line.split('\t');
-                                              area = parts[0];
-                                              contacto = parts.slice(1).join('\t');
+                                              const parts = line.split('\t').map(p => p.trim());
+                                              area = parts[0] || '';
+                                              contacto = parts[1] || '';
+                                              obs = parts[2] || '';
                                             } else {
                                               const emailMatch = line.match(/[\w.-]+@[\w.-]+\.\w+/);
                                               if (emailMatch && emailMatch.index !== undefined) {
-                                                area = line.substring(0, emailMatch.index);
-                                                contacto = line.substring(emailMatch.index);
+                                                area = line.substring(0, emailMatch.index).trim();
+                                                contacto = line.substring(emailMatch.index).trim();
                                               } else {
                                                 const parts = line.split(/ {2,}/);
                                                 if (parts.length > 1) {
-                                                  area = parts[0];
-                                                  contacto = parts.slice(1).join(' ');
+                                                  area = parts[0].trim();
+                                                  contacto = parts.slice(1).join(' ').trim();
                                                 } else {
-                                                  area = line;
+                                                  area = line.trim();
                                                   contacto = '';
                                                 }
                                               }
                                             }
                                             
-                                            area = area.trim();
-                                            contacto = contacto.trim();
-                                            
-                                            if (!area && !contacto) return null;
+                                            if (!area && !contacto && !obs) return null;
                                             
                                             return (
                                               <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="py-2.5 pr-4 font-medium text-pami-text align-top text-xs lg:w-1/3">{area}</td>
-                                                <td className="py-2.5 text-pami-muted align-top text-xs break-all sm:break-normal whitespace-pre-wrap">{contacto}</td>
+                                                <td className="py-2.5 pr-4 font-medium text-pami-text align-top text-xs lg:w-1/4">{area}</td>
+                                                <td className="py-2.5 pr-4 text-pami-muted align-top text-xs break-all sm:break-normal whitespace-pre-wrap lg:w-1/3">{contacto}</td>
+                                                <td className="py-2.5 text-pami-muted align-top text-xs italic">{obs}</td>
                                               </tr>
                                             );
                                           })}
