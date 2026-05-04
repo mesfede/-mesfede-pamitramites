@@ -9,9 +9,11 @@ import {
   orderBy, 
   serverTimestamp,
   getDocs,
+  getDoc,
   writeBatch,
   getDocFromServer,
-  setDoc
+  setDoc,
+  limit
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
@@ -181,7 +183,11 @@ export async function updateTramite(id: string, tramite: Partial<Tramite>) {
 export async function deleteTramite(id: string) {
   try {
     const docRef = doc(db, TRAMITES_COLLECTION, id);
-    return await deleteDoc(docRef);
+    const snapshot = await getDoc(docRef);
+    await deleteDoc(docRef);
+    if (snapshot.exists()) {
+      await logUpdate(`Se eliminó el trámite: ${snapshot.data().nombre}`);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, TRAMITES_COLLECTION);
   }
@@ -281,7 +287,11 @@ export async function updatePrestador(id: string, prestador: Partial<Prestador>)
 export async function deletePrestador(id: string) {
   try {
     const docRef = doc(db, PRESTADORES_COLLECTION, id);
-    return await deleteDoc(docRef);
+    const snapshot = await getDoc(docRef);
+    await deleteDoc(docRef);
+    if (snapshot.exists()) {
+      await logUpdate(`Se eliminó el prestador: ${snapshot.data().nombre}`);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, PRESTADORES_COLLECTION);
   }
@@ -464,7 +474,11 @@ export async function updatePractica(id: string, practica: Partial<PracticaOME>)
 export async function deletePractica(id: string) {
   try {
     const docRef = doc(db, PRACTICAS_COLLECTION, id);
-    return await deleteDoc(docRef);
+    const snapshot = await getDoc(docRef);
+    await deleteDoc(docRef);
+    if (snapshot.exists()) {
+      await logUpdate(`Se eliminó la práctica: ${snapshot.data().descripcion}`);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, PRACTICAS_COLLECTION);
   }
@@ -486,7 +500,11 @@ export async function addFolleto(folleto: Omit<Folleto, 'id'>) {
 export async function deleteFolleto(id: string) {
   try {
     const docRef = doc(db, FOLLETOS_COLLECTION, id);
-    return await deleteDoc(docRef);
+    const snapshot = await getDoc(docRef);
+    await deleteDoc(docRef);
+    if (snapshot.exists()) {
+      await logUpdate(`Se eliminó el folleto: ${snapshot.data().nombre}`);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, FOLLETOS_COLLECTION);
   }
@@ -537,7 +555,11 @@ export async function updateCentroCoordinador(id: string, centro: Partial<Centro
 export async function deleteCentroCoordinador(id: string) {
   try {
     const docRef = doc(db, CENTROS_COORDINADORES_COLLECTION, id);
-    return await deleteDoc(docRef);
+    const snapshot = await getDoc(docRef);
+    await deleteDoc(docRef);
+    if (snapshot.exists()) {
+      await logUpdate(`Se eliminó el centro coordinador: ${snapshot.data().hospital}`);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, CENTROS_COORDINADORES_COLLECTION);
   }
@@ -589,7 +611,11 @@ export async function updateTelefono(id: string, telefono: Partial<TelefonoInter
 export async function deleteTelefono(id: string) {
   try {
     const docRef = doc(db, TELEFONOS_COLLECTION, id);
-    return await deleteDoc(docRef);
+    const snapshot = await getDoc(docRef);
+    await deleteDoc(docRef);
+    if (snapshot.exists()) {
+      await logUpdate(`Se eliminó el teléfono interno: ${snapshot.data().area}`);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, TELEFONOS_COLLECTION);
   }
