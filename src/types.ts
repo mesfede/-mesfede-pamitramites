@@ -22,6 +22,7 @@ export interface PracticaOME {
   sinonimo?: string;
   modulo: string;
   responsable: 'Médico de Cabecera' | 'Médico Auditor';
+  oculto?: boolean;
 }
 
 export interface CentroCoordinador {
@@ -38,11 +39,21 @@ export interface Tramite {
   descripcion?: string;
   pasos?: string[];
   nota?: string;
+  oculto?: boolean;
   documentos?: { nombre: string; url: string }[];
   prestadoresIds?: string[];
   createdAt?: any;
   updatedAt?: any;
   createdBy?: string;
+}
+
+export interface HorarioAtencion {
+  lunes?: string;
+  martes?: string;
+  miercoles?: string;
+  jueves?: string;
+  viernes?: string;
+  sabado?: string;
 }
 
 export interface Prestador {
@@ -57,6 +68,8 @@ export interface Prestador {
   localidad?: string;
   horario?: string;
   notas?: string;
+  oculto?: boolean;
+  horariosAtencion?: HorarioAtencion;
 }
 
 export type Category = 

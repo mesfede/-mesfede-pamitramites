@@ -56,7 +56,8 @@ import {
   Sparkles,
   Dumbbell,
   Shield,
-  Menu
+  Menu,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -226,13 +227,15 @@ const AutocompleteTagInput = ({
   defaultValue = "",
   placeholder,
   suggestions = [],
-  className
+  className,
+  onChange
 }: {
   name: string,
   defaultValue?: string,
   placeholder?: string,
   suggestions?: string[],
-  className?: string
+  className?: string,
+  onChange?: (tags: string[]) => void
 }) => {
   const [tags, setTags] = useState<string[]>(defaultValue ? defaultValue.split('\n').filter(t => t.trim() !== '') : []);
   const [inputValue, setInputValue] = useState("");
@@ -240,6 +243,13 @@ const AutocompleteTagInput = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // Call onChange whenever tags change
+  useEffect(() => {
+    if (onChange) {
+      onChange(tags);
+    }
+  }, [tags]);
+
   const filteredSuggestions = suggestions.filter(s => 
     s.toLowerCase().includes(inputValue.toLowerCase()) && !tags.includes(s)
   );
@@ -445,12 +455,19 @@ const PrestadorCard = ({
   const otherSpecs = p.especialidades.filter(s => !primarySpecs.includes(s));
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
+    <div className={cn("bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all flex flex-col h-full", p.oculto && "bg-gray-100/80 opacity-60 grayscale-[50%] hover:opacity-80")}>
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-lg font-bold text-pami-text flex items-center gap-2">
-          <Hospital size={18} className="text-pami-blue shrink-0" />
-          <span className="line-clamp-2">{p.nombre}</span>
-        </h3>
+        <div className="flex flex-col gap-1">
+          <h3 className="text-lg font-bold text-pami-text flex items-center gap-2">
+            <Hospital size={18} className="text-pami-blue shrink-0" />
+            <span className="line-clamp-2">{p.nombre}</span>
+          </h3>
+          {p.oculto && isAdmin && (
+            <span className="w-fit bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1">
+              <EyeOff size={10} /> Oculto (Solo Admin)
+            </span>
+          )}
+        </div>
         <div className="flex gap-1 shrink-0 ml-2">
           <button 
             onClick={onPrint}
@@ -591,6 +608,27 @@ const PrestadorCard = ({
           </div>
         )}
 
+        {p.horariosAtencion && (
+          <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 text-xs text-pami-text flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 font-bold text-pami-blue">
+              <Clock size={14} />
+              Horarios de Atención
+            </div>
+            <div className="grid grid-cols-2 gap-y-1 gap-x-4">
+              {['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                const horario = p.horariosAtencion![dia as keyof typeof p.horariosAtencion];
+                if (!horario) return null;
+                return (
+                  <div key={dia} className="flex justify-between items-center bg-white px-2 py-1 rounded shadow-sm border border-gray-100">
+                    <span className="font-bold text-gray-500 uppercase text-[10px] tracking-wider">{dia}</span>
+                    <span className="font-medium text-pami-blue text-[11px]">{horario}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {p.notas && (
           <div className="bg-gray-50 p-3 rounded-lg text-xs text-pami-muted flex gap-2">
             <AlertCircle size={14} className="shrink-0 text-pami-muted" />
@@ -647,6 +685,7 @@ export default function App() {
   const [centroToDelete, setCentroToDelete] = useState<CentroCoordinador | null>(null);
   const [isDeletePracticaModalOpen, setIsDeletePracticaModalOpen] = useState(false);
   const [editingPrestador, setEditingPrestador] = useState<Prestador | null>(null);
+  const [prestadorTags, setPrestadorTags] = useState<string[]>([]);
   const [editingPractica, setEditingPractica] = useState<PracticaOME | null>(null);
   const [editingCentro, setEditingCentro] = useState<CentroCoordinador | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -678,6 +717,7 @@ export default function App() {
     if (isPrestadorModalOpen) {
       setFormAddress(editingPrestador?.direccion || "");
       setFormLocality(editingPrestador?.localidad || "");
+      setPrestadorTags(editingPrestador?.especialidades || []);
     }
   }, [isPrestadorModalOpen, editingPrestador]);
 
@@ -876,6 +916,41 @@ export default function App() {
     }
   }, [tramites, isAdmin]);
 
+  const migrationPrestadoresRan = useRef(false);
+
+  useEffect(() => {
+    if (isAdmin && prestadores.length > 0 && !migrationPrestadoresRan.current) {
+      migrationPrestadoresRan.current = true;
+      const migratePrestadores = async () => {
+        const diloreto = prestadores.find(p => p.nombre.toUpperCase() === 'DI LORETO GUSTAVO');
+        const gustavo = prestadores.find(p => p.nombre.toUpperCase() === 'GUSTAVO DILORETTO');
+        
+        if (diloreto) {
+          try {
+            if (gustavo) {
+              const newSpecs = Array.from(new Set([...gustavo.especialidades, ...diloreto.especialidades]));
+              await updatePrestador(gustavo.id, { especialidades: newSpecs });
+              
+              for (const t of tramites) {
+                if (t.prestadoresIds?.includes(diloreto.id)) {
+                  const newIds = Array.from(new Set([...t.prestadoresIds.filter(id => id !== diloreto.id), gustavo.id]));
+                  await updateTramite(t.id, { prestadoresIds: newIds });
+                }
+              }
+              
+              await deletePrestador(diloreto.id);
+            } else {
+              await updatePrestador(diloreto.id, { nombre: 'GUSTAVO DILORETTO' });
+            }
+          } catch(e) {
+            console.error('Migration error', e);
+          }
+        }
+      };
+      migratePrestadores();
+    }
+  }, [prestadores, tramites, isAdmin]);
+
   useEffect(() => {
     if (editingTramite) {
       setUploadedFiles(editingTramite.documentos || []);
@@ -893,6 +968,9 @@ export default function App() {
     const searchNorm = normalize(search.trim());
 
     const filtered = tramites.filter(t => {
+      // Hide tramites marked as oculto for non-admins
+      if (t.oculto && !isAdmin) return false;
+
       const nameNorm = normalize(t.nombre || "");
       const descNorm = normalize(t.descripcion || "");
       const catNorm = normalize(t.categoria || "");
@@ -976,6 +1054,9 @@ export default function App() {
     }
 
     const filtered = prestadores.filter(p => {
+      // Hide prestadores marked as oculto for non-admins
+      if (p.oculto && !isAdmin) return false;
+
       const nameNorm = normalize(p.nombre.replace(/\s+/g, ' '));
       const specsNorm = (p.especialidades || []).map(s => normalize(s.replace(/\s+/g, ' '))).join(' ');
       const notasNorm = normalize((p.notas || '').replace(/\s+/g, ' '));
@@ -1094,6 +1175,12 @@ export default function App() {
             .prestador-name { font-size: 12px; font-weight: 700; color: #1a202c; margin-bottom: 2px; text-transform: uppercase; }
             .prestador-info { font-size: 11px; color: #4a5568; display: flex; flex-direction: column; gap: 2px; }
             .info-item { display: block; }
+            .horarios-grid { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; background: #f8fafc; padding: 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
+            .horarios-title-mini { font-size: 9px; font-weight: 700; color: #0b2344; margin-bottom: 2px; text-transform: uppercase; }
+            .horario-item { display: flex; justify-content: space-between; font-size: 9px; border-bottom: 1px solid #f1f5f9; padding-bottom: 1px; }
+            .horario-item:last-child { border-bottom: none; padding-bottom: 0; }
+            .horario-item .dia { font-weight: 700; color: #64748b; text-transform: uppercase; }
+            .horario-item .hora { color: #0369a1; font-weight: 600; text-align: right; }
             .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 9px; color: #a0aec0; text-align: center; }
             @media print {
               @page { margin: 1cm; }
@@ -1122,6 +1209,17 @@ export default function App() {
                       ${p.direccion ? `<div class="info-item"><strong>Dir:</strong> ${p.direccion}</div>` : ''}
                       ${p.telefono ? `<div class="info-item"><strong>Tel:</strong> ${p.telefono}</div>` : ''}
                       ${p.whatsapp ? `<div class="info-item"><strong>WA:</strong> ${p.whatsapp}</div>` : ''}
+                      ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
+                        <div class="horarios-grid">
+                          <div class="horarios-title-mini">Horarios de Atención</div>
+                          ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion] ? `
+                            <div class="horario-item">
+                              <span class="dia">${dia}</span>
+                              <span class="hora">${p.horariosAtencion[dia as keyof typeof p.horariosAtencion]}</span>
+                            </div>
+                          ` : '').join('')}
+                        </div>
+                      ` : ''}
                     </div>
                   </div>
                 `).join('')}
@@ -1165,6 +1263,11 @@ export default function App() {
             .info-item { display: block; }
             .specs-list { margin-top: 15px; font-size: 12px; }
             .specs-title { font-weight: 700; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+            .horarios-grid { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
+            .horarios-title { font-weight: 700; font-size: 13px; text-transform: uppercase; margin-bottom: 10px; color: #0b2344; grid-column: 1 / -1; }
+            .horario-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 8px 12px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 13px; }
+            .horario-item .dia { font-weight: 700; color: #64748b; text-transform: uppercase; }
+            .horario-item .hora { color: #0369a1; font-weight: 600; }
             .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 9px; color: #a0aec0; text-align: center; }
             @media print {
               @page { margin: 1cm; }
@@ -1191,6 +1294,18 @@ export default function App() {
               ${p.email ? `<div class="info-item"><strong>Email:</strong> ${p.email}</div>` : ''}
               ${p.notas ? `<div class="info-item" style="margin-top: 10px;"><strong>Notas:</strong><br>${p.notas}</div>` : ''}
             </div>
+            
+            ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
+              <div class="horarios-grid">
+                <div class="horarios-title">Horarios de Atención</div>
+                ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion] ? `
+                  <div class="horario-item">
+                    <span class="dia">${dia}</span>
+                    <span class="hora">${p.horariosAtencion[dia as keyof typeof p.horariosAtencion]}</span>
+                  </div>
+                ` : '').join('')}
+              </div>
+            ` : ''}
             
             ${p.especialidades && p.especialidades.length > 0 ? `
               <div class="specs-list">
@@ -1227,11 +1342,18 @@ export default function App() {
     
     const searchNorm = normalize(practicaSearch.trim());
 
-    if (!searchNorm) return practicas;
-
     const searchWords = searchNorm.split(/\s+/);
 
-    const filtered = practicas.filter(p => {
+    let filtered = practicas;
+    
+    // Si no es admin, filtramos las ocultas en todos los casos (con o sin búsqueda)
+    if (!isAdmin) {
+      filtered = filtered.filter(p => !p.oculto);
+    }
+    
+    if (!searchNorm) return filtered;
+
+    filtered = filtered.filter(p => {
       const rawFields = [
         p.codigo || "",
         p.descripcion || "",
@@ -1394,7 +1516,8 @@ export default function App() {
       nota: formData.get('nota') as string,
       pasos: (formData.get('pasos') as string).split('\n').filter(p => p.trim() !== ''),
       documentos: uploadedFiles,
-      prestadoresIds: selectedPrestadoresIds
+      prestadoresIds: selectedPrestadoresIds,
+      oculto: formData.get('oculto') === 'on'
     };
 
     try {
@@ -1492,6 +1615,7 @@ export default function App() {
       responsable: formData.get('responsable') as any,
       sinonimo: formData.get('sinonimo') as string || undefined,
       descImpresa: formData.get('descImpresa') as string || undefined,
+      oculto: formData.get('oculto') === 'on'
     };
 
     try {
@@ -1610,7 +1734,8 @@ export default function App() {
     
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
-    const data = {
+    const isCabecera = ((formData.get('especialidades') as string) || '').toLowerCase().includes('cabecera');
+    const data: any = {
       nombre: formData.get('nombre') as string,
       especialidades: (formData.get('especialidades') as string).split('\n').filter(p => p.trim() !== ''),
       especialidadesTopeadas: (formData.get('especialidadesTopeadas') as string | null)?.split('\n').filter(p => p.trim() !== '') || [],
@@ -1620,7 +1745,21 @@ export default function App() {
       email: formData.get('email') as string,
       direccion: formData.get('direccion') as string,
       localidad: formData.get('localidad') as string,
+      oculto: formData.get('oculto') === 'on'
     };
+
+    if (isCabecera) {
+      data.horariosAtencion = {
+        lunes: (formData.get('horario_lunes') as string) || '',
+        martes: (formData.get('horario_martes') as string) || '',
+        miercoles: (formData.get('horario_miercoles') as string) || '',
+        jueves: (formData.get('horario_jueves') as string) || '',
+        viernes: (formData.get('horario_viernes') as string) || '',
+        sabado: (formData.get('horario_sabado') as string) || '',
+      };
+    } else {
+      data.horariosAtencion = null; // Clear if not cabecera anymore
+    }
 
     try {
       if (editingPrestador) {
@@ -2174,7 +2313,8 @@ export default function App() {
                       className={cn(
                         "rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all",
                         CATEGORY_LIGHT_COLORS[t.categoria] || "bg-white",
-                        expandedId === t.id ? "ring-2 ring-pami-blue shadow-md" : "hover:border-pami-blue/50"
+                        expandedId === t.id ? "ring-2 ring-pami-blue shadow-md" : "hover:border-pami-blue/50",
+                        t.oculto && "bg-gray-100/80 opacity-60 grayscale-[50%] hover:opacity-80"
                       )}
                     >
                       <div 
@@ -2190,7 +2330,14 @@ export default function App() {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-pami-text uppercase truncate">{t.nombre}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-pami-text uppercase truncate">{t.nombre}</h3>
+                            {t.oculto && isAdmin && (
+                              <span className="shrink-0 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <EyeOff size={10} /> Oculto (Solo Admin)
+                              </span>
+                            )}
+                          </div>
                           {selectedCat === 'all' && (
                             <span className={cn(
                               "inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
@@ -2829,11 +2976,18 @@ export default function App() {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {filteredPracticas.map((p, idx) => (
-                          <tr key={`${p.codigo}-${idx}`} className="hover:bg-gray-50/50 transition-colors group">
+                          <tr key={`${p.codigo}-${idx}`} className={cn("hover:bg-gray-50/50 transition-colors group", p.oculto && "bg-gray-100/50 opacity-60 grayscale-[50%] hover:opacity-80")}>
                             <td className="px-6 py-4 font-mono text-sm text-pami-blue font-bold">{p.codigo}</td>
                             <td className="px-6 py-4">
                               <div className="flex flex-col">
-                                <span className="text-sm text-pami-text font-medium uppercase">{p.descripcion}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-pami-text font-medium uppercase">{p.descripcion}</span>
+                                  {p.oculto && isAdmin && (
+                                    <span className="w-fit bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1">
+                                      <EyeOff size={10} /> Oculto
+                                    </span>
+                                  )}
+                                </div>
                                 {(p.descImpresa || p.sinonimo) && (
                                   <div className="flex gap-2 mt-1">
                                     {p.descImpresa && (
@@ -3491,6 +3645,23 @@ export default function App() {
             <Input name="nota" defaultValue={editingTramite?.nota} placeholder="Ej: Solo para mayores de 75 años" />
           </div>
 
+          {isAdmin && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 p-3 bg-red-50/50 border border-red-100 rounded-xl cursor-pointer hover:bg-red-50 transition-colors">
+                <input 
+                  type="checkbox" 
+                  name="oculto"
+                  defaultChecked={editingTramite?.oculto}
+                  className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-600"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-red-800">Ocultar trámite (Prestación no disponible)</span>
+                  <span className="text-xs text-red-600/80">El trámite permanecerá en el sistema pero no será visible para los usuarios normales.</span>
+                </div>
+              </label>
+            </div>
+          )}
+
           <div className="space-y-3">
             <label className="text-sm font-semibold text-pami-muted">Prestadores que realizan este trámite</label>
             <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -3615,6 +3786,7 @@ export default function App() {
               defaultValue={editingPrestador?.especialidades?.join('\n')} 
               suggestions={allSpecialties}
               placeholder="Ej: CARDIOLOGÍA, VIDEOCOLONOSCOPIA..." 
+              onChange={setPrestadorTags}
             />
           </div>
 
@@ -3668,10 +3840,62 @@ export default function App() {
             <Input name="email" type="email" defaultValue={editingPrestador?.email} placeholder="Ej: contacto@clinica.com" />
           </div>
 
+          {prestadorTags.some(t => t.toLowerCase().includes('cabecera')) && (
+            <div className="space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              <label className="text-sm font-semibold text-pami-blue flex items-center gap-2">
+                <Clock size={16} />
+                Horarios de Atención (Médico de Cabecera)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-pami-muted uppercase tracking-wider">Lunes</label>
+                  <Input name="horario_lunes" defaultValue={editingPrestador?.horariosAtencion?.lunes} placeholder="Ej: 08:00 a 14:00" className="text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-pami-muted uppercase tracking-wider">Martes</label>
+                  <Input name="horario_martes" defaultValue={editingPrestador?.horariosAtencion?.martes} placeholder="Ej: 08:00 a 14:00" className="text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-pami-muted uppercase tracking-wider">Miércoles</label>
+                  <Input name="horario_miercoles" defaultValue={editingPrestador?.horariosAtencion?.miercoles} placeholder="Ej: 08:00 a 14:00" className="text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-pami-muted uppercase tracking-wider">Jueves</label>
+                  <Input name="horario_jueves" defaultValue={editingPrestador?.horariosAtencion?.jueves} placeholder="Ej: 08:00 a 14:00" className="text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-pami-muted uppercase tracking-wider">Viernes</label>
+                  <Input name="horario_viernes" defaultValue={editingPrestador?.horariosAtencion?.viernes} placeholder="Ej: 08:00 a 14:00" className="text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-pami-muted uppercase tracking-wider">Sábado</label>
+                  <Input name="horario_sabado" defaultValue={editingPrestador?.horariosAtencion?.sabado} placeholder="Ej: 08:00 a 14:00" className="text-sm" />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-sm font-semibold text-pami-muted">Notas Adicionales</label>
             <TextArea name="notas" defaultValue={editingPrestador?.notas} placeholder="Horarios, requisitos especiales, etc." />
           </div>
+
+          {isAdmin && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 p-3 bg-red-50/50 border border-red-100 rounded-xl cursor-pointer hover:bg-red-50 transition-colors">
+                <input 
+                  type="checkbox" 
+                  name="oculto"
+                  defaultChecked={editingPrestador?.oculto}
+                  className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-600"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-red-800">Ocultar prestador (No disponible temporalmente)</span>
+                  <span className="text-xs text-red-600/80">El prestador permanecerá en el sistema pero no será visible para los usuarios normales.</span>
+                </div>
+              </label>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <Button type="button" variant="ghost" onClick={() => setIsPrestadorModalOpen(false)}>Cancelar</Button>
@@ -3859,6 +4083,23 @@ export default function App() {
               <option value="Médico Auditor">Médico Auditor</option>
             </select>
           </div>
+
+          {isAdmin && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 p-3 bg-red-50/50 border border-red-100 rounded-xl cursor-pointer hover:bg-red-50 transition-colors">
+                <input 
+                  type="checkbox" 
+                  name="oculto"
+                  defaultChecked={editingPractica?.oculto}
+                  className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-600"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-red-800">Ocultar práctica (No disponible temporalmente)</span>
+                  <span className="text-xs text-red-600/80">La práctica permanecerá en el sistema pero no será visible para los usuarios normales.</span>
+                </div>
+              </label>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <Button type="button" variant="ghost" onClick={() => setIsPracticaModalOpen(false)}>Cancelar</Button>
