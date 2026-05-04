@@ -2234,23 +2234,58 @@ export default function App() {
 
                               {t.descripcion && (
                                 <div className="border-l-4 border-pami-cyan pl-4 py-1">
-                                  {t.nombre === 'ITEM' ? (
+                                  {t.nombre.toUpperCase() === 'ITEM' || t.nombre.toUpperCase() === 'ITEM / INSUMOS VE' || t.nombre.toUpperCase().includes('ITEM / INSUMOS VE') ? (
                                     <div className="overflow-x-auto">
                                       <table className="w-full text-sm text-left border-collapse">
                                         <thead>
                                           <tr className="border-b border-gray-200">
-                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Área</th>
-                                            <th className="py-2 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Contacto</th>
+                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Práctica</th>
+                                            <th className="py-2 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Dirección de mail</th>
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                           {t.descripcion.split('\n').map((line, idx) => {
-                                            const [area, contacto] = line.split('|').map(s => s.trim());
-                                            if (!area) return null;
+                                            if (!line.trim()) return null;
+                                            if (line.includes('Área / \tContactos') || line.toLowerCase().startsWith('área /') && line.toLowerCase().includes('contacto')) return null;
+                                            if (line.includes('Práctica') && line.includes('Dirección de mail')) return null;
+                                            
+                                            let area = '';
+                                            let contacto = '';
+                                            
+                                            if (line.includes('|')) {
+                                              const parts = line.split('|');
+                                              area = parts[0];
+                                              contacto = parts.slice(1).join('|');
+                                            } else if (line.includes('\t')) {
+                                              const parts = line.split('\t');
+                                              area = parts[0];
+                                              contacto = parts.slice(1).join('\t');
+                                            } else {
+                                              const emailMatch = line.match(/[\w.-]+@[\w.-]+\.\w+/);
+                                              if (emailMatch && emailMatch.index !== undefined) {
+                                                area = line.substring(0, emailMatch.index);
+                                                contacto = line.substring(emailMatch.index);
+                                              } else {
+                                                const parts = line.split(/ {2,}/);
+                                                if (parts.length > 1) {
+                                                  area = parts[0];
+                                                  contacto = parts.slice(1).join(' ');
+                                                } else {
+                                                  area = line;
+                                                  contacto = '';
+                                                }
+                                              }
+                                            }
+                                            
+                                            area = area.trim();
+                                            contacto = contacto.trim();
+                                            
+                                            if (!area && !contacto) return null;
+                                            
                                             return (
                                               <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="py-2.5 pr-4 font-medium text-pami-text align-top text-xs">{area}</td>
-                                                <td className="py-2.5 text-pami-muted align-top text-xs break-all sm:break-normal">{contacto}</td>
+                                                <td className="py-2.5 pr-4 font-medium text-pami-text align-top text-xs lg:w-1/3">{area}</td>
+                                                <td className="py-2.5 text-pami-muted align-top text-xs break-all sm:break-normal whitespace-pre-wrap">{contacto}</td>
                                               </tr>
                                             );
                                           })}
