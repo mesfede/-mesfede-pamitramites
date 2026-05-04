@@ -181,10 +181,29 @@ export async function deleteTramite(id: string) {
   }
 }
 
+function normalizePrestadorName(name: string): string {
+  const upper = name.trim().toUpperCase();
+  
+  const sanJuanVariants = [
+    "HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS",
+    "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS",
+    "HOSPITAL SAN JUAN DE DIOS",
+    "HTAL. SAN JUAN DE DIOS"
+  ].map(v => v.toUpperCase());
+
+  if (sanJuanVariants.includes(upper)) {
+    return "HTAL. SAN JUAN DE DIOS";
+  }
+
+  // Add more as needed based on groupsConfig if we want global enforcement
+  return name.trim();
+}
+
 export async function addPrestador(prestador: Omit<Prestador, 'id'>) {
   try {
     return await addDoc(collection(db, PRESTADORES_COLLECTION), {
       ...prestador,
+      nombre: normalizePrestadorName(prestador.nombre),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdBy: auth.currentUser?.uid
@@ -196,9 +215,14 @@ export async function addPrestador(prestador: Omit<Prestador, 'id'>) {
 
 export async function updatePrestador(id: string, prestador: Partial<Prestador>) {
   try {
+    const updates = { ...prestador };
+    if (updates.nombre) {
+      updates.nombre = normalizePrestadorName(updates.nombre);
+    }
+
     const docRef = doc(db, PRESTADORES_COLLECTION, id);
     return await updateDoc(docRef, {
-      ...prestador,
+      ...updates,
       updatedAt: serverTimestamp()
     });
   } catch (error) {
@@ -1016,6 +1040,15 @@ export async function migrateData() {
     { 
       canonical: "HTAL. PRIVADO SUSAMERICANO", 
       variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] 
+    },
+    {
+      canonical: "HTAL. SAN JUAN DE DIOS",
+      variants: [
+        "HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS",
+        "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS",
+        "HOSPITAL SAN JUAN DE DIOS",
+        "HTAL. SAN JUAN DE DIOS"
+      ]
     }
   ];
 

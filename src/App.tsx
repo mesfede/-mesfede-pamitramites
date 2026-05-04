@@ -2221,9 +2221,34 @@ export default function App() {
 
                               {t.descripcion && (
                                 <div className="border-l-4 border-pami-cyan pl-4 py-1">
-                                  <p className="text-sm text-pami-muted leading-relaxed whitespace-pre-line">
-                                    {t.descripcion}
-                                  </p>
+                                  {t.nombre === 'ITEM' ? (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-sm text-left border-collapse">
+                                        <thead>
+                                          <tr className="border-b border-gray-200">
+                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Área</th>
+                                            <th className="py-2 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Contacto</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                          {t.descripcion.split('\n').map((line, idx) => {
+                                            const [area, contacto] = line.split('|').map(s => s.trim());
+                                            if (!area) return null;
+                                            return (
+                                              <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="py-2.5 pr-4 font-medium text-pami-text align-top text-xs">{area}</td>
+                                                <td className="py-2.5 text-pami-muted align-top text-xs break-all sm:break-normal">{contacto}</td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-pami-muted leading-relaxed whitespace-pre-line">
+                                      {t.descripcion}
+                                    </p>
+                                  )}
                                 </div>
                               )}
 

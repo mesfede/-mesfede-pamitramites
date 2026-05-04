@@ -452,6 +452,12 @@ export const INITIAL_TRAMITES = [
     "categoria": "Óptica y oftalmología",
     "descripcion": "OP 156 // Campo visual Campimetria OCT 300209 /// NO ESTAMOS DANDO LENTES DE CONTACTO (DICIEMBRE 2023)",
     "fuente": "Excel PAMI 2023"
+  },
+  {
+    "nombre": "ITEM",
+    "categoria": "Trámites administrativos",
+    "descripcion": "CARDIOLOGÍA / TAVI / V-E | achidichimo@pami.org.ar / sminotti@pami.org.ar / ricantonio34@hotmail.com / jcoyle@proyectos.pami.org.ar / vimartin@proyectos.pami.org.ar / subgciaprestyprov@pami.org.ar\nMARCAPASOS SII | mffondevila@pami.org.ar / jmpulvet@proyectos.pami.org.ar\nNEUROLOGÍA | gnano@proyectos.pami.org.ar (prácticas, Expedientes VE, neuroestimulacion)\nNEUROCIRUGIA | aconde@proyectos.pami.org.ar / flferraro@proyectos.pami.org.ar\nCIRUGÍA GENERAL | jgambuti@proyectos.pami.org.ar / jblosada@proyectos.pami.org.ar\nGASTROENTEROLOGÍA/ ENDOSCOPIA | mnazar@proyectos.pami.org.ar\nOBESIDAD | pcatellani@pami.org.ar\nUROLOGÍA | jreyesolivera@proyectos.pami.org.ar\nDERMATOLOGÍA (¡REVISAR EN SIMAP LA NORMATIVA!) | megan@proyectos.pami.org.ar / VAC: fgomez@proyectos.pami.org.ar/\nOSTOMÍA | ostomia@pami.org.ar\nOXIGENO | oxigenoterapia@pami.org.ar\nOFTALMOLOGÍA | divisionoptica@pami.org.ar\nAUDITORIA TRAUMATOLOGÍA (EVALUACION T.2 - VE) | auditoriatraumatonc@pami.org.ar\nRECLAMO PROVISIÓN TRAUMATOLOGIA | traumatologia@pami.org.ar\nDIABETES | mcrodi@pami.org.ar / bioquimica@pami.org.ar\nFONOAUDIOLOGÍA Y AUDÍFONOS - INSUMOS SOLICITADOS POR ORL | spalladino@pami.org.ar / programas_audifonos@pami.org.ar\nPAÑALES | insumosdeincontinencias@pami.org.ar / ndoghnian@pami.org.ar / sfolla@pami.org.ar\nPRESUPUESTOS DE EXPEDIENTES | contrataciones.especiales@pami.org.ar\nMESA DE ENTRADAS | jscaparro@pami.org.ar / mffernandez@pami.org.ar\nANTICONCEPCIÓN/ ALIMENTACIÓN PARENTERAL Y ENTERAL | rgiugnoli@pami.org.ar\nRECLAMOS POR FALTA DE PROVISIÓN TRÁMITE 1 (sin previa evaluación del área médica) | vcirigliano@pami.org.ar",
+    "fuente": "Google Sheet"
   }
 ];
 
