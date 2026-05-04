@@ -38,6 +38,7 @@ import {
   Accessibility,
   Hospital,
   Activity,
+  Megaphone,
   Pill,
   Apple,
   Syringe,
@@ -46,6 +47,7 @@ import {
   Brain,
   Eye,
   LayoutGrid,
+  UserRound,
   Wind,
   BookOpen,
   Truck,
@@ -444,6 +446,11 @@ const PrestadorCard = ({
   const searchNorm = normalize(searchTerm.trim().replace(/\s+/g, ' '));
   const specialtyNorm = normalize(selectedSpecialty.replace(/\s+/g, ' '));
 
+  const isMedicoCabecera = p.especialidades.some(s => 
+    s.toUpperCase().includes('MEDICO DE CABECERA') || 
+    s.toUpperCase().includes('MÉDICO DE CABECERA')
+  );
+
   // Identify which specialties match the search
   const matchingSpecs = p.especialidades.filter(s => {
     const sNorm = normalize(s.replace(/\s+/g, ' '));
@@ -460,7 +467,11 @@ const PrestadorCard = ({
       <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col gap-1">
           <h3 className="text-lg font-bold text-pami-text flex items-center gap-2">
-            <Hospital size={18} className="text-pami-blue shrink-0" />
+            {isMedicoCabecera ? (
+              <UserRound size={18} className="text-pami-blue shrink-0" />
+            ) : (
+              <Hospital size={18} className="text-pami-blue shrink-0" />
+            )}
             <span className="line-clamp-2">{p.nombre}</span>
           </h3>
           {p.oculto && isAdmin && (
@@ -1165,6 +1176,8 @@ export default function App() {
       return a.localeCompare(b);
     });
 
+    const isMedicoSearch = specialtyTitle.toUpperCase().includes('MEDICO DE CABECERA') || specialtyTitle.toUpperCase().includes('MÉDICO DE CABECERA');
+
     const html = `
       <html>
         <head>
@@ -1173,7 +1186,8 @@ export default function App() {
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
             body { font-family: 'Inter', sans-serif; padding: 30px; color: #1a202c; line-height: 1.3; }
             .header { border-bottom: 2px solid #0b2344; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .specialty-title { color: #0b2344; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; }
+            .specialty-title { color: #0b2344; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; display: flex; align-items: center; gap: 12px; }
+            .specialty-title svg { color: #0b2344; flex-shrink: 0; }
             .pami-info { text-align: right; color: #718096; line-height: 1.1; }
             .pami-info .agency { font-size: 12px; font-weight: 700; color: #0b2344; }
             .pami-info .ugl { font-size: 10px; }
@@ -1181,7 +1195,8 @@ export default function App() {
             .locality-title { font-size: 14px; font-weight: 700; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; break-after: avoid; }
             .locality-title::before { content: ""; display: inline-block; width: 3px; height: 14px; background: #0b2344; border-radius: 1px; }
             .prestador-card { margin-bottom: 8px; padding: 8px; border: 1px solid #edf2f7; border-radius: 6px; break-inside: avoid; background-color: #fff; }
-            .prestador-name { font-size: 12px; font-weight: 700; color: #1a202c; margin-bottom: 2px; text-transform: uppercase; }
+            .prestador-name { font-size: 12px; font-weight: 700; color: #1a202c; margin-bottom: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 4px; }
+            .prestador-name svg { color: #0b2344; flex-shrink: 0; }
             .prestador-info { font-size: 11px; color: #4a5568; display: flex; flex-direction: column; gap: 2px; }
             .info-item { display: block; }
             .horarios-grid { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; background: #f8fafc; padding: 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
@@ -1201,7 +1216,13 @@ export default function App() {
         </head>
         <body>
           <div class="header">
-            <div class="specialty-title">${specialtyTitle}</div>
+            <div class="specialty-title">
+              ${isMedicoSearch 
+                ? `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
+                : `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v14"/><path d="M19 21V7"/><path d="M14 7v14"/><path d="M9 7v14"/><path d="M11 2h2v5h-2z"/></svg>`
+              }
+              ${specialtyTitle}
+            </div>
             <div class="pami-info">
               <div class="agency" style="font-size: 24px; font-family: 'Varela Round', sans-serif; color: #0b2344;"></div>
             </div>
@@ -1211,32 +1232,41 @@ export default function App() {
             <div class="locality-section">
               <div class="locality-title">${loc}</div>
               <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                ${grouped[loc].map(p => `
-                  <div class="prestador-card">
-                    <div class="prestador-name">${p.nombre}</div>
-                    <div class="prestador-info">
-                      ${p.direccion ? `<div class="info-item"><strong>Dir:</strong> ${p.direccion}</div>` : ''}
-                      ${p.telefono ? `<div class="info-item"><strong>Tel:</strong> ${p.telefono}</div>` : ''}
-                      ${p.whatsapp ? `<div class="info-item"><strong>WA:</strong> ${p.whatsapp}</div>` : ''}
-                      ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
-                        <div class="horarios-grid">
-                          <div class="horarios-title-mini">Horarios de Atención</div>
-                          ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
-                            const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
-                            if (!hValue) return '';
-                            const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
-                            return `
-                              <div class="horario-item">
-                                <span class="dia">${diaName}</span>
-                                <span class="hora">${hValue}</span>
-                              </div>
-                            `;
-                          }).join('')}
-                        </div>
-                      ` : ''}
+                ${grouped[loc].map(p => {
+                  const isPMedico = p.especialidades.some(s => s.toUpperCase().includes('MEDICO DE CABECERA') || s.toUpperCase().includes('MÉDICO DE CABECERA'));
+                  return `
+                    <div class="prestador-card">
+                      <div class="prestador-name">
+                        ${isPMedico 
+                          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+                          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v14"/><path d="M19 21V7"/><path d="M14 7v14"/><path d="M9 7v14"/><path d="M11 2h2v5h-2z"/></svg>`
+                        }
+                        ${p.nombre}
+                      </div>
+                      <div class="prestador-info">
+                        ${p.direccion ? `<div class="info-item"><strong>Dir:</strong> ${p.direccion}</div>` : ''}
+                        ${p.telefono ? `<div class="info-item"><strong>Tel:</strong> ${p.telefono}</div>` : ''}
+                        ${p.whatsapp ? `<div class="info-item"><strong>WA:</strong> ${p.whatsapp}</div>` : ''}
+                        ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
+                          <div class="horarios-grid">
+                            <div class="horarios-title-mini">Horarios de Atención</div>
+                            ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                              const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
+                              if (!hValue) return '';
+                              const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
+                              return `
+                                <div class="horario-item">
+                                  <span class="dia">${diaName}</span>
+                                  <span class="hora">${hValue}</span>
+                                </div>
+                              `;
+                            }).join('')}
+                          </div>
+                        ` : ''}
+                      </div>
                     </div>
-                  </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
             </div>
           `).join('')}
@@ -1260,6 +1290,11 @@ export default function App() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const isMedicoCabecera = p.especialidades.some(s => 
+      s.toUpperCase().includes('MEDICO DE CABECERA') || 
+      s.toUpperCase().includes('MÉDICO DE CABECERA')
+    );
+
     const html = `
       <html>
         <head>
@@ -1268,7 +1303,8 @@ export default function App() {
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
             body { font-family: 'Inter', sans-serif; padding: 30px; color: #1a202c; line-height: 1.3; }
             .header { border-bottom: 2px solid #0b2344; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .specialty-title { color: #0b2344; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; }
+            .specialty-title { color: #0b2344; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; flex: 1; display: flex; align-items: center; gap: 12px; }
+            .specialty-title svg { color: #0b2344; flex-shrink: 0; }
             .pami-info { text-align: right; color: #718096; line-height: 1.1; }
             .pami-info .agency { font-size: 24px; font-weight: 700; color: #0b2344; font-family: 'Varela Round', sans-serif; }
             .prestador-card { padding: 15px; border: 1px solid #edf2f7; border-radius: 6px; background-color: #fff; }
@@ -1292,7 +1328,13 @@ export default function App() {
         </head>
         <body>
           <div class="header">
-            <div class="specialty-title">Información del Prestador</div>
+            <div class="specialty-title">
+              ${isMedicoCabecera 
+                ? `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
+                : `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v14"/><path d="M19 21V7"/><path d="M14 7v14"/><path d="M9 7v14"/><path d="M11 2h2v5h-2z"/></svg>`
+              }
+              Información del Prestador
+            </div>
             <div class="pami-info">
               <div class="agency"></div>
             </div>
@@ -1930,7 +1972,7 @@ export default function App() {
                   {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
                 <h1 className="text-2xl sm:text-3xl font-varela font-bold tracking-tight text-white mb-0">
-                  GuíaP
+                  GuíaP!
                 </h1>
               </div>
 
@@ -1956,7 +1998,7 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('tramites')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
                     activeTab === 'tramites' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -1966,7 +2008,7 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('prestadores')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
                     activeTab === 'prestadores' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -1976,7 +2018,7 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('practicas')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
                     activeTab === 'practicas' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -1989,7 +2031,7 @@ export default function App() {
                     setCentroSearch("");
                   }}
                   className={cn(
-                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
                     activeTab === 'centros' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -1999,7 +2041,7 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('folletos')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
                     activeTab === 'folletos' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -2009,7 +2051,7 @@ export default function App() {
                 <button 
                   onClick={() => setActiveTab('telefonos')}
                   className={cn(
-                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
+                    "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
                     activeTab === 'telefonos' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -2045,7 +2087,7 @@ export default function App() {
                     <button 
                       onClick={() => { setActiveTab('tramites'); setIsMobileMenuOpen(false); }}
                       className={cn(
-                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
                         activeTab === 'tramites' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
                       )}
                     >
@@ -2055,7 +2097,7 @@ export default function App() {
                     <button 
                       onClick={() => { setActiveTab('prestadores'); setIsMobileMenuOpen(false); }}
                       className={cn(
-                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
                         activeTab === 'prestadores' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
                       )}
                     >
@@ -2065,7 +2107,7 @@ export default function App() {
                     <button 
                       onClick={() => { setActiveTab('practicas'); setIsMobileMenuOpen(false); }}
                       className={cn(
-                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
                         activeTab === 'practicas' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
                       )}
                     >
@@ -2079,7 +2121,7 @@ export default function App() {
                         setIsMobileMenuOpen(false); 
                       }}
                       className={cn(
-                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
                         activeTab === 'centros' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
                       )}
                     >
@@ -2089,7 +2131,7 @@ export default function App() {
                     <button 
                       onClick={() => { setActiveTab('folletos'); setIsMobileMenuOpen(false); }}
                       className={cn(
-                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
                         activeTab === 'folletos' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
                       )}
                     >
@@ -2099,7 +2141,7 @@ export default function App() {
                     <button 
                       onClick={() => { setActiveTab('telefonos'); setIsMobileMenuOpen(false); }}
                       className={cn(
-                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3",
+                        "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
                         activeTab === 'telefonos' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
                       )}
                     >
@@ -2151,7 +2193,7 @@ export default function App() {
                     {/* SIMAP Link */}
                     <button 
                       onClick={handleSimapClick}
-                      className="flex-1 md:flex-none flex justify-center items-center gap-2 px-3 sm:px-5 py-1.5 h-10 sm:h-9 bg-pami-blue/5 hover:bg-pami-blue/10 text-[#1d438a] rounded-lg transition-all border border-pami-blue/10 shrink-0 group"
+                      className="flex-1 md:flex-none flex justify-center items-center gap-2 px-3 sm:px-5 py-1.5 h-10 sm:h-9 bg-pami-blue/5 hover:bg-pami-blue/10 text-[#1d438a] rounded-lg transition-all border border-pami-blue/10 shrink-0 group cursor-pointer"
                       title="Ir a SIMAP PAMI"
                     >
                       <span className="text-base sm:text-lg font-varela font-bold tracking-tight">SIMAP</span>
@@ -2181,7 +2223,7 @@ export default function App() {
                         <button 
                           type="submit"
                           disabled={!aiSearch.trim()}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-pami-cyan hover:text-pami-blue hover:bg-pami-blue/5 rounded transition-colors disabled:opacity-30"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-pami-cyan hover:text-pami-blue hover:bg-pami-blue/5 rounded transition-colors disabled:opacity-30 cursor-pointer"
                         >
                           <ArrowRight size={16} />
                         </button>
@@ -2214,7 +2256,7 @@ export default function App() {
             {showUpdateBanner && latestUpdate && (
               <div className="mb-4 bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-2 flex items-start gap-2.5 shadow-sm relative group transition-all">
                 <div className="shrink-0 pt-0.5 text-emerald-600">
-                  <Activity size={14} />
+                  <Megaphone size={14} />
                 </div>
                 <div className="flex-1 pr-6">
                   <div className="flex items-center gap-2 mb-0.5">
@@ -2248,7 +2290,7 @@ export default function App() {
                   <button 
                     onClick={() => setSelectedCat('all')}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between",
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between cursor-pointer",
                       selectedCat === 'all' ? "bg-pami-blue/10 text-pami-blue font-semibold" : "hover:bg-gray-50 text-pami-text"
                     )}
                   >
@@ -2268,7 +2310,7 @@ export default function App() {
                       key={cat}
                       onClick={() => setSelectedCat(selectedCat === cat ? 'all' : cat)}
                       className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between group relative overflow-hidden",
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between group relative overflow-hidden cursor-pointer",
                         selectedCat === cat 
                           ? `${CATEGORY_LIGHT_COLORS[cat] || "bg-pami-blue/10"} text-pami-blue font-semibold ring-1 ring-inset ring-pami-blue/20` 
                           : "hover:bg-gray-50 text-pami-text"
@@ -3262,7 +3304,7 @@ export default function App() {
                           href={f.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="flex-1 bg-pami-blue text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-pami-blue/90 transition-colors flex items-center justify-center gap-2"
+                          className="flex-1 bg-pami-blue text-white py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-pami-blue/90 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                         >
                           <Printer size={16} />
                           Ver / Imprimir
@@ -4293,7 +4335,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-6">
             <span className="text-4xl font-varela font-bold tracking-tight text-pami-blue">
-              GuíaP
+              GuíaP!
             </span>
           </div>
           <p className="text-sm text-pami-muted">

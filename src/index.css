@@ -16,6 +16,9 @@
   body {
     @apply bg-pami-bg text-pami-text;
   }
+  button {
+    cursor: pointer;
+  }
 }
 
 .medical-pattern {

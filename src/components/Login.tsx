@@ -54,7 +54,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       <div className="text-center mb-8">
         <div className="flex justify-center mb-4">
           <span className="text-5xl font-varela font-bold tracking-tight text-pami-blue">
-            GuíaP
+            GuíaP!
           </span>
         </div>
         <div className="mt-2 flex flex-col items-center gap-1">
