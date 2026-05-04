@@ -618,6 +618,7 @@ export default function App() {
   const [folletos, setFolletos] = useState<Folleto[]>([]);
   const [practicas, setPracticas] = useState<PracticaOME[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [search, setSearch] = useState('');
   const [prestadorSearch, setPrestadorSearch] = useState('');
@@ -2015,7 +2016,7 @@ export default function App() {
             )}
           </header>
 
-          <main className="max-w-7xl mx-auto px-4 py-8">
+          <main className="max-w-7xl mx-auto px-4 pt-4 pb-8">
             {!isViewer ? (
               <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-2xl mx-auto">
                 <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -2032,6 +2033,29 @@ export default function App() {
               </div>
             ) : (
           <>
+            {/* LATEST UPDATE BANNER (TEST) */}
+            {showUpdateBanner && (
+              <div className="mb-4 bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-2 flex items-start gap-2.5 shadow-sm relative group transition-all">
+                <div className="shrink-0 pt-0.5 text-emerald-600">
+                  <Activity size={14} />
+                </div>
+                <div className="flex-1 pr-6">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h4 className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Notas de actualización</h4>
+                    <span className="text-[10px] text-emerald-700/80 font-medium bg-emerald-100/80 px-1.5 py-px rounded">04/05/2026</span>
+                  </div>
+                  <p className="text-xs text-emerald-900/80 leading-snug">Se unificaron los registros de UROLOGÍA y NEUROLOGÍA para eliminar duplicados al usar el filtro de Especialidades.</p>
+                </div>
+                <button 
+                  onClick={() => setShowUpdateBanner(false)}
+                  className="absolute top-1.5 right-1.5 p-1 text-emerald-600/60 hover:text-emerald-700 hover:bg-emerald-100/80 rounded-md transition-colors"
+                  title="Ocultar nota"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
         {activeTab === 'tramites' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
