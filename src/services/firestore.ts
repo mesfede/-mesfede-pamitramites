@@ -149,12 +149,14 @@ export function subscribeToPrestadores(callback: (prestadores: Prestador[]) => v
 
 export async function addTramite(tramite: Omit<Tramite, 'id'>) {
   try {
-    return await addDoc(collection(db, TRAMITES_COLLECTION), {
+    const docRef = await addDoc(collection(db, TRAMITES_COLLECTION), {
       ...tramite,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdBy: auth.currentUser?.uid
     });
+    await logUpdate(`Se agregó el trámite: ${tramite.nombre}`);
+    return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, TRAMITES_COLLECTION);
   }
@@ -163,10 +165,14 @@ export async function addTramite(tramite: Omit<Tramite, 'id'>) {
 export async function updateTramite(id: string, tramite: Partial<Tramite>) {
   try {
     const docRef = doc(db, TRAMITES_COLLECTION, id);
-    return await updateDoc(docRef, {
+    await updateDoc(docRef, {
       ...tramite,
       updatedAt: serverTimestamp()
     });
+    if (tramite.nombre) {
+      await logUpdate(`Se actualizó el trámite: ${tramite.nombre}`);
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, TRAMITES_COLLECTION);
   }
@@ -179,6 +185,42 @@ export async function deleteTramite(id: string) {
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, TRAMITES_COLLECTION);
   }
+}
+
+const APP_UPDATES_COLLECTION = 'app_updates';
+
+async function logUpdate(description: string) {
+  try {
+    await addDoc(collection(db, APP_UPDATES_COLLECTION), {
+      description,
+      timestamp: serverTimestamp(),
+      userEmail: auth.currentUser?.email || 'Sistema'
+    });
+  } catch (error) {
+    console.error("Error logging update:", error);
+  }
+}
+
+export function subscribeToLatestUpdate(callback: (update: { description: string, timestamp: any } | null) => void) {
+  const q = query(
+    collection(db, APP_UPDATES_COLLECTION),
+    orderBy('timestamp', 'desc'),
+    limit(1)
+  );
+  
+  return onSnapshot(q, (snapshot) => {
+    if (!snapshot.empty) {
+      const data = snapshot.docs[0].data();
+      callback({
+        description: data.description,
+        timestamp: data.timestamp
+      });
+    } else {
+      callback(null);
+    }
+  }, (error) => {
+    console.error("Error subscribing to updates:", error);
+  });
 }
 
 function normalizePrestadorName(name: string): string {
@@ -201,13 +243,15 @@ function normalizePrestadorName(name: string): string {
 
 export async function addPrestador(prestador: Omit<Prestador, 'id'>) {
   try {
-    return await addDoc(collection(db, PRESTADORES_COLLECTION), {
+    const docRef = await addDoc(collection(db, PRESTADORES_COLLECTION), {
       ...prestador,
       nombre: normalizePrestadorName(prestador.nombre),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdBy: auth.currentUser?.uid
     });
+    await logUpdate(`Se agregó el prestador: ${normalizePrestadorName(prestador.nombre)}`);
+    return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, PRESTADORES_COLLECTION);
   }
@@ -221,10 +265,14 @@ export async function updatePrestador(id: string, prestador: Partial<Prestador>)
     }
 
     const docRef = doc(db, PRESTADORES_COLLECTION, id);
-    return await updateDoc(docRef, {
+    await updateDoc(docRef, {
       ...updates,
       updatedAt: serverTimestamp()
     });
+    if (updates.nombre) {
+      await logUpdate(`Se actualizó el prestador: ${updates.nombre}`);
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, PRESTADORES_COLLECTION);
   }
@@ -386,10 +434,12 @@ export function subscribeToPracticas(callback: (practicas: PracticaOME[]) => voi
 
 export async function addPractica(practica: Omit<PracticaOME, 'id'>) {
   try {
-    return await addDoc(collection(db, PRACTICAS_COLLECTION), {
+    const docRef = await addDoc(collection(db, PRACTICAS_COLLECTION), {
       ...practica,
       createdAt: serverTimestamp()
     });
+    await logUpdate(`Se agregó la práctica OME: ${practica.codigo} - ${practica.descripcion}`);
+    return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, PRACTICAS_COLLECTION);
   }
@@ -398,10 +448,14 @@ export async function addPractica(practica: Omit<PracticaOME, 'id'>) {
 export async function updatePractica(id: string, practica: Partial<PracticaOME>) {
   try {
     const docRef = doc(db, PRACTICAS_COLLECTION, id);
-    return await updateDoc(docRef, {
+    await updateDoc(docRef, {
       ...practica,
       updatedAt: serverTimestamp()
     });
+    if (practica.descripcion) {
+      await logUpdate(`Se actualizó la práctica OME: ${practica.descripcion}`);
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, PRACTICAS_COLLECTION);
   }
@@ -418,10 +472,12 @@ export async function deletePractica(id: string) {
 
 export async function addFolleto(folleto: Omit<Folleto, 'id'>) {
   try {
-    return await addDoc(collection(db, FOLLETOS_COLLECTION), {
+    const docRef = await addDoc(collection(db, FOLLETOS_COLLECTION), {
       ...folleto,
       createdAt: serverTimestamp()
     });
+    await logUpdate(`Se agregó el folleto: ${folleto.nombre}`);
+    return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, FOLLETOS_COLLECTION);
   }
@@ -451,10 +507,12 @@ export function subscribeToCentrosCoordinadores(callback: (centros: CentroCoordi
 
 export async function addCentroCoordinador(centro: Omit<CentroCoordinador, 'id'>) {
   try {
-    return await addDoc(collection(db, CENTROS_COORDINADORES_COLLECTION), {
+    const docRef = await addDoc(collection(db, CENTROS_COORDINADORES_COLLECTION), {
       ...centro,
       createdAt: serverTimestamp()
     });
+    await logUpdate(`Se agregó el centro coordinador: ${centro.hospital}`);
+    return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, CENTROS_COORDINADORES_COLLECTION);
   }
@@ -463,10 +521,14 @@ export async function addCentroCoordinador(centro: Omit<CentroCoordinador, 'id'>
 export async function updateCentroCoordinador(id: string, centro: Partial<CentroCoordinador>) {
   try {
     const docRef = doc(db, CENTROS_COORDINADORES_COLLECTION, id);
-    return await updateDoc(docRef, {
+    await updateDoc(docRef, {
       ...centro,
       updatedAt: serverTimestamp()
     });
+    if (centro.hospital) {
+      await logUpdate(`Se actualizó el centro coordinador: ${centro.hospital}`);
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, CENTROS_COORDINADORES_COLLECTION);
   }
@@ -496,11 +558,13 @@ export function subscribeToTelefonos(callback: (telefonos: TelefonoInterno[]) =>
 
 export async function addTelefono(telefono: Omit<TelefonoInterno, 'id'>) {
   try {
-    return await addDoc(collection(db, TELEFONOS_COLLECTION), {
+    const docRef = await addDoc(collection(db, TELEFONOS_COLLECTION), {
       ...telefono,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    await logUpdate(`Se agregó el interno: ${telefono.area} - ${telefono.interno}`);
+    return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, TELEFONOS_COLLECTION);
   }
@@ -509,10 +573,14 @@ export async function addTelefono(telefono: Omit<TelefonoInterno, 'id'>) {
 export async function updateTelefono(id: string, telefono: Partial<TelefonoInterno>) {
   try {
     const docRef = doc(db, TELEFONOS_COLLECTION, id);
-    return await updateDoc(docRef, {
+    await updateDoc(docRef, {
       ...telefono,
       updatedAt: serverTimestamp()
     });
+    if (telefono.area) {
+      await logUpdate(`Se actualizó el interno: ${telefono.area}`);
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, TELEFONOS_COLLECTION);
   }

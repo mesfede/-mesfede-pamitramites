@@ -190,5 +190,11 @@ service cloud.firestore {
       allow update: if isAdmin() && isValidTelefono(request.resource.data);
       allow delete: if isAdmin();
     }
+
+    match /app_updates/{updateId} {
+      allow read: if isViewer();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
   }
 }

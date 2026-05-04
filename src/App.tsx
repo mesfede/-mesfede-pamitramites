@@ -89,6 +89,7 @@ import {
   uploadFile,
   testConnection,
   subscribeToCentrosCoordinadores,
+  subscribeToLatestUpdate,
   addCentroCoordinador,
   updateCentroCoordinador,
   deleteCentroCoordinador,
@@ -618,6 +619,7 @@ export default function App() {
   const [folletos, setFolletos] = useState<Folleto[]>([]);
   const [practicas, setPracticas] = useState<PracticaOME[]>([]);
   const [loading, setLoading] = useState(true);
+  const [latestUpdate, setLatestUpdate] = useState<{ description: string, timestamp: any } | null>(null);
   const [showUpdateBanner, setShowUpdateBanner] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [search, setSearch] = useState('');
@@ -678,6 +680,15 @@ export default function App() {
       setFormLocality(editingPrestador?.localidad || "");
     }
   }, [isPrestadorModalOpen, editingPrestador]);
+
+  useEffect(() => {
+    return subscribeToLatestUpdate((update) => {
+      if (update) {
+        setLatestUpdate(update);
+        setShowUpdateBanner(true);
+      }
+    });
+  }, []);
 
   const handleAddressSelect = (address: string, locality: string) => {
     setFormAddress(address);
@@ -2034,17 +2045,19 @@ export default function App() {
             ) : (
           <>
             {/* LATEST UPDATE BANNER (TEST) */}
-            {showUpdateBanner && (
+            {showUpdateBanner && latestUpdate && (
               <div className="mb-4 bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-2 flex items-start gap-2.5 shadow-sm relative group transition-all">
                 <div className="shrink-0 pt-0.5 text-emerald-600">
                   <Activity size={14} />
                 </div>
                 <div className="flex-1 pr-6">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <h4 className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Notas de actualización</h4>
-                    <span className="text-[10px] text-emerald-700/80 font-medium bg-emerald-100/80 px-1.5 py-px rounded">04/05/2026</span>
+                    <h4 className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Última actualización</h4>
+                    <span className="text-[10px] text-emerald-700/80 font-medium bg-emerald-100/80 px-1.5 py-px rounded">
+                      {latestUpdate.timestamp ? new Date(latestUpdate.timestamp.seconds * 1000).toLocaleDateString('es-AR') : 'Reciente'}
+                    </span>
                   </div>
-                  <p className="text-xs text-emerald-900/80 leading-snug">Se unificaron los registros de UROLOGÍA y NEUROLOGÍA para eliminar duplicados al usar el filtro de Especialidades.</p>
+                  <p className="text-xs text-emerald-900/80 leading-snug">{latestUpdate.description}</p>
                 </div>
                 <button 
                   onClick={() => setShowUpdateBanner(false)}
