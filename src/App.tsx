@@ -122,11 +122,47 @@ import { PamiLogo } from './components/PamiLogo';
 
 const getFileIcon = (nombre: string) => {
   const lowerName = nombre.toLowerCase();
-  if (lowerName.endsWith('.pdf')) return <FileText size={18} className="text-red-500" />;
-  if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) return <FileText size={18} className="text-blue-500" />;
-  if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx')) return <FileSpreadsheet size={18} className="text-green-500" />;
-  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.png')) return <FileImage size={18} className="text-purple-500" />;
-  return <File size={18} className="text-gray-500" />;
+  // Detectar tipo de archivo por extensión o palabra clave
+  const isPdf = lowerName.endsWith('.pdf') || lowerName.includes('pdf');
+  const isDoc = lowerName.endsWith('.doc') || lowerName.endsWith('.docx') || lowerName.includes('word');
+  const isExcel = lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.includes('excel') || lowerName.includes('planilla');
+  const isImage = lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.png') || lowerName.includes('foto') || lowerName.includes('imagen');
+  
+  const imgClass = "w-7 h-7 flex-shrink-0 object-contain";
+  
+  if (isPdf) return (
+    <img 
+      src="https://upload.wikimedia.org/wikipedia/commons/3/3d/Adobe_Acrobat_logo.svg" 
+      className={imgClass} 
+      alt="PDF" 
+      title="Adobe PDF"
+      referrerPolicy="no-referrer" 
+    />
+  );
+  
+  if (isDoc) return (
+    <img 
+      src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Microsoft_Office_Word_%282019%E2%80%93present%29.svg" 
+      className={imgClass} 
+      alt="Word" 
+      title="Microsoft Word"
+      referrerPolicy="no-referrer" 
+    />
+  );
+  
+  if (isExcel) return (
+    <img 
+      src="https://upload.wikimedia.org/wikipedia/commons/3/34/Microsoft_Office_Excel_%282019%E2%80%93present%29.svg" 
+      className={imgClass} 
+      alt="Excel" 
+      title="Microsoft Excel"
+      referrerPolicy="no-referrer" 
+    />
+  );
+  
+  if (isImage) return <FileImage size={28} className="text-purple-500 shrink-0" />;
+  
+  return <File size={28} className="text-gray-400 shrink-0" />;
 };
 
 const getCategoryIcon = (cat: string, size: number = 20) => {

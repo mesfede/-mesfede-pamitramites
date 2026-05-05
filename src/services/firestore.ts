@@ -50,7 +50,8 @@ const HOSPITAL_CANONICAL_GROUPS = [
   { canonical: "HTAL. SAN JUAN DE DIOS", variants: ["HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] },
   { canonical: "SANATORIO ARGENTINO (NARDO)", variants: ["SANATORIO ARGENTINO"] },
   { canonical: "INST. MEDICO PLATENSE", variants: ["Instituto Medico platense", "INSTITUTO MEDICO PLATENSE"] },
-  { canonical: "INST. DEL DIAGNOSTICO", variants: ["Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO"] }
+  { canonical: "INST. DEL DIAGNOSTICO", variants: ["Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO"] },
+  { canonical: "CL PR DE EXCELENCIA MÉDICA SA (C.Belgrano)", variants: ["CL PR DE EXCELENCIA MÉDICA SA", "Clinica Belgrano", "EXCELENCIA MEDICA", "EXCELENCIA MÉDICA SA", "CLINICA BELGRANO"] }
 ];
 
 export function normalizeHospitalName(name: string): string {
@@ -275,21 +276,17 @@ export function subscribeToLatestUpdate(callback: (update: { description: string
 }
 
 function normalizePrestadorName(name: string): string {
-  const upper = name.trim().toUpperCase();
+  if (!name) return "";
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
   
-  const sanJuanVariants = [
-    "HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS",
-    "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS",
-    "HOSPITAL SAN JUAN DE DIOS",
-    "HTAL. SAN JUAN DE DIOS"
-  ].map(v => v.toUpperCase());
-
-  if (sanJuanVariants.includes(upper)) {
-    return "HTAL. SAN JUAN DE DIOS";
+  for (const group of HOSPITAL_CANONICAL_GROUPS) {
+    if (lower === group.canonical.toLowerCase() || group.variants.map(v => v.toLowerCase()).includes(lower)) {
+      return group.canonical;
+    }
   }
-
-  // Add more as needed based on groupsConfig if we want global enforcement
-  return name.trim();
+  
+  return trimmed;
 }
 
 export async function addPrestador(prestador: Omit<Prestador, 'id'>) {
