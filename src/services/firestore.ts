@@ -36,20 +36,24 @@ const FOLLETOS_COLLECTION = 'folletos';
 const PRACTICAS_COLLECTION = 'practicas';
 const CENTROS_COORDINADORES_COLLECTION = 'centros_coordinadores';
 const TELEFONOS_COLLECTION = 'telefonos';
+const DELETED_ITEMS_COLLECTION = 'deleted_items';
 
 const HOSPITAL_CANONICAL_GROUPS = [
   { canonical: "HTAL. SAN MARTIN", variants: ["HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL SAN MARTIN", "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN", "Hospital San Martin"] },
   { canonical: "ALTHEA (EX VACCARINI)", variants: ["ALTHEA CLINICA PRIVADA", "CL PR VACCARINI SA", "ALTHEA", "CLINICA VACCARINI", "VACCARINI", "VACARINI"] },
   { canonical: "HTAL. GUTIERREZ", variants: ["Htal Zonal Ricardo Gutierrez", "HOSPITAL RICARDO GUTIERREZ", "HOSPITAL GUTIERREZ", "GUTIERREZ", "RICARDO GUTIERREZ"] },
-  { canonical: "HTAL. SAN ROQUE", variants: ["HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE", "HOSPITAL SAN ROQUE", "SAN ROQUE", "Hospital San Roque"] },
+  { canonical: "HTAL. SAN ROQUE", variants: ["HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE", "HOSPITAL SAN ROQUE", "SAN ROQUE", "Hospital San Roque", "HOSPITAL ZONAL GRI GENERAL DE AGUDOS SAN ROQUE"] },
   { canonical: "SANATORIO MEDICO LOS TILOS", variants: ["SANATORIO MÉDICO LOS TILOS SA", "SANATORIO MEDICO LOS TILOS", "SANATORIO MEDICO LOS TILOS SA", "LOS TILOS"] },
-  { canonical: "HTAL. ROSSI", variants: ["HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI", "HOSPITAL INTERZONAL ROSSI", "HTAL. ROSSI", "HOSPITAL ROSSI"] },
+  { canonical: "HTAL. ROSSI", variants: ["HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI", "HOSPITAL INTERZONAL ROSSI", "HTAL. ROSSI", "HOSPITAL ROSSI", "Hospital Rossi"] },
   { canonical: "GUSTAVO DILORETTO", variants: ["DI LORETO GUSTAVO", "GUSTAVO DI LORETTO"] },
   { canonical: "HTAL. PRIVADO SUSAMERICANO", variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] },
-  { canonical: "HTAL. SAN JUAN DE DIOS", variants: ["HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] }
+  { canonical: "HTAL. SAN JUAN DE DIOS", variants: ["HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] },
+  { canonical: "SANATORIO ARGENTINO (NARDO)", variants: ["SANATORIO ARGENTINO"] },
+  { canonical: "INST. MEDICO PLATENSE", variants: ["Instituto Medico platense", "INSTITUTO MEDICO PLATENSE"] },
+  { canonical: "INST. DEL DIAGNOSTICO", variants: ["Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO"] }
 ];
 
-function normalizeHospitalName(name: string): string {
+export function normalizeHospitalName(name: string): string {
   if (!name) return "";
   const trimmed = name.trim();
   const lower = trimmed.toLowerCase();
@@ -205,14 +209,30 @@ export async function updateTramite(id: string, tramite: Partial<Tramite>) {
   }
 }
 
+async function logDeletedItem(type: string, identifier: string) {
+  try {
+    const safeId = identifier.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    const logId = `${type}_${safeId}`;
+    await setDoc(doc(db, DELETED_ITEMS_COLLECTION, logId), {
+      type,
+      identifier: identifier.toLowerCase().trim(),
+      deletedAt: serverTimestamp()
+    });
+  } catch (e) {
+    console.warn("Could not log deletion:", e);
+  }
+}
+
 export async function deleteTramite(id: string) {
   try {
     const docRef = doc(db, TRAMITES_COLLECTION, id);
     const snapshot = await getDoc(docRef);
-    await deleteDoc(docRef);
     if (snapshot.exists()) {
-      await logUpdate(`Se eliminó el trámite: ${snapshot.data().nombre}`);
+      const data = snapshot.data();
+      await logDeletedItem('tramite', data.nombre);
+      await logUpdate(`Se eliminó el trámite: ${data.nombre}`);
     }
+    await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, TRAMITES_COLLECTION);
   }
@@ -313,10 +333,12 @@ export async function deletePrestador(id: string) {
   try {
     const docRef = doc(db, PRESTADORES_COLLECTION, id);
     const snapshot = await getDoc(docRef);
-    await deleteDoc(docRef);
     if (snapshot.exists()) {
-      await logUpdate(`Se eliminó el prestador: ${snapshot.data().nombre}`);
+      const data = snapshot.data();
+      await logDeletedItem('prestador', data.nombre);
+      await logUpdate(`Se eliminó el prestador: ${data.nombre}`);
     }
+    await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, PRESTADORES_COLLECTION);
   }
@@ -417,6 +439,30 @@ export async function cleanupTramites() {
   return deleted;
 }
 
+export async function cleanupFolletos() {
+  const folletosSnap = await getDocs(collection(db, FOLLETOS_COLLECTION));
+  const seen = new Set<string>();
+  const batch = writeBatch(db);
+  let deleted = 0;
+
+  folletosSnap.docs.forEach(docSnap => {
+    const data = docSnap.data();
+    const name = (data.nombre || "").trim().toLowerCase();
+    
+    if (seen.has(name)) {
+      batch.delete(docSnap.ref);
+      deleted++;
+    } else {
+      seen.add(name);
+    }
+  });
+
+  if (deleted > 0) {
+    await batch.commit();
+  }
+  return deleted;
+}
+
 export async function cleanupPracticas() {
   const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
   const seen = new Set<string>();
@@ -441,37 +487,52 @@ export async function cleanupPracticas() {
   return deleted;
 }
 
-export async function cleanupCentrosCoordinadores() {
-  const centrosSnap = await getDocs(collection(db, CENTROS_COORDINADORES_COLLECTION));
+export async function cleanupTelefonos() {
+  const telefonosSnap = await getDocs(collection(db, TELEFONOS_COLLECTION));
   const seen = new Set<string>();
-  let deletedCount = 0;
-  
-  // Collect IDs of duplicates
-  const idsToDelete: string[] = [];
+  const batch = writeBatch(db);
+  let deleted = 0;
 
-  centrosSnap.docs.forEach(doc => {
-    const data = doc.data();
-    const hospital = normalizeHospitalName(data.hospital || "");
-    const key = `${hospital.trim()}|${(data.trabajador || "").trim()}`.toLowerCase();
+  telefonosSnap.docs.forEach(docSnap => {
+    const data = docSnap.data();
+    const key = `${data.area}|${data.nombre}|${data.interno}`.toLowerCase();
     
     if (seen.has(key)) {
-      idsToDelete.push(doc.id);
+      batch.delete(docSnap.ref);
+      deleted++;
     } else {
       seen.add(key);
     }
   });
 
-  // Delete in batches of 500 (Firestore limit)
-  for (let i = 0; i < idsToDelete.length; i += 500) {
-    const batch = writeBatch(db);
-    const chunk = idsToDelete.slice(i, i + 500);
-    chunk.forEach(id => {
-      batch.delete(doc(db, CENTROS_COORDINADORES_COLLECTION, id));
-    });
+  if (deleted > 0) {
     await batch.commit();
-    deletedCount += chunk.length;
   }
+  return deleted;
+}
 
+export async function cleanupCentrosCoordinadores() {
+  const centrosSnap = await getDocs(collection(db, CENTROS_COORDINADORES_COLLECTION));
+  const seen = new Set<string>();
+  const batch = writeBatch(db);
+  let deletedCount = 0;
+
+  centrosSnap.docs.forEach(docSnap => {
+    const data = docSnap.data();
+    const hospital = normalizeHospitalName(data.hospital || "");
+    const key = `${hospital.trim()}|${(data.trabajador || "").trim()}`.toLowerCase();
+    
+    if (seen.has(key)) {
+      batch.delete(docSnap.ref);
+      deletedCount++;
+    } else {
+      seen.add(key);
+    }
+  });
+
+  if (deletedCount > 0) {
+    await batch.commit();
+  }
   return deletedCount;
 }
 
@@ -536,7 +597,10 @@ export async function deletePractica(id: string) {
     const snapshot = await getDoc(docRef);
     await deleteDoc(docRef);
     if (snapshot.exists()) {
-      await logUpdate(`Se eliminó la práctica: ${snapshot.data().descripcion}`);
+      const p = snapshot.data();
+      const key = `${p.codigo}|${p.descripcion}|${p.descImpresa || ''}|${p.sinonimo || ''}`.trim();
+      await logDeletedItem('practica', key);
+      await logUpdate(`Se eliminó la práctica: ${p.descripcion}`);
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, PRACTICAS_COLLECTION);
@@ -562,7 +626,9 @@ export async function deleteFolleto(id: string) {
     const snapshot = await getDoc(docRef);
     await deleteDoc(docRef);
     if (snapshot.exists()) {
-      await logUpdate(`Se eliminó el folleto: ${snapshot.data().nombre}`);
+      const data = snapshot.data();
+      await logDeletedItem('folleto', data.nombre);
+      await logUpdate(`Se eliminó el folleto: ${data.nombre}`);
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, FOLLETOS_COLLECTION);
@@ -615,10 +681,14 @@ export async function deleteCentroCoordinador(id: string) {
   try {
     const docRef = doc(db, CENTROS_COORDINADORES_COLLECTION, id);
     const snapshot = await getDoc(docRef);
-    await deleteDoc(docRef);
     if (snapshot.exists()) {
-      await logUpdate(`Se eliminó el centro coordinador: ${snapshot.data().hospital}`);
+      const data = snapshot.data();
+      const hospitalKey = normalizeHospitalName(data.hospital || "");
+      const key = `${hospitalKey}|${data.trabajador}`;
+      await logDeletedItem('centro', key);
+      await logUpdate(`Se eliminó el centro coordinador: ${data.hospital}`);
     }
+    await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, CENTROS_COORDINADORES_COLLECTION);
   }
@@ -671,10 +741,13 @@ export async function deleteTelefono(id: string) {
   try {
     const docRef = doc(db, TELEFONOS_COLLECTION, id);
     const snapshot = await getDoc(docRef);
-    await deleteDoc(docRef);
     if (snapshot.exists()) {
-      await logUpdate(`Se eliminó el teléfono interno: ${snapshot.data().area}`);
+      const data = snapshot.data();
+      const key = `${data.area}|${data.nombre}|${data.interno}`.toLowerCase();
+      await logDeletedItem('telefono', key);
+      await logUpdate(`Se eliminó el teléfono interno: ${data.area}`);
     }
+    await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, TELEFONOS_COLLECTION);
   }
@@ -739,6 +812,21 @@ export async function deleteUser(uid: string) {
   }
 }
 
+export async function resetDeletedLog() {
+  try {
+    const snap = await getDocs(collection(db, DELETED_ITEMS_COLLECTION));
+    const batch = writeBatch(db);
+    snap.docs.forEach(docSnap => {
+      batch.delete(docSnap.ref);
+    });
+    await batch.commit();
+    return snap.size;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, DELETED_ITEMS_COLLECTION);
+    return 0;
+  }
+}
+
 export async function seedDatabase(initialTramites: any[], initialPrestadores: any[], initialFolletos: any[] = [], initialPracticas: any[] = [], initialCentros: any[] = [], initialTelefonos: any[] = []) {
   const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
   const existingTramiteNames = new Set(
@@ -767,8 +855,7 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   const existingCentroKeys = new Set(
     centrosSnap.docs.map(doc => {
       const data = doc.data();
-      const hospitalRaw = (data.hospital || "").trim().toUpperCase();
-      // Use the same normalization logic as migrateData if possible, or just trim/upper
+      const hospitalRaw = normalizeHospitalName(data.hospital || "").toUpperCase();
       return `${hospitalRaw}|${(data.trabajador || "").trim().toUpperCase()}`.toLowerCase();
     })
   );
@@ -777,6 +864,9 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   const existingTelefonoKeys = new Set(
     telefonosSnap.docs.map(doc => `${doc.data().area}|${doc.data().nombre}|${doc.data().interno}`.toLowerCase())
   );
+
+  const deletedItemsSnap = await getDocs(collection(db, DELETED_ITEMS_COLLECTION));
+  const deletedKeys = new Set(deletedItemsSnap.docs.map(doc => doc.id.toLowerCase()));
 
   let addedTramites = 0;
   let addedPrestadores = 0;
@@ -790,7 +880,10 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
 
   initialTramites.forEach(t => {
     const normalizedName = (t.nombre || "").trim().toLowerCase();
-    if (!existingTramiteNames.has(normalizedName)) {
+    const safeId = normalizedName.replace(/[^a-z0-9]/g, '_');
+    const deleteKey = `tramite_${safeId}`;
+    
+    if (!existingTramiteNames.has(normalizedName) && !deletedKeys.has(deleteKey)) {
       const docRef = doc(collection(db, TRAMITES_COLLECTION));
       
       let documents = t.documentos || [];
@@ -825,7 +918,10 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
 
   initialPrestadores.forEach(p => {
     const normalizedName = (p.nombre || "").trim().toLowerCase();
-    if (!existingPrestadorNames.has(normalizedName)) {
+    const safeId = normalizedName.replace(/[^a-z0-9]/g, '_');
+    const deleteKey = `prestador_${safeId}`;
+
+    if (!existingPrestadorNames.has(normalizedName) && !deletedKeys.has(deleteKey)) {
       const docRef = doc(collection(db, PRESTADORES_COLLECTION));
       currentChunk.push({
         ref: docRef,
@@ -848,7 +944,10 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
 
   initialFolletos.forEach(f => {
     const normalizedName = (f.nombre || "").trim().toLowerCase();
-    if (!existingFolletoNames.has(normalizedName)) {
+    const safeId = normalizedName.replace(/[^a-z0-9]/g, '_');
+    const deleteKey = `folleto_${safeId}`;
+
+    if (!existingFolletoNames.has(normalizedName) && !deletedKeys.has(deleteKey)) {
       const docRef = doc(collection(db, FOLLETOS_COLLECTION));
       currentChunk.push({
         ref: docRef,
@@ -869,7 +968,10 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
 
   initialPracticas.forEach(p => {
     const key = `${p.codigo}|${p.descripcion}|${p.descImpresa || ''}|${p.sinonimo || ''}`.trim().toLowerCase();
-    if (!existingPracticaKeys.has(key)) {
+    const safeId = key.replace(/[^a-z0-9]/g, '_');
+    const deleteKey = `practica_${safeId}`;
+
+    if (!existingPracticaKeys.has(key) && !deletedKeys.has(deleteKey)) {
       const docRef = doc(collection(db, PRACTICAS_COLLECTION));
       currentChunk.push({
         ref: docRef,
@@ -892,8 +994,10 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
     const trabajador = (c.trabajador || "").trim();
     
     const key = `${hospital.toUpperCase()}|${trabajador.toUpperCase()}`.toLowerCase();
+    const safeId = key.replace(/[^a-z0-9]/g, '_');
+    const deleteKey = `centro_${safeId}`;
 
-    if (!existingCentroKeys.has(key)) {
+    if (!existingCentroKeys.has(key) && !deletedKeys.has(deleteKey)) {
       const docRef = doc(collection(db, CENTROS_COORDINADORES_COLLECTION));
       currentChunk.push({
         ref: docRef,
@@ -1194,32 +1298,7 @@ export async function migrateData() {
     "HOSPITAL ROSSI"
   ];
 
-  const groupsConfig = [
-    { canonical: sanMartinCanonical, variants: sanMartinVariants },
-    { canonical: altheaCanonical, variants: altheaVariants },
-    { canonical: gutierrezCanonical, variants: gutierrezVariants },
-    { canonical: sanRoqueCanonical, variants: sanRoqueVariants },
-    { canonical: losTilosCanonical, variants: losTilosVariants },
-    { canonical: rossiCanonical, variants: rossiVariants },
-    { canonical: "GUSTAVO DILORETTO", variants: ["DI LORETO GUSTAVO", "GUSTAVO DI LORETTO"] },
-    { 
-      canonical: "HTAL. PRIVADO SUSAMERICANO", 
-      variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] 
-    },
-    {
-      canonical: "HTAL. SAN JUAN DE DIOS",
-      variants: [
-        "HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS",
-        "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS",
-        "HOSPITAL SAN JUAN DE DIOS",
-        "HTAL. SAN JUAN DE DIOS"
-      ]
-    },
-    {
-      canonical: "SANATORIO ARGENTINO (NARDO)",
-      variants: ["SANATORIO ARGENTINO"]
-    }
-  ];
+  const groupsConfig = HOSPITAL_CANONICAL_GROUPS;
 
   const replacementsMap: Record<string, string> = {};
 

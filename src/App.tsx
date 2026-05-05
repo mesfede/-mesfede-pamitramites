@@ -102,7 +102,15 @@ import {
   updateTelefono,
   deleteTelefono,
   deleteAllTelefonos,
-  migrateData
+  migrateData,
+  normalizeHospitalName,
+  resetDeletedLog,
+  cleanupTramites,
+  cleanupPrestadores,
+  cleanupPracticas,
+  cleanupFolletos,
+  cleanupTelefonos,
+  cleanupCentrosCoordinadores
 } from './services/firestore';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
@@ -1528,20 +1536,32 @@ export default function App() {
     
     const searchNorm = normalize(centroSearch.trim());
 
-    if (!searchNorm) return centrosCoordinadores;
+    const processed = centrosCoordinadores.map(c => ({
+      ...c,
+      hospitalNormalizedLabel: normalizeHospitalName(c.hospital || "")
+    }));
 
-    return centrosCoordinadores.filter(c => {
-      const hospitalNorm = normalize(c.hospital || "");
+    if (!searchNorm) return processed.sort((a, b) => a.hospitalNormalizedLabel.localeCompare(b.hospitalNormalizedLabel));
+
+    return processed.filter(c => {
+      const hospitalNorm = normalize(c.hospitalNormalizedLabel);
       const trabajadorNorm = normalize(c.trabajador || "");
       return hospitalNorm.includes(searchNorm) || trabajadorNorm.includes(searchNorm);
-    }).sort((a, b) => a.hospital.localeCompare(b.hospital));
+    }).sort((a, b) => a.hospitalNormalizedLabel.localeCompare(b.hospitalNormalizedLabel));
   }, [centrosCoordinadores, centroSearch]);
 
   const groupedCentros = useMemo(() => {
-    const groups: { [hospital: string]: CentroCoordinador[] } = {};
+    const groups: { [hospital: string]: (CentroCoordinador & { hospitalNormalizedLabel: string })[] } = {};
     filteredCentros.forEach(c => {
-      if (!groups[c.hospital]) groups[c.hospital] = [];
-      groups[c.hospital].push(c);
+      const key = c.hospitalNormalizedLabel;
+      if (!groups[key]) groups[key] = [];
+      
+      const workerKey = (c.trabajador || "").trim().toLowerCase();
+      const existing = groups[key].find(x => (x.trabajador || "").trim().toLowerCase() === workerKey);
+      
+      if (!existing) {
+        groups[key].push(c);
+      }
     });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [filteredCentros]);
@@ -1852,13 +1872,25 @@ export default function App() {
       const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS, PRACTICAS_OME, INITIAL_CENTROS_COORDINADORES, INITIAL_TELEFONOS);
       const migrated = await migrateData();
       
+      const cleanedTramites = await cleanupTramites();
+      const cleanedPrestadores = await cleanupPrestadores();
+      const cleanedPracticas = await cleanupPracticas();
+      const cleanedFolletos = await cleanupFolletos();
+      const cleanedTelefonos = await cleanupTelefonos();
+      const cleanedCentros = await cleanupCentrosCoordinadores();
+      
+      const totalCleaned = cleanedTramites + cleanedPrestadores + cleanedPracticas + cleanedFolletos + cleanedTelefonos + cleanedCentros;
+      
       setAdminMessage({ 
-        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas, ${result.addedCentros} centros y ${result.addedTelefonos} teléfonos nuevos. Se migraron ${migrated} registros.`,
+        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas, ${result.addedCentros} centros y ${result.addedTelefonos} teléfonos nuevos. Se unificaron ${migrated} registros y se eliminaron ${totalCleaned} duplicados.`,
         type: 'success'
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error seeding database:", err);
-      setAdminMessage({ text: "Error al sincronizar datos.", type: 'error' });
+      setAdminMessage({ 
+        text: `Error al sincronizar datos: ${err.message || "Error desconocido"}. Por favor, revisa la consola para más detalles.`, 
+        type: 'error' 
+      });
     } finally {
       setIsSaving(false);
     }
@@ -1909,6 +1941,21 @@ export default function App() {
     } catch (err) {
       console.error("Error migrating data:", err);
       setAdminMessage({ text: "Error al unificar registros.", type: 'error' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetDeletions = async () => {
+    if (!window.confirm("¿Estás seguro de que quieres limpiar el historial de elementos eliminados? Esto permitirá que los elementos originales vuelvan a aparecer en la próxima sincronización.")) return;
+    setIsSaving(true);
+    setAdminMessage(null);
+    try {
+      const count = await resetDeletedLog();
+      setAdminMessage({ text: `Historial de eliminados limpiado (${count} registros).`, type: 'success' });
+    } catch (err) {
+      console.error("Error resetting deletions:", err);
+      setAdminMessage({ text: "Error al limpiar historial.", type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -2262,22 +2309,20 @@ export default function App() {
           <>
             {/* LATEST UPDATE BANNER (TEST) */}
             {showUpdateBanner && latestUpdate && (
-              <div className="mb-4 bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-2 flex items-start gap-2.5 shadow-sm relative group transition-all">
-                <div className="shrink-0 pt-0.5 text-emerald-600">
-                  <Megaphone size={14} />
+              <div className="mb-4 bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm relative pr-8 transition-all">
+                <div className="shrink-0 text-emerald-600">
+                  <Megaphone size={12} />
                 </div>
-                <div className="flex-1 pr-6">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h4 className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Última actualización</h4>
-                    <span className="text-[10px] text-emerald-700/80 font-medium bg-emerald-100/80 px-1.5 py-px rounded">
-                      {latestUpdate.timestamp ? new Date(latestUpdate.timestamp.seconds * 1000).toLocaleDateString('es-AR') : 'Reciente'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-emerald-900/80 leading-snug">{latestUpdate.description}</p>
+                <div className="flex items-center gap-2 text-[11px] overflow-hidden max-w-full">
+                  <span className="font-bold text-emerald-700 uppercase tracking-wider shrink-0">Última actualización:</span>
+                  <p className="text-emerald-900/80 truncate">{latestUpdate.description}</p>
+                  <span className="text-[10px] text-emerald-700/60 font-medium whitespace-nowrap ml-1">
+                    ({latestUpdate.timestamp ? new Date(latestUpdate.timestamp.seconds * 1000).toLocaleDateString('es-AR') : 'Reciente'})
+                  </span>
                 </div>
                 <button 
                   onClick={() => setShowUpdateBanner(false)}
-                  className="absolute top-1.5 right-1.5 p-1 text-emerald-600/60 hover:text-emerald-700 hover:bg-emerald-100/80 rounded-md transition-colors"
+                  className="absolute right-1.5 p-1 text-emerald-600/60 hover:text-emerald-700 hover:bg-emerald-100/80 rounded-md transition-colors"
                   title="Ocultar nota"
                 >
                   <X size={14} />
@@ -3190,7 +3235,17 @@ export default function App() {
                           <Hospital size={20} />
                         </div>
                         <div>
-                          <h3 className="font-bold text-pami-text uppercase text-sm leading-tight">{hospital}</h3>
+                          <button
+                            onClick={() => {
+                              setActiveTab('prestadores');
+                              setPrestadorSearch(hospital);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="font-bold text-pami-blue hover:text-pami-blue/80 hover:underline uppercase text-sm leading-tight text-left transition-colors"
+                            title="Ver en Prestadores"
+                          >
+                            {hospital}
+                          </button>
                           <p className="text-xs text-pami-muted font-medium mt-0.5">Centro Coordinador</p>
                         </div>
                       </div>
@@ -3518,6 +3573,9 @@ export default function App() {
                   </Button>
                   <Button variant="outline" className="text-[10px] py-1 h-auto px-3 bg-pami-blue/5 border-pami-blue/20 text-pami-blue" onClick={handleMigrate} isLoading={isSaving} title="Unifica nombres de hospitales (Gutierrez, San Roque, etc)">
                     Unificar Nombres
+                  </Button>
+                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3 text-red-600 border-red-200 hover:bg-red-50" onClick={handleResetDeletions} isLoading={isSaving} title="Permite que los items borrados vuelvan a aparecer al sincronizar">
+                    Limpiar Historial Borrados
                   </Button>
                 </div>
                 

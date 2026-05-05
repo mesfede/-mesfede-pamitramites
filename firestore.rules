@@ -196,5 +196,9 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update, delete: if false;
     }
+
+    match /deleted_items/{itemId} {
+      allow read, write: if isAdmin();
+    }
   }
 }

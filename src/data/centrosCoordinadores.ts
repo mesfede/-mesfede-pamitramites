@@ -17,17 +17,17 @@ export const INITIAL_CENTROS_COORDINADORES: Omit<CentroCoordinador, 'id'>[] = [
     telefono: "221 481-7159"
   },
   {
-    hospital: "Hospital Rossi",
+    hospital: "HTAL. ROSSI",
     trabajador: "Lorena Landucci",
     telefono: "221 567-7900"
   },
   {
-    hospital: "Instituto Medico platense",
+    hospital: "INST. MEDICO PLATENSE",
     trabajador: "Adrian Rodriguez",
     telefono: "221 455-5554"
   },
   {
-    hospital: "Instituto Del Diagnostico",
+    hospital: "INST. DEL DIAGNOSTICO",
     trabajador: "Santiago Bonini",
     telefono: "221 597-0262"
   }
