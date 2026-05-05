@@ -1795,7 +1795,9 @@ export default function App() {
     
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
-    const isCabecera = ((formData.get('especialidades') as string) || '').toLowerCase().includes('cabecera');
+    const specsLower = ((formData.get('especialidades') as string) || '').toLowerCase();
+    const isTimeTableSpecialty = specsLower.includes('cabecera') || specsLower.includes('odontolog');
+    
     const data: any = {
       nombre: formData.get('nombre') as string,
       especialidades: (formData.get('especialidades') as string).split('\n').filter(p => p.trim() !== ''),
@@ -1809,7 +1811,7 @@ export default function App() {
       oculto: formData.get('oculto') === 'on'
     };
 
-    if (isCabecera) {
+    if (isTimeTableSpecialty) {
       data.horariosAtencion = {
         lunes: (formData.get('horario_lunes') as string) || '',
         martes: (formData.get('horario_martes') as string) || '',
@@ -1971,7 +1973,13 @@ export default function App() {
                 >
                   {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
-                <h1 className="text-2xl sm:text-3xl font-varela font-bold tracking-tight text-white mb-0">
+                <h1 
+                  className="text-2xl sm:text-3xl font-varela font-bold tracking-tight text-white mb-0 cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => {
+                    setActiveTab('tramites');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
                   GuíaP!
                 </h1>
               </div>
@@ -3912,11 +3920,14 @@ export default function App() {
             <Input name="email" type="email" defaultValue={editingPrestador?.email} placeholder="Ej: contacto@clinica.com" />
           </div>
 
-          {prestadorTags.some(t => t.toLowerCase().includes('cabecera')) && (
+          {prestadorTags.some(t => {
+            const tl = t.toLowerCase();
+            return tl.includes('cabecera') || tl.includes('odontolog');
+          }) && (
             <div className="space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <label className="text-sm font-semibold text-pami-blue flex items-center gap-2">
                 <Clock size={16} />
-                Horarios de Atención (Médico de Cabecera)
+                Horarios de Atención (Médico de Cabecera / Odontología)
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="space-y-1">
@@ -4334,7 +4345,13 @@ export default function App() {
       <footer className="bg-white border-t border-gray-200 py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-6">
-            <span className="text-4xl font-varela font-bold tracking-tight text-pami-blue">
+            <span 
+              className="text-4xl font-varela font-bold tracking-tight text-pami-blue cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => {
+                setActiveTab('tramites');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
               GuíaP!
             </span>
           </div>

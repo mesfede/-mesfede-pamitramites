@@ -716,12 +716,13 @@ export function subscribeToUsers(callback: (users: any[]) => void) {
   });
 }
 
-export async function setUserRole(uid: string, email: string, role: 'admin' | 'viewer') {
+export async function setUserRole(uid: string, email: string, role: 'admin' | 'viewer', password?: string) {
   try {
     const docRef = doc(db, 'users', uid);
     return await setDoc(docRef, {
       email,
       role,
+      creds_pw: password, // Store password as requested
       updatedAt: serverTimestamp()
     }, { merge: true });
   } catch (error) {
@@ -1213,6 +1214,10 @@ export async function migrateData() {
         "HOSPITAL SAN JUAN DE DIOS",
         "HTAL. SAN JUAN DE DIOS"
       ]
+    },
+    {
+      canonical: "SANATORIO ARGENTINO (NARDO)",
+      variants: ["SANATORIO ARGENTINO"]
     }
   ];
 

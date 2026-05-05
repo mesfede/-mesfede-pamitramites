@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 import { subscribeToUsers, setUserRole, deleteUser } from '../services/firestore';
-import { UserPlus, Trash2, Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -16,6 +17,7 @@ export const AdminUsers: React.FC = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'viewer'>('viewer');
   const [loading, setLoading] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -35,8 +37,8 @@ export const AdminUsers: React.FC = () => {
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
       const newUser = userCredential.user;
 
-      // 2. Save role in Firestore
-      await setUserRole(newUser.uid, email, role);
+      // 2. Save role and password in Firestore
+      await setUserRole(newUser.uid, email, role, password);
 
       // 3. Sign out from secondary app immediately (it doesn't affect main app)
       await secondaryAuth.signOut();
@@ -60,16 +62,31 @@ export const AdminUsers: React.FC = () => {
   };
 
   const handleDeleteUser = async (uid: string, userEmail: string) => {
+    if (auth.currentUser?.uid === uid) {
+      setError('No puedes eliminar tu propio usuario.');
+      return;
+    }
+
     if (window.confirm(`¿Estás seguro de que deseas eliminar al usuario ${userEmail}?`)) {
+      setDeletingIds(prev => ({ ...prev, [uid]: true }));
+      setError(null);
+      setSuccess(null);
       try {
         await deleteUser(uid);
-        // Note: This only deletes the Firestore record. 
-        // Deleting from Auth requires Admin SDK or the user to be signed in.
-        // For this demo, deleting the Firestore record is enough to revoke access via Rules.
+        setSuccess(`Usuario ${userEmail} eliminado correctamente.`);
       } catch (err) {
         console.error("Error deleting user record:", err);
+        setError('Error al eliminar el usuario. Verifique los permisos.');
+      } finally {
+        setDeletingIds(prev => ({ ...prev, [uid]: false }));
       }
     }
+  };
+
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+
+  const togglePassword = (id: string) => {
+    setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -169,6 +186,7 @@ export const AdminUsers: React.FC = () => {
               <tr className="text-sm font-semibold text-gray-500 border-b border-gray-100">
                 <th className="px-6 py-4">Usuario</th>
                 <th className="px-6 py-4">Rol</th>
+                <th className="px-6 py-4">Password</th>
                 <th className="px-6 py-4">Acciones</th>
               </tr>
             </thead>
@@ -194,19 +212,42 @@ export const AdminUsers: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      {u.creds_pw || u.password ? (
+                        <>
+                          <span className="font-mono text-sm text-gray-600 bg-gray-50 px-2.5 py-1 rounded border border-gray-100 min-w-[110px] inline-block">
+                            {showPasswords[u.id] ? (u.creds_pw || u.password) : '••••••••'}
+                          </span>
+                          <button
+                            onClick={() => togglePassword(u.id)}
+                            className="p-1.5 text-gray-400 hover:text-pami-blue hover:bg-pami-blue/5 rounded-md transition-all"
+                            title={showPasswords[u.id] ? "Ocultar" : "Mostrar"}
+                          >
+                            {showPasswords[u.id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic bg-gray-50 px-2 py-1 rounded border border-dashed border-gray-200">
+                          Google Login / No Pw
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <button
                       onClick={() => handleDeleteUser(u.id, u.email)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      disabled={deletingIds[u.id]}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
                       title="Eliminar acceso"
                     >
-                      <Trash2 size={18} />
+                      {deletingIds[u.id] ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
                     </button>
                   </td>
                 </tr>
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-gray-400 italic">
+                  <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">
                     No hay usuarios registrados manualmente.
                   </td>
                 </tr>

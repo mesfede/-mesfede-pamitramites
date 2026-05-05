@@ -887,7 +887,7 @@ export const INITIAL_PRESTADORES = [
     "telefono": "221 451-1528"
   },
   {
-    "nombre": "SANATORIO ARGENTINO",
+    "nombre": "SANATORIO ARGENTINO (NARDO)",
     "especialidades": ["TAC - RMN"],
     "direccion": "56 Nº 874",
     "telefono": "221 412-9500",
