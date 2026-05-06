@@ -121,6 +121,7 @@ import { INITIAL_CENTROS_COORDINADORES } from './data/centrosCoordinadores';
 import { INITIAL_TELEFONOS } from './data/telefonos';
 import { cn } from './lib/utils';
 import { PamiLogo } from './components/PamiLogo';
+import { AttentionCountdown } from './components/AttentionCountdown';
 
 const getFileIcon = (nombre: string) => {
   const lowerName = nombre.toLowerCase();
@@ -2300,6 +2301,11 @@ export default function App() {
                       />
                     </div>
                   </div>
+
+                  {/* Divider Desktop */}
+                  <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+
+                  <AttentionCountdown />
 
                   {/* Divider Desktop */}
                   <div className="hidden md:block w-px h-6 bg-gray-200"></div>
