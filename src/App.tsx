@@ -59,7 +59,8 @@ import {
   Dumbbell,
   Shield,
   Menu,
-  EyeOff
+  EyeOff,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -110,7 +111,8 @@ import {
   cleanupPracticas,
   cleanupFolletos,
   cleanupTelefonos,
-  cleanupCentrosCoordinadores
+  cleanupCentrosCoordinadores,
+  resetAllTopes
 } from './services/firestore';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
@@ -770,6 +772,7 @@ export default function App() {
   const [selectedLocalities, setSelectedLocalities] = useState<string[]>([]);
   const [isPrintingPrestadores, setIsPrintingPrestadores] = useState(false);
   const [telefonoSearch, setTelefonoSearch] = useState('');
+  const [showTopesOnly, setShowTopesOnly] = useState(false);
   const [isTelefonoModalOpen, setIsTelefonoModalOpen] = useState(false);
   const [isDeleteTelefonoModalOpen, setIsDeleteTelefonoModalOpen] = useState(false);
   const [editingTelefono, setEditingTelefono] = useState<TelefonoInterno | null>(null);
@@ -1894,6 +1897,27 @@ export default function App() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleResetTopes = () => {
+    setConfirmMessage("¿Estás seguro de que deseas quitar TODOS los topes de TODOS los prestadores? Esta acción no se puede deshacer.");
+    setConfirmAction(() => async () => {
+      setIsSaving(true);
+      try {
+        const updatedCount = await resetAllTopes();
+        setIsConfirmModalOpen(false);
+        setAdminMessage({ 
+          text: `Se resetearon los topes de ${updatedCount} prestadores exitosamente.`, 
+          type: 'success' 
+        });
+      } catch (err) {
+        console.error("Error resetting topes:", err);
+        setAdminMessage({ text: "Error al resetear topes.", type: 'error' });
+      } finally {
+        setIsSaving(false);
+      }
+    });
+    setIsConfirmModalOpen(true);
   };
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -3570,11 +3594,17 @@ export default function App() {
                 <button 
                   onClick={() => setAdminSubTab('prestadores')}
                   className={cn(
-                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2",
                     adminSubTab === 'prestadores' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
                   )}
                 >
                   Prestadores
+                  {prestadores.some(p => p.especialidadesTopeadas && p.especialidadesTopeadas.length > 0) && (
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                  )}
                 </button>
                 <button 
                   onClick={() => setAdminSubTab('folletos')}
@@ -3678,60 +3708,95 @@ export default function App() {
                   </tbody>
                 </table>
               ) : adminSubTab === 'prestadores' ? (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
-                      <th className="px-6 py-4">Prestador</th>
-                      <th className="px-6 py-4">Localidad</th>
-                      <th className="px-6 py-4">Especialidades</th>
-                      <th className="px-6 py-4 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {prestadores.map(p => (
-                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors group">
-                        <td className="px-6 py-4 font-medium text-pami-text uppercase">{p.nombre}</td>
-                        <td className="px-6 py-4 text-sm text-pami-muted uppercase">{p.localidad || '-'}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1 max-w-xs">
-                            {p.especialidades?.slice(0, 3).map((e, idx) => {
-                              const isTopeada = p.especialidadesTopeadas?.includes(e);
-                              return (
-                                <span key={`${e}-${idx}`} className={cn(
-                                  "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold",
-                                  isTopeada ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-600"
-                                )}>
-                                  {e}
-                                </span>
-                              );
-                            })}
-                            {(p.especialidades?.length || 0) > 3 && (
-                              <span className="text-[9px] text-pami-muted">+{p.especialidades!.length - 3}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button 
-                              onClick={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
-                              className="p-2 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
-                              title="Editar prestador"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button 
-                              onClick={(e) => handleDeletePrestador(p, e)}
-                              className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                              title="Eliminar prestador"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50 rounded-xl border border-gray-100 gap-4">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <div 
+                          className={cn(
+                            "w-9 h-5 rounded-full transition-colors relative border",
+                            showTopesOnly ? "bg-red-500 border-red-600" : "bg-gray-200 border-gray-300"
+                          )}
+                          onClick={() => setShowTopesOnly(!showTopesOnly)}
+                        >
+                          <div className={cn(
+                            "absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all shadow-sm",
+                            showTopesOnly ? "left-[18px]" : "left-0.5"
+                          )}></div>
+                        </div>
+                        <span className="text-xs font-bold text-pami-text uppercase tracking-tight">Ver solo prestadores con topes</span>
+                      </label>
+                    </div>
+                    
+                    <button 
+                      onClick={handleResetTopes}
+                      disabled={isSaving}
+                      className="flex items-center gap-2 px-4 py-2 bg-white text-red-600 border border-red-100 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-red-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                    >
+                      <RotateCcw size={14} />
+                      Resetear todos los topes
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-[11px] font-bold uppercase tracking-widest text-pami-muted">
+                          <th className="px-6 py-4">Prestador</th>
+                          <th className="px-6 py-4">Localidad</th>
+                          <th className="px-6 py-4">Especialidades</th>
+                          <th className="px-6 py-4 text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {prestadores
+                          .filter(p => !showTopesOnly || (p.especialidadesTopeadas && p.especialidadesTopeadas.length > 0))
+                          .map(p => (
+                          <tr key={p.id} className="hover:bg-gray-50/50 transition-colors group">
+                            <td className="px-6 py-4 font-medium text-pami-text uppercase">{p.nombre}</td>
+                            <td className="px-6 py-4 text-sm text-pami-muted uppercase">{p.localidad || '-'}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1 max-w-xs">
+                                {p.especialidades?.slice(0, 3).map((e, idx) => {
+                                  const isTopeada = p.especialidadesTopeadas?.includes(e);
+                                  return (
+                                    <span key={`${e}-${idx}`} className={cn(
+                                      "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold",
+                                      isTopeada ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-600"
+                                    )}>
+                                      {e}
+                                    </span>
+                                  );
+                                })}
+                                {(p.especialidades?.length || 0) > 3 && (
+                                  <span className="text-[9px] text-pami-muted">+{p.especialidades!.length - 3}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                <button 
+                                  onClick={() => { setEditingPrestador(p); setIsPrestadorModalOpen(true); }}
+                                  className="p-2 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-all"
+                                  title="Editar prestador"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button 
+                                  onClick={(e) => handleDeletePrestador(p, e)}
+                                  className="p-2 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Eliminar prestador"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               ) : adminSubTab === 'usuarios' ? (
                 <AdminUsers />
               ) : (

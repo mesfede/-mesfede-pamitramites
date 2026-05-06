@@ -51,7 +51,7 @@ const HOSPITAL_CANONICAL_GROUPS = [
   { canonical: "SANATORIO ARGENTINO (NARDO)", variants: ["SANATORIO ARGENTINO"] },
   { canonical: "INST. MEDICO PLATENSE", variants: ["Instituto Medico platense", "INSTITUTO MEDICO PLATENSE"] },
   { canonical: "INST. DEL DIAGNOSTICO", variants: ["Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO"] },
-  { canonical: "CL PR DE EXCELENCIA MÉDICA SA (C.Belgrano)", variants: ["CL PR DE EXCELENCIA MÉDICA SA", "Clinica Belgrano", "EXCELENCIA MEDICA", "EXCELENCIA MÉDICA SA", "CLINICA BELGRANO"] }
+  { canonical: "CL PR DE EXCELENCIA MÉDICA SA (C.BELGRANO)", variants: ["CLINICA DE EXCELENCIA MEDICA", "CLINICA DE EX. MEDICA", "CL PR DE EXCELENCIA MÉDICA SA (C.Belgrano)", "CL PR DE EXCELENCIA MÉDICA SA", "Clinica Belgrano", "EXCELENCIA MEDICA", "EXCELENCIA MÉDICA SA", "CLINICA BELGRANO", "CLINICA DE EXCELENCIA MÉDICA"] }
 ];
 
 export function normalizeHospitalName(name: string): string {
@@ -384,6 +384,38 @@ export async function deleteAllTramites() {
     return deleted;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, TRAMITES_COLLECTION);
+    return 0;
+  }
+}
+
+export async function resetAllTopes() {
+  try {
+    const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+    const docsToUpdate = prestadoresSnap.docs.filter(doc => {
+      const data = doc.data();
+      return data.especialidadesTopeadas && data.especialidadesTopeadas.length > 0;
+    });
+
+    let updated = 0;
+    for (let i = 0; i < docsToUpdate.length; i += 500) {
+      const batch = writeBatch(db);
+      const chunk = docsToUpdate.slice(i, i + 500);
+      chunk.forEach(doc => {
+        batch.update(doc.ref, { 
+          especialidadesTopeadas: [],
+          updatedAt: serverTimestamp()
+        });
+        updated++;
+      });
+      await batch.commit();
+    }
+    
+    if (updated > 0) {
+      await logUpdate(`Se resetearon los topes de ${updated} prestadores`);
+    }
+    return updated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, PRESTADORES_COLLECTION);
     return 0;
   }
 }
