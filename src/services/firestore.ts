@@ -39,15 +39,15 @@ const TELEFONOS_COLLECTION = 'telefonos';
 const DELETED_ITEMS_COLLECTION = 'deleted_items';
 
 const HOSPITAL_CANONICAL_GROUPS = [
-  { canonical: "HTAL. SAN MARTIN", variants: ["HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL SAN MARTIN", "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN", "Hospital San Martin"] },
+  { canonical: "HOSPITAL SAN MARTIN", variants: ["HTAL. SAN MARTIN", "HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL SAN MARTIN", "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN", "Hospital San Martin"] },
   { canonical: "ALTHEA (EX VACCARINI)", variants: ["ALTHEA CLINICA PRIVADA", "CL PR VACCARINI SA", "ALTHEA", "CLINICA VACCARINI", "VACCARINI", "VACARINI"] },
-  { canonical: "HTAL. GUTIERREZ", variants: ["Htal Zonal Ricardo Gutierrez", "HOSPITAL RICARDO GUTIERREZ", "HOSPITAL GUTIERREZ", "GUTIERREZ", "RICARDO GUTIERREZ"] },
-  { canonical: "HTAL. SAN ROQUE", variants: ["HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE", "HOSPITAL SAN ROQUE", "SAN ROQUE", "Hospital San Roque", "HOSPITAL ZONAL GRI GENERAL DE AGUDOS SAN ROQUE"] },
+  { canonical: "HOSPITAL GUTIERREZ", variants: ["HTAL. GUTIERREZ", "Htal Zonal Ricardo Gutierrez", "HOSPITAL RICARDO GUTIERREZ", "HOSPITAL GUTIERREZ", "GUTIERREZ", "RICARDO GUTIERREZ"] },
+  { canonical: "HOSPITAL SAN ROQUE", variants: ["HTAL. SAN ROQUE", "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE", "HOSPITAL SAN ROQUE", "SAN ROQUE", "Hospital San Roque", "HOSPITAL ZONAL GRI GENERAL DE AGUDOS SAN ROQUE"] },
   { canonical: "SANATORIO MEDICO LOS TILOS", variants: ["SANATORIO MÉDICO LOS TILOS SA", "SANATORIO MEDICO LOS TILOS", "SANATORIO MEDICO LOS TILOS SA", "LOS TILOS"] },
-  { canonical: "HTAL. ROSSI", variants: ["HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI", "HOSPITAL INTERZONAL ROSSI", "HTAL. ROSSI", "HOSPITAL ROSSI", "Hospital Rossi"] },
+  { canonical: "HOSPITAL ROSSI", variants: ["HTAL. ROSSI", "HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI", "HOSPITAL INTERZONAL ROSSI", "HTAL. ROSSI", "HOSPITAL ROSSI", "Hospital Rossi"] },
   { canonical: "GUSTAVO DILORETTO", variants: ["DI LORETO GUSTAVO", "GUSTAVO DI LORETTO"] },
-  { canonical: "HTAL. PRIVADO SUSAMERICANO", variants: ["Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] },
-  { canonical: "HTAL. SAN JUAN DE DIOS", variants: ["HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] },
+  { canonical: "HOSPITAL PRIVADO SUDAMERICANO", variants: ["HTAL. PRIVADO SUSAMERICANO", "Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] },
+  { canonical: "HOSPITAL SAN JUAN DE DIOS", variants: ["HTAL. SAN JUAN DE DIOS", "HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] },
   { canonical: "SANATORIO ARGENTINO (NARDO)", variants: ["SANATORIO ARGENTINO"] },
   { canonical: "INST. MEDICO PLATENSE", variants: ["Instituto Medico platense", "INSTITUTO MEDICO PLATENSE"] },
   { canonical: "INST. DEL DIAGNOSTICO", variants: ["Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO"] },
@@ -56,14 +56,25 @@ const HOSPITAL_CANONICAL_GROUPS = [
 
 export function normalizeHospitalName(name: string): string {
   if (!name) return "";
-  const trimmed = name.trim();
+  let trimmed = name.trim();
+  
+  // Normalización agresiva de abreviaturas de Hospital
   const lower = trimmed.toLowerCase();
   
+  // Primero buscamos en grupos canónicos
   for (const group of HOSPITAL_CANONICAL_GROUPS) {
     if (lower === group.canonical.toLowerCase() || group.variants.map(v => v.toLowerCase()).includes(lower)) {
       return group.canonical;
     }
   }
+
+  // Si no está en grupos, aplicamos reemplazo genérico de abreviaturas
+  trimmed = trimmed
+    .replace(/^HTAL\.?\s+/i, "HOSPITAL ")
+    .replace(/^HOSP\.?\s+/i, "HOSPITAL ")
+    .replace(/\s+HTAL\.?\s+/gi, " HOSPITAL ")
+    .replace(/\s+HOSP\.?\s+/gi, " HOSPITAL ");
+
   return trimmed;
 }
 
@@ -1274,59 +1285,26 @@ export async function migrateData() {
     }
   });
 
-  // 3. Unify and Merge San Martin Hospital / Althea
-  const sanMartinCanonical = "HTAL. SAN MARTIN";
-  const sanMartinVariants = [
-    "HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN",
-    "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN",
-    "HOSPITAL SAN MARTIN",
-    "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN",
-    "Hospital San Martin"
-  ];
+  // 4. General Hospital Name Unification (HTAL/HOSP -> HOSPITAL)
+  const allDocs = [...prestadoresSnap.docs, ...centrosSnap.docs];
+  allDocs.forEach(docSnap => {
+    const data = docSnap.data();
+    const currentName = docSnap.ref.path.startsWith(PRESTADORES_COLLECTION) ? (data.nombre || "") : (data.hospital || "");
+    const normalized = normalizeHospitalName(currentName);
+    
+    if (normalized !== currentName) {
+      const updateData: any = { updatedAt: serverTimestamp() };
+      if (docSnap.ref.path.startsWith(PRESTADORES_COLLECTION)) {
+        updateData.nombre = normalized;
+      } else {
+        updateData.hospital = normalized;
+      }
+      batch.update(docSnap.ref, updateData);
+      migrated++;
+    }
+  });
 
-  const altheaCanonical = "ALTHEA (EX VACCARINI)";
-  const altheaVariants = [
-    "ALTHEA CLINICA PRIVADA",
-    "CL PR VACCARINI SA",
-    "ALTHEA",
-    "CLINICA VACCARINI",
-    "VACCARINI",
-    "VACARINI"
-  ];
-
-  const gutierrezCanonical = "HTAL. GUTIERREZ";
-  const gutierrezVariants = [
-    "Htal Zonal Ricardo Gutierrez",
-    "HOSPITAL RICARDO GUTIERREZ",
-    "HOSPITAL GUTIERREZ",
-    "GUTIERREZ",
-    "RICARDO GUTIERREZ"
-  ];
-
-  const sanRoqueCanonical = "HTAL. SAN ROQUE";
-  const sanRoqueVariants = [
-    "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE",
-    "HOSPITAL SAN ROQUE",
-    "SAN ROQUE",
-    "Hospital San Roque"
-  ];
-
-  const losTilosCanonical = "SANATORIO MEDICO LOS TILOS";
-  const losTilosVariants = [
-    "SANATORIO MÉDICO LOS TILOS SA",
-    "SANATORIO MEDICO LOS TILOS",
-    "SANATORIO MEDICO LOS TILOS SA",
-    "LOS TILOS"
-  ];
-
-  const rossiCanonical = "HTAL. ROSSI";
-  const rossiVariants = [
-    "HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI",
-    "HOSPITAL INTERZONAL ROSSI",
-    "HTAL. ROSSI",
-    "HOSPITAL ROSSI"
-  ];
-
+  // 5. Unify and Merge based on Canonical Groups
   const groupsConfig = HOSPITAL_CANONICAL_GROUPS;
 
   const replacementsMap: Record<string, string> = {};
