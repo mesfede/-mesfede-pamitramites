@@ -1162,6 +1162,119 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   return { addedTramites, addedPrestadores, addedFolletos, addedPracticas, addedCentros, addedTelefonos };
 }
 
+export const unifyTerms = (specs: string[]): string[] => {
+  let mapped: string[] = [];
+  const rmnExactMatches = ['RESONANCIA', 'RESONANCIA MAGNETICA', 'RMN'];
+  const tacExactMatches = ['TAC', 'TOMOGRAFIA', 'TOMOGRAFIA COMPUTADA'];
+  
+  for (const s of specs) {
+    // Aggressive normalization: remove accents, uppercase, trim
+    let upper = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+    
+    // Minor typo fixes (ambulatorio -> ambulatoria)
+    if (upper === 'CIRUGIA GENERAL AMBULATORIO') {
+       upper = 'CIRUGIA GENERAL AMBULATORIA';
+    }
+    
+    // Split combined terms
+    if (upper === 'TAC - RMN') {
+      mapped.push('TOMOGRAFIA', 'RESONANCIA MAGNETICA');
+      continue;
+    }
+    if (upper === 'RX - TAC') {
+      mapped.push('RX', 'TOMOGRAFIA');
+      continue;
+    }
+    if (upper === 'ECODIAGNOSTICO - RMN') {
+      mapped.push('ECODIAGNOSTICO', 'RESONANCIA MAGNETICA');
+      continue;
+    }
+
+    // Resonancia + 130 Unification
+    if (upper.startsWith('RESONANCIA +') || upper.startsWith('RESONANCIA+')) {
+      if (upper.includes('130')) {
+         mapped.push('RESONANCIA + 130');
+      } else {
+         mapped.push('RESONANCIA MAGNETICA');
+      }
+      continue;
+    }
+    
+    if (tacExactMatches.includes(upper)) {
+      mapped.push('TOMOGRAFIA');
+      continue;
+    }
+
+    // Fisiatria Unification
+    if (upper === 'FISIOKINESIO' || upper === 'FISIATRIA' || upper === 'FISIATRIA CONSULTAS' || upper === 'FISIATRIA - CONSULTAS') {
+      mapped.push('FISIATRIA');
+      continue;
+    }
+
+    // Espinograma Unification
+    if (upper === 'ESPINOGRAMA' || upper === 'ESPINOGRAFIA') {
+      mapped.push('ESPINOGRAFIA');
+      continue;
+    }
+
+    // Ensure ALL audiology maps to proper terms
+    if (upper === 'AUDIOMETRIA' || upper === 'AUDIFONOS' || upper === 'AUDIOMETRIA / AUDIFONOS' || upper === 'LOGOAUDIOMETRIA') {
+      // We will map them all to these 3 separate canonical items so the user finds them individually
+      if (upper === 'AUDIOMETRIA / AUDIFONOS') {
+         mapped.push('AUDIOMETRIA', 'AUDIFONOS');
+      } else {
+         mapped.push(upper);
+      }
+      continue;
+    }
+
+    // Diabetologia unification
+    if (upper === 'DIABETOLOGIA' || upper === 'DIABETOLOGO') {
+      mapped.push('DIABETOLOGIA');
+      continue;
+    }
+
+    // Eco Doppler unification
+    if (upper === 'ECO DOPPLER' || upper === 'ECO DOPP.' || upper === 'ECODOPPLER' || upper === 'ECO DOPP') {
+      mapped.push('ECO DOPPLER');
+      continue;
+    }
+
+    if (upper === 'ECO DOPP. / ECODIAG.') {
+      mapped.push('ECO DOPPLER', 'ECODIAGNOSTICO');
+      continue;
+    }
+
+    if (upper === 'RX - ECODIAG. / ECO DOPPLER') {
+      mapped.push('RX', 'ECODIAGNOSTICO', 'ECO DOPPLER');
+      continue;
+    }
+
+    // Ginecologia y Obstetricia unification
+    if (upper === 'GINECOLOGIA' || upper === 'GINECOLOGIA Y OBSTETRICIA') {
+      mapped.push('GINECOLOGIA Y OBSTETRICIA');
+      continue;
+    }
+
+    // Panoramica Odontologica unification
+    if (upper === 'PANORAMICA' || upper === 'PANORAMICA ODONTOLOGICA' || upper === 'PANORAMICA ODONTOLIGICA') {
+      mapped.push('PANORAMICA ODONTOLOGICA');
+      continue;
+    }
+
+    // Mamotonne Unification
+    if (upper.includes('MAMMOTONNE') || upper.includes('MAMMOTONE') || upper.includes('MAMOTONE')) {
+      mapped.push('MAMOTONNE');
+      continue;
+    }
+    
+    mapped.push(upper);
+  }
+  
+  // Remove duplicates
+  return Array.from(new Set(mapped));
+};
+
 export async function migrateData() {
   const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
   const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
@@ -1207,90 +1320,6 @@ export async function migrateData() {
   prestadoresSnap.docs.forEach(docSnap => {
     const p = docSnap.data() as Prestador;
     
-    // Generic Term Unification
-    const unifyTerms = (specs: string[]): string[] => {
-      let mapped: string[] = [];
-      const rmnExactMatches = ['RESONANCIA', 'RESONANCIA MAGNETICA', 'RMN'];
-      const tacExactMatches = ['TAC', 'TOMOGRAFIA', 'TOMOGRAFIA COMPUTADA'];
-      
-      for (const s of specs) {
-        // Aggressive normalization: remove accents, uppercase, trim
-        let upper = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-        
-        // Minor typo fixes (ambulatorio -> ambulatoria)
-        if (upper === 'CIRUGIA GENERAL AMBULATORIO') {
-           upper = 'CIRUGIA GENERAL AMBULATORIA';
-        }
-        
-        // Split combined terms
-        if (upper === 'TAC - RMN') {
-          mapped.push('TOMOGRAFIA', 'RESONANCIA MAGNETICA');
-          continue;
-        }
-        if (upper === 'RX - TAC') {
-          mapped.push('RX', 'TOMOGRAFIA');
-          continue;
-        }
-
-        // RMN Unification
-        if (rmnExactMatches.includes(upper)) {
-          mapped.push('RESONANCIA MAGNETICA');
-          continue;
-        }
-
-        // Resonancia + 130 Unification
-        if (upper.startsWith('RESONANCIA +') || upper.startsWith('RESONANCIA+')) {
-          if (upper.includes('130')) {
-             mapped.push('RESONANCIA + 130');
-          } else {
-             mapped.push('RESONANCIA MAGNETICA');
-          }
-          continue;
-        }
-        
-        // TAC Unification
-        if (tacExactMatches.includes(upper)) {
-          mapped.push('TOMOGRAFIA');
-          continue;
-        }
-
-        // Fisiatria Unification
-        if (upper === 'FISIOKINESIO' || upper === 'FISIATRIA' || upper === 'FISIATRIA CONSULTAS' || upper === 'FISIATRIA - CONSULTAS') {
-          mapped.push('FISIATRIA');
-          continue;
-        }
-
-        // Espinografia Unification
-        if (upper === 'ESPINOGRAMA' || upper === 'ESPINOGRAFIA') {
-          mapped.push('ESPINOGRAFIA');
-          continue;
-        }
-
-        // Audiometria / Audifonos Unification
-        // Ensure ALL audiology maps to proper terms
-        if (upper === 'AUDIOMETRIA' || upper === 'AUDIFONOS' || upper === 'AUDIOMETRIA / AUDIFONOS' || upper === 'LOGOAUDIOMETRIA') {
-          // We will map them all to these 3 separate canonical items so the user finds them individually
-          if (upper === 'AUDIOMETRIA / AUDIFONOS') {
-             mapped.push('AUDIOMETRIA', 'AUDIFONOS');
-          } else {
-             mapped.push(upper);
-          }
-          continue;
-        }
-
-        // Mamotonne Unification
-        if (upper.includes('MAMMOTONNE') || upper.includes('MAMMOTONE') || upper.includes('MAMOTONE')) {
-          mapped.push('MAMOTONNE');
-          continue;
-        }
-        
-        mapped.push(upper);
-      }
-      
-      // Remove duplicates
-      return Array.from(new Set(mapped));
-    };
-
     const currentSpecs = p.especialidades || [];
     const currentTopeadas = p.especialidadesTopeadas || [];
     

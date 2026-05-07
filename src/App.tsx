@@ -108,7 +108,8 @@ import {
   resetDeletedLog,
   cleanupFolletos,
   cleanupTelefonos,
-  resetAllTopes
+  resetAllTopes,
+  unifyTerms
 } from './services/firestore';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
@@ -489,22 +490,24 @@ const PrestadorCard = ({
 
   const searchNorm = normalize(searchTerm.trim().replace(/\s+/g, ' '));
   const specialtyNorm = normalize(selectedSpecialty.replace(/\s+/g, ' '));
+  const unifiedSpecs = unifyTerms(p.especialidades || []);
+  const unifiedTopeadas = unifyTerms(p.especialidadesTopeadas || []);
 
-  const isMedicoCabecera = p.especialidades.some(s => 
+  const isMedicoCabecera = unifiedSpecs.some(s => 
     s.toUpperCase().includes('MEDICO DE CABECERA') || 
     s.toUpperCase().includes('MÉDICO DE CABECERA')
   );
 
   // Identify which specialties match the search
-  const matchingSpecs = p.especialidades.filter(s => {
+  const matchingSpecs = unifiedSpecs.filter(s => {
     const sNorm = normalize(s.replace(/\s+/g, ' '));
     if (selectedSpecialty && sNorm === specialtyNorm) return true;
     return false;
   });
 
   // If no search, show the first one as primary
-  const primarySpecs = matchingSpecs.length > 0 ? matchingSpecs : [p.especialidades[0]];
-  const otherSpecs = p.especialidades.filter(s => !primarySpecs.includes(s));
+  const primarySpecs = matchingSpecs.length > 0 ? matchingSpecs : (unifiedSpecs.length > 0 ? [unifiedSpecs[0]] : []);
+  const otherSpecs = unifiedSpecs.filter(s => !primarySpecs.includes(s));
 
   return (
     <div className={cn("bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all flex flex-col h-full", p.oculto && "bg-gray-100/80 opacity-60 grayscale-[50%] hover:opacity-80")}>
@@ -602,7 +605,7 @@ const PrestadorCard = ({
             <p className="text-[10px] font-bold uppercase tracking-widest text-pami-muted">Especialidades / Prácticas</p>
             <div className="flex flex-wrap gap-1.5">
               {primarySpecs.map((e, idx) => {
-                const isTopeada = p.especialidadesTopeadas?.includes(e);
+                const isTopeada = unifiedTopeadas.includes(e);
                 return (
                   <span key={`${e}-${idx}`} className={cn(
                     "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border flex items-center gap-1",
@@ -646,7 +649,7 @@ const PrestadorCard = ({
                 >
                   <div className="flex flex-wrap gap-1.5 pt-2">
                     {otherSpecs.map((e, idx) => {
-                      const isTopeada = p.especialidadesTopeadas?.includes(e);
+                      const isTopeada = unifiedTopeadas.includes(e);
                       return (
                         <span key={`${e}-${idx}`} className={cn(
                           "text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide border flex items-center gap-1",
@@ -1093,14 +1096,8 @@ export default function App() {
   const allSpecialties = useMemo(() => {
     const specs = new Set<string>();
     prestadores.forEach(p => {
-      (p.especialidades || []).forEach(s => {
-        let clean = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().replace(/\s+/g, ' ');
-        if (clean === 'CIRUGIA GENERAL AMBULATORIO') clean = 'CIRUGIA GENERAL AMBULATORIA';
-        if (clean.includes('MAMMOTONNE') || clean.includes('MAMMOTONE') || clean === 'MAMOTONE') clean = 'MAMOTONNE';
-        if (clean === 'ESPINOGRAMA') clean = 'ESPINOGRAFIA';
-        
-        specs.add(clean);
-      });
+      const unified = unifyTerms(p.especialidades || []);
+      unified.forEach(s => specs.add(s));
     });
     return Array.from(specs).sort();
   }, [prestadores]);
@@ -1128,8 +1125,9 @@ export default function App() {
                          nameNorm.includes(searchNorm) || 
                          notasNorm.includes(searchNorm);
 
+      const unifiedSpecs = unifyTerms(p.especialidades || []);
       const matchesDropdown = !selectedSpecialty || 
-                             (p.especialidades || []).some(s => normalize(s.replace(/\s+/g, ' ')) === specialtyNorm);
+                             unifiedSpecs.some(s => normalize(s.replace(/\s+/g, ' ')) === specialtyNorm);
 
       return matchesText && matchesDropdown;
     });
@@ -1276,7 +1274,8 @@ export default function App() {
               <div class="locality-title">${loc}</div>
               <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                 ${grouped[loc].map(p => {
-                  const isPMedico = p.especialidades.some(s => s.toUpperCase().includes('MEDICO DE CABECERA') || s.toUpperCase().includes('MÉDICO DE CABECERA'));
+                  const unified = unifyTerms(p.especialidades || []);
+                  const isPMedico = unified.some(s => s.toUpperCase().includes('MEDICO DE CABECERA') || s.toUpperCase().includes('MÉDICO DE CABECERA'));
                   return `
                     <div class="prestador-card">
                       <div class="prestador-name">
@@ -1414,7 +1413,7 @@ export default function App() {
             ${p.especialidades && p.especialidades.length > 0 ? `
               <div class="specs-list">
                 <div class="specs-title">Especialidades / Prácticas:</div>
-                ${p.especialidades.join(', ')}
+                ${unifyTerms(p.especialidades || []).join(', ')}
               </div>
             ` : ''}
           </div>
@@ -3757,8 +3756,9 @@ export default function App() {
                             <td className="px-6 py-4 text-sm text-pami-muted uppercase">{p.localidad || '-'}</td>
                             <td className="px-6 py-4">
                               <div className="flex flex-wrap gap-1 max-w-xs">
-                                {p.especialidades?.slice(0, 3).map((e, idx) => {
-                                  const isTopeada = p.especialidadesTopeadas?.includes(e);
+                                {unifyTerms(p.especialidades || []).slice(0, 3).map((e, idx) => {
+                                  const unifiedTopeadas = unifyTerms(p.especialidadesTopeadas || []);
+                                  const isTopeada = unifiedTopeadas.includes(e);
                                   return (
                                     <span key={`${e}-${idx}`} className={cn(
                                       "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold",
@@ -3768,8 +3768,8 @@ export default function App() {
                                     </span>
                                   );
                                 })}
-                                {(p.especialidades?.length || 0) > 3 && (
-                                  <span className="text-[9px] text-pami-muted">+{p.especialidades!.length - 3}</span>
+                                {(unifyTerms(p.especialidades || []).length || 0) > 3 && (
+                                  <span className="text-[9px] text-pami-muted">+{unifyTerms(p.especialidades || []).length - 3}</span>
                                 )}
                               </div>
                             </td>
