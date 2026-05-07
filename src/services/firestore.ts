@@ -50,7 +50,8 @@ const HOSPITAL_CANONICAL_GROUPS = [
   { canonical: "HOSPITAL SAN JUAN DE DIOS", variants: ["HTAL. SAN JUAN DE DIOS", "HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] },
   { canonical: "SANATORIO ARGENTINO (NARDO)", variants: ["SANATORIO ARGENTINO"] },
   { canonical: "INST. MEDICO PLATENSE", variants: ["Instituto Medico platense", "INSTITUTO MEDICO PLATENSE"] },
-  { canonical: "INST. DEL DIAGNOSTICO", variants: ["Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO"] },
+  { canonical: "INSTITUTO DEL DIAGNÓSTICO DE LA PLATA", variants: ["INST. DEL DIAGNOSTICO", "Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO", "INSTITUTO DEL DIAGNÓSTICO DE LA PLATA SA", "INSTITUTO DEL DIAGNOSTICO DE LA PLATA SA", "INSTITUTO DEL DIAGNOSTICO DE LA PLATA", "INSTITUTO DEL DIAGNÓSTICO DE LA PLATA"] },
+  { canonical: "INSTITUTO DEL DIAGONISTICO CARDIOVASCULAR", variants: ["INST. DIAG. CARDIOVASCULAR", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR LA PLATA S.R.L.", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR LA PLATA", "INSTITUTO DEL DIAGONISTICO CARDIOVASCULAR", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR LA PLATA SRL"] },
   { canonical: "CL PR DE EXCELENCIA MÉDICA SA (C.BELGRANO)", variants: ["CLINICA DE EXCELENCIA MEDICA", "CLINICA DE EX. MEDICA", "CL PR DE EXCELENCIA MÉDICA SA (C.Belgrano)", "CL PR DE EXCELENCIA MÉDICA SA", "Clinica Belgrano", "EXCELENCIA MEDICA", "EXCELENCIA MÉDICA SA", "CLINICA BELGRANO", "CLINICA DE EXCELENCIA MÉDICA"] }
 ];
 
@@ -70,10 +71,10 @@ export function normalizeHospitalName(name: string): string {
 
   // Si no está en grupos, aplicamos reemplazo genérico de abreviaturas
   trimmed = trimmed
-    .replace(/^HTAL\.?\s+/i, "HOSPITAL ")
-    .replace(/^HOSP\.?\s+/i, "HOSPITAL ")
-    .replace(/\s+HTAL\.?\s+/gi, " HOSPITAL ")
-    .replace(/\s+HOSP\.?\s+/gi, " HOSPITAL ");
+    .replace(/^(HTAL|HATL|HOSP|HOSTIPAL)\.?\s+/i, "HOSPITAL ")
+    .replace(/\s+(HTAL|HATL|HOSP|HOSTIPAL)\.?\s+/gi, " HOSPITAL ")
+    .replace(/hospital/gi, "HOSPITAL")
+    .replace(/hostipal/gi, "HOSPITAL");
 
   return trimmed;
 }
@@ -505,25 +506,92 @@ export async function cleanupFolletos() {
 
 export async function cleanupPracticas() {
   const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
-  const seen = new Set<string>();
-  const batch = writeBatch(db);
-  let deleted = 0;
-
+  
+  // Group by codigo|descripcion
+  const groups = new Map<string, any[]>();
   practicasSnap.docs.forEach(doc => {
     const data = doc.data();
-    const key = `${data.codigo}|${data.descripcion}|${data.descImpresa || ''}|${data.sinonimo || ''}`.trim().toLowerCase();
+    const key = `${data.codigo}|${data.descripcion}`.trim().toLowerCase();
     
-    if (seen.has(key)) {
-      batch.delete(doc.ref);
-      deleted++;
-    } else {
-      seen.add(key);
+    if (!groups.has(key)) {
+      groups.set(key, []);
     }
+    groups.get(key)!.push({
+      ref: doc.ref,
+      ...data
+    });
   });
 
-  if (deleted > 0) {
+  const batches: ReturnType<typeof writeBatch>[] = [];
+  let currentBatch = writeBatch(db);
+  let operations = 0;
+  let deleted = 0;
+
+  const pushOp = () => {
+    operations++;
+    if (operations === 500) {
+      batches.push(currentBatch);
+      currentBatch = writeBatch(db);
+      operations = 0;
+    }
+  };
+
+  for (const [key, docs] of groups.entries()) {
+    if (docs.length > 1) {
+      // Keep the first one, delete the rest, but merge descImpresa and sinonimo.
+      const toKeep = docs[0];
+      let mergedDescImpresa = toKeep.descImpresa || '';
+      let mergedSinonimo = toKeep.sinonimo || '';
+      
+      let needsUpdate = false;
+
+      for (let i = 1; i < docs.length; i++) {
+        const d = docs[i];
+        
+        // Merge descImpresa
+        if (d.descImpresa && d.descImpresa !== mergedDescImpresa) {
+          if (!mergedDescImpresa) {
+            mergedDescImpresa = d.descImpresa;
+          } else if (!mergedDescImpresa.split(' / ').includes(d.descImpresa)) {
+            mergedDescImpresa += ' / ' + d.descImpresa;
+          }
+          needsUpdate = true;
+        }
+
+        // Merge sinonimo
+        if (d.sinonimo && d.sinonimo !== mergedSinonimo) {
+          if (!mergedSinonimo) {
+            mergedSinonimo = d.sinonimo;
+          } else if (!mergedSinonimo.split(' / ').includes(d.sinonimo)) {
+            mergedSinonimo += ' / ' + d.sinonimo;
+          }
+          needsUpdate = true;
+        }
+
+        currentBatch.delete(d.ref);
+        pushOp();
+        deleted++;
+      }
+      
+      // If we merged values into the kept document, update it
+      if (needsUpdate || toKeep.descImpresa !== mergedDescImpresa || toKeep.sinonimo !== mergedSinonimo) {
+        currentBatch.update(toKeep.ref, {
+          descImpresa: mergedDescImpresa,
+          sinonimo: mergedSinonimo
+        });
+        pushOp();
+      }
+    }
+  }
+
+  if (operations > 0) {
+    batches.push(currentBatch);
+  }
+
+  for (const batch of batches) {
     await batch.commit();
   }
+
   return deleted;
 }
 
@@ -887,7 +955,7 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   const existingPracticaKeys = new Set(
     practicasSnap.docs.map(doc => {
       const data = doc.data();
-      return `${data.codigo}|${data.descripcion}|${data.descImpresa || ''}|${data.sinonimo || ''}`.trim().toLowerCase();
+      return `${data.codigo}|${data.descripcion}`.trim().toLowerCase();
     })
   );
 
@@ -1007,7 +1075,7 @@ export async function seedDatabase(initialTramites: any[], initialPrestadores: a
   });
 
   initialPracticas.forEach(p => {
-    const key = `${p.codigo}|${p.descripcion}|${p.descImpresa || ''}|${p.sinonimo || ''}`.trim().toLowerCase();
+    const key = `${p.codigo}|${p.descripcion}`.trim().toLowerCase();
     const safeId = key.replace(/[^a-z0-9]/g, '_');
     const deleteKey = `practica_${safeId}`;
 
@@ -1135,48 +1203,10 @@ export async function migrateData() {
     }
   });
 
-  // 2. Unify Audiology specialties in prestadores
-  const audiologySpecs = ['AUDÍFONOS', 'AUDIOMETRÍA', 'LOGOAUDIOMETRÍA'];
+  // 2. Unify Specialties across all prestadores
   prestadoresSnap.docs.forEach(docSnap => {
     const p = docSnap.data() as Prestador;
-    const specs = p.especialidades || [];
     
-    // Check if it has any audiology related specialty (accented or not)
-    const hasAny = specs.some(s => {
-      const upper = s.toUpperCase();
-      return audiologySpecs.includes(upper) || 
-             upper === 'AUDIFONOS' || 
-             upper === 'AUDIOMETRIA' || 
-             upper === 'LOGOAUDIOMETRIA';
-    });
-
-    if (hasAny) {
-      // Create a new list of specialties:
-      // 1. Remove any unaccented or accented version of the three target specialties
-      // 2. Add the three canonical accented versions
-      const otherSpecs = specs.filter(s => {
-        const upper = s.toUpperCase();
-        return !audiologySpecs.includes(upper) && 
-               upper !== 'AUDIFONOS' && 
-               upper !== 'AUDIOMETRIA' && 
-               upper !== 'LOGOAUDIOMETRIA';
-      });
-
-      const newSpecs = [...otherSpecs, ...audiologySpecs];
-      
-      // Only update if the list actually changed (ignoring order)
-      const currentSorted = [...specs].sort();
-      const newSorted = [...newSpecs].sort();
-      
-      if (JSON.stringify(currentSorted) !== JSON.stringify(newSorted)) {
-        batch.update(docSnap.ref, {
-          especialidades: newSpecs,
-          updatedAt: serverTimestamp()
-        });
-        migrated++;
-      }
-    }
-
     // Generic Term Unification
     const unifyTerms = (specs: string[]): string[] => {
       let mapped: string[] = [];
@@ -1184,7 +1214,13 @@ export async function migrateData() {
       const tacExactMatches = ['TAC', 'TOMOGRAFIA', 'TOMOGRAFIA COMPUTADA'];
       
       for (const s of specs) {
-        const upper = s.toUpperCase().trim();
+        // Aggressive normalization: remove accents, uppercase, trim
+        let upper = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+        
+        // Minor typo fixes (ambulatorio -> ambulatoria)
+        if (upper === 'CIRUGIA GENERAL AMBULATORIO') {
+           upper = 'CIRUGIA GENERAL AMBULATORIA';
+        }
         
         // Split combined terms
         if (upper === 'TAC - RMN') {
@@ -1203,60 +1239,52 @@ export async function migrateData() {
         }
 
         // Resonancia + 130 Unification
-        if (upper === 'RESONANCIA +130' || upper === 'RESONANCIA+ 130' || upper === 'RESONANCIA+130') {
-          mapped.push('RESONANCIA + 130');
+        if (upper.startsWith('RESONANCIA +') || upper.startsWith('RESONANCIA+')) {
+          if (upper.includes('130')) {
+             mapped.push('RESONANCIA + 130');
+          } else {
+             mapped.push('RESONANCIA MAGNETICA');
+          }
           continue;
         }
         
         // TAC Unification
-        if (tacExactMatches.includes(upper) || upper === 'TOMOGRAFÍA' || upper === 'TOMOGRAFÍA COMPUTADA') {
+        if (tacExactMatches.includes(upper)) {
           mapped.push('TOMOGRAFIA');
           continue;
         }
 
         // Fisiatria Unification
-        if (upper === 'FISIOKINESIO' || upper === 'FISIATRIA' || upper === 'FISIATRÍA' || upper === 'FISIATRIA CONSULTAS' || upper === 'FISIATRÍA CONSULTAS' || upper === 'FISIATRIA - CONSULTAS' || upper === 'FISIATRÍA - CONSULTAS') {
-          mapped.push('FISIATRÍA');
+        if (upper === 'FISIOKINESIO' || upper === 'FISIATRIA' || upper === 'FISIATRIA CONSULTAS' || upper === 'FISIATRIA - CONSULTAS') {
+          mapped.push('FISIATRIA');
           continue;
         }
 
         // Espinografia Unification
-        if (upper === 'ESPINOGRAMA' || upper === 'ESPINOGRAFIA' || upper === 'ESPINOGRAFÍA') {
-          mapped.push('ESPINOGRAFÍA');
+        if (upper === 'ESPINOGRAMA' || upper === 'ESPINOGRAFIA') {
+          mapped.push('ESPINOGRAFIA');
           continue;
         }
 
         // Audiometria / Audifonos Unification
-        if (upper === 'AUDIOMETRIA' || upper === 'AUDIOMETRÍA' || upper === 'AUDIFONOS' || upper === 'AUDÍFONOS' || upper === 'AUDIOMETRIA / AUDIFONOS' || upper === 'AUDIOMETRÍA / AUDÍFONOS' || upper === 'AUDIOMETRIA / AUDÍFONOS' || upper === 'AUDIOMETRÍA / AUDIFONOS') {
-          mapped.push('AUDIOMETRÍA / AUDÍFONOS');
+        // Ensure ALL audiology maps to proper terms
+        if (upper === 'AUDIOMETRIA' || upper === 'AUDIFONOS' || upper === 'AUDIOMETRIA / AUDIFONOS' || upper === 'LOGOAUDIOMETRIA') {
+          // We will map them all to these 3 separate canonical items so the user finds them individually
+          if (upper === 'AUDIOMETRIA / AUDIFONOS') {
+             mapped.push('AUDIOMETRIA', 'AUDIFONOS');
+          } else {
+             mapped.push(upper);
+          }
           continue;
         }
 
         // Mamotonne Unification
-        if (upper === 'MAMMOTONNE' || upper === 'MAMMOTONE' || upper === 'MAMOTONE') {
+        if (upper.includes('MAMMOTONNE') || upper.includes('MAMMOTONE') || upper.includes('MAMOTONE')) {
           mapped.push('MAMOTONNE');
           continue;
         }
-
-        // Neurologia Unification
-        if (upper === 'NEUROLOGIA' || upper === 'NEUROLOGÍA') {
-          mapped.push('NEUROLOGÍA');
-          continue;
-        }
-
-        // Urologia Unification
-        if (upper === 'UROLOGIA' || upper === 'UROLOGÍA') {
-          mapped.push('UROLOGÍA');
-          continue;
-        }
         
-        // Default
-        let finalString = s.trim().toUpperCase();
-        if (finalString.includes('MAMMOTONNE')) finalString = finalString.replace('MAMMOTONNE', 'MAMOTONNE');
-        if (finalString.includes('MAMMOTONE')) finalString = finalString.replace('MAMMOTONE', 'MAMOTONNE');
-        if (finalString.includes('MAMOTONE') && !finalString.includes('MAMOTONNE')) finalString = finalString.replace('MAMOTONE', 'MAMOTONNE');
-        
-        mapped.push(finalString);
+        mapped.push(upper);
       }
       
       // Remove duplicates
@@ -1269,9 +1297,9 @@ export async function migrateData() {
     const newSpecs = unifyTerms(currentSpecs);
     const newTopeadas = unifyTerms(currentTopeadas);
     
-    const currentSpecsSorted = [...currentSpecs].map(s => s.trim().toUpperCase()).sort();
+    const currentSpecsSorted = [...currentSpecs].sort();
     const newSpecsSorted = [...newSpecs].sort();
-    const currentTopeadasSorted = [...currentTopeadas].map(s => s.trim().toUpperCase()).sort();
+    const currentTopeadasSorted = [...currentTopeadas].sort();
     const newTopeadasSorted = [...newTopeadas].sort();
     
     if (JSON.stringify(currentSpecsSorted) !== JSON.stringify(newSpecsSorted) || 

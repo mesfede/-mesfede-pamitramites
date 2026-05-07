@@ -3,6 +3,7 @@ import { auth, signInWithEmailAndPassword, loginWithGoogle } from '../firebase';
 import { Mail, Lock, LogIn, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { PamiLogo } from './PamiLogo';
+import { AnimatedLogo } from './AnimatedLogo';
 
 interface LoginProps {
   onSuccess?: () => void;
@@ -53,9 +54,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     <div className="w-full max-w-md mx-auto p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
       <div className="text-center mb-8">
         <div className="flex justify-center mb-4">
-          <span className="text-5xl font-varela font-bold tracking-tight text-pami-blue">
-            GuíaP!
-          </span>
+          <AnimatedLogo className="text-5xl" />
         </div>
         <div className="mt-2 flex flex-col items-center gap-1">
           <p className="text-sm text-pami-muted mt-2">Inicia sesión para acceder a la plataforma</p>

@@ -106,12 +106,8 @@ import {
   migrateData,
   normalizeHospitalName,
   resetDeletedLog,
-  cleanupTramites,
-  cleanupPrestadores,
-  cleanupPracticas,
   cleanupFolletos,
   cleanupTelefonos,
-  cleanupCentrosCoordinadores,
   resetAllTopes
 } from './services/firestore';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
@@ -122,6 +118,7 @@ import { INITIAL_TELEFONOS } from './data/telefonos';
 import { cn } from './lib/utils';
 import { PamiLogo } from './components/PamiLogo';
 import { AttentionCountdown } from './components/AttentionCountdown';
+import { AnimatedLogo } from './components/AnimatedLogo';
 
 const getFileIcon = (nombre: string) => {
   const lowerName = nombre.toLowerCase();
@@ -1097,13 +1094,11 @@ export default function App() {
     const specs = new Set<string>();
     prestadores.forEach(p => {
       (p.especialidades || []).forEach(s => {
-        let clean = s.trim().toUpperCase().replace(/\s+/g, ' ');
-        if (clean === 'UROLOGIA') clean = 'UROLOGÍA';
-        if (clean === 'NEUROLOGIA') clean = 'NEUROLOGÍA';
+        let clean = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim().replace(/\s+/g, ' ');
+        if (clean === 'CIRUGIA GENERAL AMBULATORIO') clean = 'CIRUGIA GENERAL AMBULATORIA';
         if (clean.includes('MAMMOTONNE') || clean.includes('MAMMOTONE') || clean === 'MAMOTONE') clean = 'MAMOTONNE';
-        if (clean === 'ESPINOGRAMA' || clean === 'ESPINOGRAFIA') clean = 'ESPINOGRAFÍA';
-        if (clean === 'AUDIOMETRIA' || clean === 'AUDIFONOS' || clean.includes('AUDIOMETR') && clean.includes('AUDIFONO')) clean = 'AUDIOMETRÍA / AUDÍFONOS';
-        if (clean === 'FISIATRIA' || clean === 'FISIOKINESIO' || clean.includes('FISIATRIA')) clean = 'FISIATRÍA';
+        if (clean === 'ESPINOGRAMA') clean = 'ESPINOGRAFIA';
+        
         specs.add(clean);
       });
     });
@@ -2081,15 +2076,14 @@ export default function App() {
                 >
                   {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
-                <h1 
-                  className="text-2xl sm:text-3xl font-varela font-bold tracking-tight text-white mb-0 cursor-pointer hover:opacity-90 transition-opacity"
+                <AnimatedLogo 
+                  variant="white"
+                  className="text-2xl sm:text-3xl"
                   onClick={() => {
                     setActiveTab('tramites');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                >
-                  GuíaP!
-                </h1>
+                />
               </div>
 
               <div className="flex items-center gap-4">
@@ -4510,15 +4504,14 @@ export default function App() {
       <footer className="bg-white border-t border-gray-200 py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-6">
-            <span 
-              className="text-4xl font-varela font-bold tracking-tight text-pami-blue cursor-pointer hover:opacity-80 transition-opacity"
+            <AnimatedLogo 
+              variant="blue"
+              className="text-4xl"
               onClick={() => {
                 setActiveTab('tramites');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-            >
-              GuíaP!
-            </span>
+            />
           </div>
           <p className="text-sm text-pami-muted">
             Esta es una herramienta de consulta interna para facilitar la gestión de trámites. Desarrollada por F.M
