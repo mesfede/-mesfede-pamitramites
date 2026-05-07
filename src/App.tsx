@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLoadScript } from '@react-google-maps/api';
 import { AddressAutocomplete } from './components/AddressAutocomplete';
 import { 
@@ -292,6 +292,10 @@ const AutocompleteTagInput = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  const normalize = useCallback((str: string) => 
+    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(), 
+  []);
+
   // Call onChange whenever tags change
   useEffect(() => {
     if (onChange) {
@@ -300,18 +304,20 @@ const AutocompleteTagInput = ({
   }, [tags]);
 
   const filteredSuggestions = suggestions.filter(s => 
-    s.toLowerCase().includes(inputValue.toLowerCase()) && !tags.includes(s)
+    normalize(s).includes(normalize(inputValue)) && !tags.some(t => normalize(t) === normalize(s))
   );
 
   // Take exact match to top if exists, then limit to 10
-  const exactMatchIndex = filteredSuggestions.findIndex(s => s.toLowerCase() === inputValue.toLowerCase());
+  const exactMatchIndex = filteredSuggestions.findIndex(s => normalize(s) === normalize(inputValue));
   const suggestionsToDisplay = exactMatchIndex !== -1 
     ? [filteredSuggestions[exactMatchIndex], ...filteredSuggestions.filter((_, i) => i !== exactMatchIndex)].slice(0, 15)
     : filteredSuggestions.slice(0, 15);
 
   const addTag = (tag: string) => {
-    if (tag.trim() !== '' && !tags.includes(tag.trim().toUpperCase())) {
-      setTags([...tags, tag.trim().toUpperCase()]);
+    if (tag.trim() !== '' && !tags.some(t => normalize(t) === normalize(tag))) {
+      // Try to find the exact suggestion mapping to retain proper casing/accents if known
+      const matchedSuggestion = suggestions.find(s => normalize(s) === normalize(tag));
+      setTags([...tags, matchedSuggestion || tag.trim().toUpperCase()]);
     }
     setInputValue("");
     setShowSuggestions(false);
@@ -419,7 +425,7 @@ const AutocompleteTagInput = ({
                 </div>
               );
             })}
-            {inputValue.trim() !== '' && !suggestions.some(s => s.toLowerCase() === inputValue.trim().toLowerCase()) && (
+            {inputValue.trim() !== '' && !suggestions.some(s => normalize(s) === normalize(inputValue)) && (
               <div 
                 className="px-4 py-3 bg-gray-50 hover:bg-gray-100 cursor-pointer text-sm font-bold uppercase text-pami-blue flex items-center gap-2 border-t-2 border-gray-100"
                 onMouseDown={(e) => { e.preventDefault(); addTag(inputValue); }}
