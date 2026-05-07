@@ -1167,6 +1167,65 @@ export const unifyTerms = (specs: string[]): string[] => {
   const rmnExactMatches = ['RESONANCIA', 'RESONANCIA MAGNETICA', 'RMN'];
   const tacExactMatches = ['TAC', 'TOMOGRAFIA', 'TOMOGRAFIA COMPUTADA'];
   
+  const accentsMap: Record<string, string> = {
+    'ALERGIA E INMUNOLOGIA': 'ALERGIA E INMUNOLOGÍA',
+    'ANATOMIA PATOLOGICA': 'ANATOMÍA PATOLÓGICA',
+    'AUDIOMETRIA': 'AUDIOMETRÍA',
+    'AUDIFONOS': 'AUDÍFONOS',
+    'CARDIOLOGIA': 'CARDIOLOGÍA',
+    'CIRUGIA CARDIOVASCULAR CENTRAL Y PERIFERICA': 'CIRUGÍA CARDIOVASCULAR CENTRAL Y PERIFÉRICA',
+    'CIRUGIA GENERAL AMBULATORIA': 'CIRUGÍA GENERAL AMBULATORIA',
+    'CLINICA MEDICA': 'CLÍNICA MÉDICA',
+    'DERMATOLOGIA': 'DERMATOLOGÍA',
+    'DIABETOLOGIA': 'DIABETOLOGÍA',
+    'ECODIAGNOSTICO': 'ECODIAGNÓSTICO',
+    'ECOGRAFIA': 'ECOGRAFÍA',
+    'ELECTROFISIOLOGIA': 'ELECTROFISIOLOGÍA',
+    'ENDOCRINOLOGIA': 'ENDOCRINOLOGÍA',
+    'ESPINOGRAFIA': 'ESPINOGRAFÍA',
+    'FISIATRIA': 'FISIATRÍA',
+    'FLEBOLOGIA': 'FLEBOLOGÍA',
+    'FONOAUDIOLOGIA': 'FONOAUDIOLOGÍA',
+    'GASTROENTEROLOGIA': 'GASTROENTEROLOGÍA',
+    'GERIATRIA': 'GERIATRÍA',
+    'GINECOLOGIA Y OBSTETRICIA': 'GINECOLOGÍA Y OBSTETRICIA',
+    'HEMATOLOGIA': 'HEMATOLOGÍA',
+    'HEPATOLOGIA': 'HEPATOLOGÍA',
+    'INFECTOLOGIA': 'INFECTOLOGÍA',
+    'INTERNACION CON EL FIN DE REHABILITACION': 'INTERNACIÓN CON EL FIN DE REHABILITACIÓN',
+    'KINESIOLOGIA': 'KINESIOLOGÍA',
+    'LOGOAUDIOMETRIA': 'LOGOAUDIOMETRÍA',
+    'MAMOGRAFIA': 'MAMOGRAFÍA',
+    'MEDICA DE CABECERA': 'MÉDICA DE CABECERA',
+    'MEDICO DE CABECERA': 'MÉDICO DE CABECERA',
+    'NEFROLOGIA': 'NEFROLOGÍA',
+    'NEUMONOLOGIA': 'NEUMONOLOGÍA',
+    'NEUROCIRUGIA': 'NEUROCIRUGÍA',
+    'NEUROLOGIA': 'NEUROLOGÍA',
+    'NUTRICION': 'NUTRICIÓN',
+    'NUTRICIONISTA': 'NUTRICIÓN',
+    'ODONTOLOGIA': 'ODONTOLOGÍA',
+    'OFTALMOLOGIA': 'OFTALMOLOGÍA',
+    'ONCOLOGIA': 'ONCOLOGÍA',
+    'ONCOLOGIA CLINICA': 'ONCOLOGÍA CLÍNICA',
+    'ONCOLOGIA - TRATAMIENTOS': 'ONCOLOGÍA - TRATAMIENTOS',
+    'OPTICA': 'ÓPTICA',
+    'OTORRINOLARINGOLOGIA': 'OTORRINOLARINGOLOGÍA',
+    'PANORAMICA ODONTOLOGICA': 'PANORÁMICA ODONTOLÓGICA',
+    'PEDIATRIA': 'PEDIATRÍA',
+    'PSIQUIATRIA': 'PSIQUIATRÍA',
+    'PSICOLOGIA': 'PSICOLOGÍA',
+    'RADIOLOGIA': 'RADIOLOGÍA',
+    'RESONANCIA MAGNETICA': 'RESONANCIA MAGNÉTICA',
+    'RESONANCIA MULTIPARAMETRICA': 'RESONANCIA MULTIPARAMÉTRICA',
+    'REUMATOLOGIA': 'REUMATOLOGÍA',
+    'TOMOGRAFIA': 'TOMOGRAFÍA',
+    'TRAUMATOLOGIA': 'TRAUMATOLOGÍA',
+    'UROLOGIA': 'UROLOGÍA',
+    'VIDEOENDOSCOPICAS GASTROINTESTINALES': 'VIDEOENDOSCÓPICAS GASTROINTESTINALES',
+    'COLOCACION DE MARCAPASOS': 'COLOCACIÓN DE MARCAPASOS'
+  };
+
   for (const s of specs) {
     // Aggressive normalization: remove accents, uppercase, trim
     let upper = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
@@ -1228,6 +1287,48 @@ export const unifyTerms = (specs: string[]): string[] => {
       continue;
     }
 
+    // Abbreviations
+    if (upper === 'CARDIO') {
+      mapped.push('CARDIOLOGIA');
+      continue;
+    }
+    if (upper === 'FONO') {
+      mapped.push('FONOAUDIOLOGIA');
+      continue;
+    }
+    if (upper === 'GASTRO') {
+      mapped.push('GASTROENTEROLOGIA');
+      continue;
+    }
+    if (upper === 'GINECO') {
+      mapped.push('GINECOLOGIA Y OBSTETRICIA');
+      continue;
+    }
+    if (upper === 'HEPATO') {
+      mapped.push('HEPATOLOGIA');
+      continue;
+    }
+    if (upper === 'KINESIO') {
+      mapped.push('KINESIOLOGIA');
+      continue;
+    }
+    if (upper === 'PSICO') {
+      mapped.push('PSICOLOGIA');
+      continue;
+    }
+    if (upper === 'REUMA') {
+      mapped.push('REUMATOLOGIA');
+      continue;
+    }
+    if (upper === 'OTORRINO / FONOAUDIO') {
+      mapped.push('OTORRINOLARINGOLOGIA', 'FONOAUDIOLOGIA');
+      continue;
+    }
+    if (upper === 'NUTRICIONISTA') {
+      mapped.push('NUTRICION');
+      continue;
+    }
+
     // Diabetologia unification
     if (upper === 'DIABETOLOGIA' || upper === 'DIABETOLOGO') {
       mapped.push('DIABETOLOGIA');
@@ -1264,15 +1365,15 @@ export const unifyTerms = (specs: string[]): string[] => {
 
     // Mamotonne Unification
     if (upper.includes('MAMMOTONNE') || upper.includes('MAMMOTONE') || upper.includes('MAMOTONE')) {
-      mapped.push('MAMOTONNE');
+      mapped.push(accentsMap['MAMOTONNE'] || 'MAMOTONNE');
       continue;
     }
     
-    mapped.push(upper);
+    mapped.push(accentsMap[upper] || upper);
   }
   
-  // Remove duplicates
-  return Array.from(new Set(mapped));
+  // Remove duplicates and apply accents to any hardcoded pushed terms
+  return Array.from(new Set(mapped.map(m => accentsMap[m] || m)));
 };
 
 export async function migrateData() {

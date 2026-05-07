@@ -1332,7 +1332,8 @@ export default function App() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const isMedicoCabecera = p.especialidades.some(s => 
+    const unifiedSpecs = unifyTerms(p.especialidades || []);
+    const isMedicoCabecera = unifiedSpecs.some(s => 
       s.toUpperCase().includes('MEDICO DE CABECERA') || 
       s.toUpperCase().includes('MÉDICO DE CABECERA')
     );
