@@ -1352,7 +1352,7 @@ export const unifyTerms = (specs: string[]): string[] => {
     }
 
     // Ginecologia y Obstetricia unification
-    if (upper === 'GINECOLOGIA' || upper === 'GINECOLOGIA Y OBSTETRICIA') {
+    if (upper === 'GINECOLOGIA' || upper === 'GINECOLOGIA Y OBSTETRICIA' || upper === 'GIENECOLOGIA' || upper === 'GINECO' || upper === 'GIENECOLOGIA Y OBSTETRICIA') {
       mapped.push('GINECOLOGIA Y OBSTETRICIA');
       continue;
     }

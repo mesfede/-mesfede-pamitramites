@@ -70,6 +70,8 @@ export interface Prestador {
   notas?: string;
   oculto?: boolean;
   horariosAtencion?: HorarioAtencion;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 export type Category = 

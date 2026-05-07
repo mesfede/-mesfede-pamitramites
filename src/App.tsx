@@ -17,6 +17,7 @@ import {
   Edit2,
   X,
   CheckCircle2,
+  Calendar,
   Paperclip,
   File,
   Loader2,
@@ -498,15 +499,16 @@ const PrestadorCard = ({
     s.toUpperCase().includes('MÉDICO DE CABECERA')
   );
 
-  // Identify which specialties match the search
   const matchingSpecs = unifiedSpecs.filter(s => {
     const sNorm = normalize(s.replace(/\s+/g, ' '));
-    if (selectedSpecialty && sNorm === specialtyNorm) return true;
-    return false;
+    const termMatches = searchNorm !== "" && sNorm.includes(searchNorm);
+    const dropdownMatches = selectedSpecialty && sNorm === specialtyNorm;
+    return dropdownMatches || termMatches;
   });
 
-  // If no search, show the first one as primary
-  const primarySpecs = matchingSpecs.length > 0 ? matchingSpecs : (unifiedSpecs.length > 0 ? [unifiedSpecs[0]] : []);
+  // Show all specs if they are 10 or less, otherwise show matching and let user expand
+  const showAllByDefault = unifiedSpecs.length <= 10;
+  const primarySpecs = showAllByDefault ? unifiedSpecs : (matchingSpecs.length > 0 ? matchingSpecs : [unifiedSpecs[0]]);
   const otherSpecs = unifiedSpecs.filter(s => !primarySpecs.includes(s));
 
   return (
@@ -702,6 +704,28 @@ const PrestadorCard = ({
             <p>{p.notas}</p>
           </div>
         )}
+
+        <div className="pt-4 flex items-center justify-between border-t border-gray-100 mt-auto">
+          <div className="inline-flex items-center px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-bold text-pami-muted shadow-sm">
+            {p.updatedAt?.toDate ? (
+              <>
+                <Calendar size={10} className="mr-1 text-emerald-600" />
+                <span className="text-emerald-700/70">Actualizado:</span>
+                <span className="ml-1 text-emerald-700">{p.updatedAt.toDate().toLocaleDateString()}</span>
+              </>
+            ) : (
+              p.createdAt?.toDate ? (
+                <>
+                  <Calendar size={10} className="mr-1 text-blue-600" />
+                  <span className="text-blue-700/70">Añadido:</span>
+                  <span className="ml-1 text-blue-700">{p.createdAt.toDate().toLocaleDateString()}</span>
+                </>
+              ) : (
+                <span className="text-[9px] opacity-40 uppercase tracking-widest italic">Sin fecha de registro</span>
+              )
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1118,14 +1142,15 @@ export default function App() {
       if (p.oculto && !isAdmin) return false;
 
       const nameNorm = normalize(p.nombre.replace(/\s+/g, ' '));
-      const specsNorm = (p.especialidades || []).map(s => normalize(s.replace(/\s+/g, ' '))).join(' ');
+      const unifiedSpecs = unifyTerms(p.especialidades || []);
+      const specsNorm = unifiedSpecs.map(s => normalize(s.replace(/\s+/g, ' '))).join(' ');
       const notasNorm = normalize((p.notas || '').replace(/\s+/g, ' '));
       
       const matchesText = searchNorm === "" || 
                          nameNorm.includes(searchNorm) || 
+                         specsNorm.includes(searchNorm) ||
                          notasNorm.includes(searchNorm);
 
-      const unifiedSpecs = unifyTerms(p.especialidades || []);
       const matchesDropdown = !selectedSpecialty || 
                              unifiedSpecs.some(s => normalize(s.replace(/\s+/g, ' ')) === specialtyNorm);
 
@@ -2807,8 +2832,22 @@ export default function App() {
                               )}
 
                               <div className="pt-4 flex items-center justify-between border-t border-gray-100">
-                                <div className="text-[10px] text-gray-400 font-medium">
-                                  {t.updatedAt?.toDate ? `Última actualización: ${t.updatedAt.toDate().toLocaleDateString()}` : (t.createdAt?.toDate ? `Añadido el: ${t.createdAt.toDate().toLocaleDateString()}` : '')}
+                                <div className="inline-flex items-center px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-bold text-pami-muted shadow-sm">
+                                  {t.updatedAt?.toDate ? (
+                                    <>
+                                      <Calendar size={12} className="mr-1.5 text-emerald-600" />
+                                      <span className="text-emerald-700/70">Última actualización:</span>
+                                      <span className="ml-1.5 text-emerald-700">{t.updatedAt.toDate().toLocaleDateString()}</span>
+                                    </>
+                                  ) : (
+                                    t.createdAt?.toDate ? (
+                                      <>
+                                        <Calendar size={12} className="mr-1.5 text-blue-600" />
+                                        <span className="text-blue-700/70">Añadido el:</span>
+                                        <span className="ml-1.5 text-blue-700">{t.createdAt.toDate().toLocaleDateString()}</span>
+                                      </>
+                                    ) : ''
+                                  )}
                                 </div>
                                 {isAdmin && (
                                   <div className="flex gap-2">
