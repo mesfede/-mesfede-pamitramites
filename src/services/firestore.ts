@@ -1602,6 +1602,142 @@ FISIATRÍA / AYUDA EXTERNA (VE) Y REHABILITACIÓN | ayudastecnicas@pami.org.ar |
   return migrated;
 }
 
+export async function seedDialisis() {
+  try {
+    const tSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
+    const existing = tSnap.docs.find(d => d.data().nombre.toUpperCase().includes('DIALISIS') || d.data().nombre.toUpperCase().includes('DIÁLISIS'));
+    
+    if (existing) {
+      console.log("Diálisis already seeded");
+      return;
+    }
+
+    const prestadores = [
+      { nombre: 'IPENSA', telefono: '221-427 1190', direccion: 'Calle 59 # 434 entre 3 y 4, La Plata', email: 'nefrologia-dialisis@ipensa.com' },
+      { nombre: 'Diálisis y nefrología srl (Mater dei)', telefono: '221-4210993 / 221-4234110', direccion: '45 e 13 y 14, La Plata', email: 'dianefro@fibertel.com.ar' },
+      { nombre: 'Fresenius MC', telefono: '221-4536246 / 221-4571471', direccion: '31 e 63 y 64 #1478, La Plata', email: 'la.plata-adm.clinics-r-arg@fmc-ag.com' },
+      { nombre: 'Nefrodialisis srl (Hospital Español)', telefono: '221-4838350', direccion: '9 e 35 y 36, La Plata', email: 'nefrodialisis_srl@yahoo.com.ar' },
+      { nombre: 'Nefroexcel srl', telefono: '221-4534727', direccion: '51 entre 17 y 18 #1111, La Plata', email: 'nefroexcel.srl@hotmail.com' },
+      { nombre: 'Diaziza (Sanatorio Argentino)', telefono: '221-4278007', direccion: '56 #874 entre 12 y 13, La Plata', email: 'dialisisargentino@yahoo.com.ar' },
+      { nombre: 'Terapia Renal de Lobos', telefono: '2227-431116', direccion: 'Las Heras #344, Lobos', email: 'terapiarenaldelobos@gmail.com' },
+      { nombre: 'San Bruno srl', telefono: '2226-42-3963', direccion: 'Mitre #468, Cañuelas', email: 'canuelas@strargentina.com.ar' },
+      { nombre: 'Centro Nefrológico Chascomús', telefono: '2241-422610', direccion: 'Cramer #58, Chascomús', email: 'cnchascomus@yahoo.com.ar' }
+    ];
+
+    const batch = writeBatch(db);
+    const pIds: string[] = [];
+    
+    for (const p of prestadores) {
+      const ref = doc(collection(db, PRESTADORES_COLLECTION));
+      batch.set(ref, {
+        ...p,
+        especialidades: ['DIÁLISIS', 'NEFROLOGÍA'],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      pIds.push(ref.id);
+    }
+
+    const descLines = [];
+    for (const p of prestadores) {
+      descLines.push(`${p.nombre}|${p.telefono}|${p.direccion}|${p.email}`);
+    }
+
+    const trRef = doc(collection(db, TRAMITES_COLLECTION));
+    batch.set(trRef, {
+      nombre: 'DIÁLISIS',
+      categoria: 'Especialidades Médicas',
+      descripcion: descLines.join('\n'),
+      prestadoresIds: pIds,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: auth.currentUser?.uid
+    });
+
+    await batch.commit();
+    console.log("Diálisis seeded!");
+  } catch (error) {
+    console.error("Error seeding dialisis:", error);
+  }
+}
+
+export async function unifyIpensa() {
+  try {
+    const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+    const prestadoresDocs = prestadoresSnap.docs.map(d => ({id: d.id, ...d.data()} as Prestador));
+    
+    const ipensas = prestadoresDocs.filter(p => p.nombre.toUpperCase().trim() === 'IPENSA');
+    
+    if (ipensas.length <= 1) return 0; // Already unified or missing
+    
+    const targetDoc = ipensas[0];
+    const targetDocId = targetDoc.id;
+
+    const allSpecs = new Set<string>();
+    const allTopeadas = new Set<string>();
+    let bestEmail = targetDoc.email;
+    let bestPhone = targetDoc.telefono;
+    let bestAddress = targetDoc.direccion;
+    
+    ipensas.forEach(p => {
+      (p.especialidades || []).forEach((s: string) => allSpecs.add(s));
+      (p.especialidadesTopeadas || []).forEach((s: string) => allTopeadas.add(s));
+      if (!bestEmail && p.email) bestEmail = p.email;
+      if (!bestPhone && p.telefono) bestPhone = p.telefono;
+      if (!bestAddress && p.direccion) bestAddress = p.direccion;
+    });
+
+    const finalRefsToDelete = ipensas.map(p => p.id).filter(id => id !== targetDocId);
+    if (finalRefsToDelete.length === 0) return 0;
+
+    const batch = writeBatch(db);
+
+    batch.update(doc(db, PRESTADORES_COLLECTION, targetDocId), {
+      especialidades: Array.from(allSpecs),
+      especialidadesTopeadas: Array.from(allTopeadas),
+      email: bestEmail || '',
+      telefono: bestPhone || '',
+      direccion: bestAddress || '',
+      updatedAt: serverTimestamp()
+    });
+
+    for (const idToDelete of finalRefsToDelete) {
+      if (idToDelete) {
+        batch.delete(doc(db, PRESTADORES_COLLECTION, idToDelete));
+      }
+    }
+
+    const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
+    tramitesSnap.docs.forEach(tDoc => {
+      const tData = tDoc.data();
+      let pIds: string[] = tData.prestadoresIds || [];
+      let needsUpdate = false;
+      
+      const newIdsSet = new Set(pIds);
+      for (const deletedId of finalRefsToDelete) {
+        if (deletedId && newIdsSet.has(deletedId)) {
+          newIdsSet.delete(deletedId);
+          newIdsSet.add(targetDocId);
+          needsUpdate = true;
+        }
+      }
+      
+      if (needsUpdate) {
+        batch.update(doc(db, TRAMITES_COLLECTION, tDoc.id), {
+          prestadoresIds: Array.from(newIdsSet),
+          updatedAt: serverTimestamp()
+        });
+      }
+    });
+
+    await batch.commit();
+    return finalRefsToDelete.length;
+  } catch (error) {
+    console.error("Error unifying IPENSA:", error);
+    return 0;
+  }
+}
+
 export async function unifySudamericanoHospitals() {
   try {
     const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));

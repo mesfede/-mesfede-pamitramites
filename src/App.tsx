@@ -94,6 +94,8 @@ import {
   seedDatabase,
   uploadFile,
   unifySudamericanoHospitals,
+  unifyIpensa,
+  seedDialisis,
   testConnection,
   subscribeToCentrosCoordinadores,
   subscribeToLatestUpdate,
@@ -1045,6 +1047,24 @@ export default function App() {
           } catch(e) {
             console.error('Migration error', e);
           }
+        }
+        
+        try {
+          await unifyIpensa();
+        } catch(e) {
+          console.error("IPENSA UNIFY ERR:", e);
+        }
+
+        try {
+          await unifySudamericanoHospitals();
+        } catch(e) {
+          console.error("SUDAMERICANO UNIFY ERR:", e);
+        }
+
+        try {
+          await seedDialisis();
+        } catch(e) {
+          console.error("DIALISIS SEED ERR:", e);
         }
       };
       migratePrestadores();
@@ -2605,7 +2625,36 @@ export default function App() {
 
                               {t.descripcion && (
                                 <div className="border-l-4 border-pami-cyan pl-4 py-1">
-                                  {t.nombre.toUpperCase() === 'ITEM' || t.nombre.toUpperCase() === 'ITEM / INSUMOS VE' || t.nombre.toUpperCase().includes('ITEM / INSUMOS VE') ? (
+                                  {t.nombre.toUpperCase() === 'DIÁLISIS' || t.nombre.toUpperCase() === 'DIALISIS' ? (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-sm text-left border-collapse">
+                                        <thead>
+                                          <tr className="border-b border-gray-200">
+                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Centro</th>
+                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Teléfono</th>
+                                            <th className="py-2 pr-4 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Dirección</th>
+                                            <th className="py-2 font-bold text-pami-blue uppercase tracking-wider text-[10px]">Email</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                          {t.descripcion.split('\n').map((line, idx) => {
+                                            if (!line.trim()) return null;
+                                            const parts = line.split('|').map(p => p.trim());
+                                            return (
+                                              <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="py-2 pr-4 font-semibold text-gray-900">{parts[0]}</td>
+                                                <td className="py-2 pr-4 text-pami-muted">{parts[1]}</td>
+                                                <td className="py-2 pr-4 text-pami-muted">{parts[2]}</td>
+                                                <td className="py-2 font-medium text-pami-cyan">
+                                                  {parts[3] ? <a href={`mailto:${parts[3]}`} className="hover:underline">{parts[3]}</a> : '-'}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : t.nombre.toUpperCase() === 'ITEM' || t.nombre.toUpperCase() === 'ITEM / INSUMOS VE' || t.nombre.toUpperCase().includes('ITEM / INSUMOS VE') ? (
                                     <div className="overflow-x-auto">
                                       <table className="w-full text-sm text-left border-collapse">
                                         <thead>
