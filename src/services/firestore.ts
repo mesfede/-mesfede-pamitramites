@@ -1601,3 +1601,81 @@ FISIATRÍA / AYUDA EXTERNA (VE) Y REHABILITACIÓN | ayudastecnicas@pami.org.ar |
   }
   return migrated;
 }
+
+export async function unifySudamericanoHospitals() {
+  try {
+    const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+    const prestadoresDocs = prestadoresSnap.docs.map(d => ({id: d.id, ...d.data()} as Prestador));
+    
+    const hSuda = prestadoresDocs.find(p => p.nombre.toUpperCase().trim() === 'HOSPITAL SUDAMERICANO');
+    const hPrivSuda = prestadoresDocs.find(p => p.nombre.toUpperCase().trim() === 'HOSPITAL PRIVADO SUDAMERICANO');
+    const hSudaPlural = prestadoresDocs.find(p => p.nombre.toUpperCase().trim() === 'HOSPITAL SUDAMERICANOS');
+
+    // If already unified into one, do nothing unless we have duplicates
+    if (!hSuda && !hPrivSuda && hSudaPlural) return 0;
+    
+    let targetDocId = hSudaPlural?.id || hSuda?.id || hPrivSuda?.id;
+    if (!targetDocId) return 0; // Not found
+
+    const allSpecs = new Set<string>();
+    const allTopeadas = new Set<string>();
+    
+    [hSuda, hPrivSuda, hSudaPlural].forEach(p => {
+      if (!p) return;
+      (p.especialidades || []).forEach((s: string) => allSpecs.add(s));
+      (p.especialidadesTopeadas || []).forEach((s: string) => allTopeadas.add(s));
+    });
+
+    const finalRefsToDelete = [hSuda?.id, hPrivSuda?.id, hSudaPlural?.id].filter(id => id && id !== targetDocId);
+
+    const batch = writeBatch(db);
+
+    // Update target doc
+    batch.update(doc(db, PRESTADORES_COLLECTION, targetDocId), {
+      nombre: 'HOSPITAL SUDAMERICANOS',
+      especialidades: Array.from(allSpecs),
+      especialidadesTopeadas: Array.from(allTopeadas),
+      updatedAt: serverTimestamp()
+    });
+
+    // Delete others
+    for (const idToDelete of finalRefsToDelete) {
+      if (idToDelete) {
+        batch.delete(doc(db, PRESTADORES_COLLECTION, idToDelete));
+      }
+    }
+
+    // Now update Tramites that might reference the deleted ones
+    if (finalRefsToDelete.length > 0) {
+      const tramitesSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
+      tramitesSnap.docs.forEach(tDoc => {
+        const tData = tDoc.data();
+        let pIds: string[] = tData.prestadoresIds || [];
+        let needsUpdate = false;
+        
+        const newIdsSet = new Set(pIds);
+        for (const deletedId of finalRefsToDelete) {
+          if (deletedId && newIdsSet.has(deletedId)) {
+            newIdsSet.delete(deletedId);
+            newIdsSet.add(targetDocId as string);
+            needsUpdate = true;
+          }
+        }
+        
+        if (needsUpdate) {
+          batch.update(doc(db, TRAMITES_COLLECTION, tDoc.id), {
+            prestadoresIds: Array.from(newIdsSet),
+            updatedAt: serverTimestamp()
+          });
+        }
+      });
+    }
+
+    await batch.commit();
+    return finalRefsToDelete.length + 1;
+  } catch (error) {
+    console.error("Error unifying SUDAMERICANO hospitals:", error);
+    return 0;
+  }
+}
+

@@ -93,6 +93,7 @@ import {
   cleanupCentrosCoordinadores,
   seedDatabase,
   uploadFile,
+  unifySudamericanoHospitals,
   testConnection,
   subscribeToCentrosCoordinadores,
   subscribeToLatestUpdate,
@@ -775,6 +776,7 @@ export default function App() {
   const [isCentroModalOpen, setIsCentroModalOpen] = useState(false);
   const [isDeleteCentroModalOpen, setIsDeleteCentroModalOpen] = useState(false);
   const [editingTramite, setEditingTramite] = useState<Tramite | null>(null);
+  const [prestadorSearchInForm, setPrestadorSearchInForm] = useState('');
   const [tramiteToDelete, setTramiteToDelete] = useState<Tramite | null>(null);
   const [prestadorToDelete, setPrestadorToDelete] = useState<Prestador | null>(null);
   const [folletoToDelete, setFolletoToDelete] = useState<Folleto | null>(null);
@@ -1057,7 +1059,8 @@ export default function App() {
       setUploadedFiles([]);
       setSelectedPrestadoresIds([]);
     }
-  }, [editingTramite]);
+    setPrestadorSearchInForm('');
+  }, [editingTramite, isModalOpen]);
 
   const filteredTramites = useMemo(() => {
     const normalize = (str: string) => 
@@ -1129,8 +1132,16 @@ export default function App() {
       const unified = unifyTerms(p.especialidades || []);
       unified.forEach(s => specs.add(s));
     });
+    practicas.forEach(p => {
+      if (p.descripcion) {
+        unifyTerms([p.descripcion]).forEach(s => specs.add(s));
+      }
+      if (p.sinonimo) {
+        unifyTerms([p.sinonimo]).forEach(s => specs.add(s));
+      }
+    });
     return Array.from(specs).sort();
-  }, [prestadores]);
+  }, [prestadores, practicas]);
 
   const filteredPrestadores = useMemo(() => {
     const normalize = (str: string) => 
@@ -3948,10 +3959,25 @@ export default function App() {
           )}
 
           <div className="space-y-3">
-            <label className="text-sm font-semibold text-pami-muted">Prestadores que realizan este trámite</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-pami-muted">Prestadores que realizan este trámite</label>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="Buscar prestador..."
+                value={prestadorSearchInForm}
+                onChange={(e) => setPrestadorSearchInForm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pami-cyan"
+              />
+            </div>
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <div className="max-h-48 overflow-y-auto p-2 space-y-1 bg-gray-50">
-                {prestadores.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(p => (
+                {[...prestadores]
+                  .filter(p => p.nombre.toLowerCase().includes(prestadorSearchInForm.toLowerCase()) || (p.localidad && p.localidad.toLowerCase().includes(prestadorSearchInForm.toLowerCase())))
+                  .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                  .map(p => (
                   <label key={p.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors group">
                     <input 
                       type="checkbox" 
