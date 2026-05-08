@@ -61,7 +61,8 @@ import {
   Shield,
   Menu,
   EyeOff,
-  RotateCcw
+  RotateCcw,
+  Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -765,8 +766,16 @@ export default function App() {
   const [folletoSearch, setFolletoSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin'>('tramites');
+  const [activeTab, setActiveTab] = useState<'home' | 'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin'>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -2106,7 +2115,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-pami-bg font-sans text-pami-text">
+    <div className="min-h-screen bg-[#F0F4F8] md:bg-pami-bg font-sans text-pami-text pb-20 md:pb-0">
       {!user ? (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-pami-blue/5 to-pami-cyan/5">
           <Login />
@@ -2128,7 +2137,7 @@ export default function App() {
       ) : (
         <>
           {/* Header */}
-          <header className="bg-pami-blue text-white sticky top-0 z-40 shadow-md">
+          <header className="hidden md:block bg-pami-blue text-white sticky top-0 z-40 shadow-md">
             <div className="max-w-7xl mx-auto px-4 min-h-[4rem] py-2 flex flex-wrap items-center justify-between gap-y-2">
               <div className="flex items-center gap-2 sm:gap-3 sm:pl-6">
                 <button
@@ -2412,23 +2421,122 @@ export default function App() {
             )}
           </header>
 
-          <main className="max-w-7xl mx-auto px-4 pt-4 pb-8">
-            {!isViewer ? (
-              <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-2xl mx-auto">
-                <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Shield size={40} />
+          <main className={cn("max-w-7xl mx-auto px-4 pb-8", isMobile && activeTab === 'home' ? "pt-0 px-0" : "pt-4")}>
+            {isMobile && activeTab === 'home' && (
+              <div className="w-full bg-[#F0F4F8] min-h-[calc(100vh-80px)] pb-24">
+                {/* Mobile Header Box */}
+                <div className="bg-[#009EE3] text-white rounded-b-[40px] px-6 pt-10 pb-6 relative shadow-md">
+                  <div className="flex justify-between items-center mb-6">
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors">
+                      <Menu size={28} />
+                    </button>
+                    <h1 className="text-xl font-bold tracking-wide">PAMI Gula</h1>
+                    <div className="relative p-2">
+                      <Bell size={24} />
+                      <span className="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#009EE3]"></span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20">
+                    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-white shrink-0 shadow-inner">
+                      <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=random`} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-bold truncate">{user.displayName || "Usuario"}</h2>
+                      <p className="text-sm text-blue-100 truncate">{user.email}</p>
+                    </div>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold text-pami-text mb-4">Acceso Restringido</h2>
-                <p className="text-pami-muted px-8">
-                  Tu cuenta ({user.email}) aún no tiene permisos para ver el contenido. 
-                  Por favor, contacta a un administrador para que te asigne el rol de "Solo Lectura".
-                </p>
-                <Button variant="ghost" onClick={() => logout()} className="mt-8">
-                  Cerrar Sesión
-                </Button>
+
+                {/* Dashboard Grid */}
+                <div className="px-6 -mt-4 relative z-10 flex flex-col gap-4">
+                  
+                  {/* Large Primary Card */}
+                  <button 
+                    onClick={() => setActiveTab('tramites')}
+                    className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between group active:scale-[0.98] transition-transform"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#e6f5fb] text-[#009EE3] flex items-center justify-center">
+                        <FileText size={24} />
+                      </div>
+                      <span className="font-semibold text-gray-800 text-lg">Trámites y Prácticas</span>
+                    </div>
+                    <ChevronRight className="text-gray-400 group-hover:text-[#009EE3] transition-colors" />
+                  </button>
+
+                  {/* Grid 2x2 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => setActiveTab('prestadores')}
+                      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[#f0fdf4] text-emerald-500 flex items-center justify-center">
+                        <Stethoscope size={24} />
+                      </div>
+                      <span className="font-semibold text-gray-700 text-sm text-center line-clamp-2">Prestadores Médicos</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => setActiveTab('practicas')}
+                      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[#fdf4ff] text-purple-500 flex items-center justify-center">
+                        <Activity size={24} />
+                      </div>
+                      <span className="font-semibold text-gray-700 text-sm text-center line-clamp-2">Prácticas OME</span>
+                    </button>
+
+                    <button 
+                      onClick={() => { setActiveTab('centros'); setCentroSearch(''); }}
+                      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[#fffbeb] text-amber-500 flex items-center justify-center">
+                        <Hospital size={24} />
+                      </div>
+                      <span className="font-semibold text-gray-700 text-sm text-center leading-tight">C. Coordinadores</span>
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveTab('telefonos')}
+                      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[#eff6ff] text-blue-500 flex items-center justify-center">
+                        <Phone size={24} />
+                      </div>
+                      <span className="font-semibold text-gray-700 text-sm text-center">Teléfonos Internos</span>
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => setActiveTab('folletos')}
+                    className="w-full mt-2 bg-[#10b981] hover:bg-[#059669] text-white rounded-2xl p-4 shadow-md shadow-emerald-500/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-bold text-lg"
+                  >
+                    <BookOpen size={22} />
+                    Ver Folletos
+                  </button>
+
+                  {isAdmin && (
+                    <button 
+                      onClick={() => setActiveTab('admin')}
+                      className="w-full mt-2 bg-gray-800 hover:bg-gray-900 text-white rounded-2xl p-4 shadow-md flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-bold text-lg"
+                    >
+                      <Settings size={22} />
+                      Panel Administrativo
+                    </button>
+                  )}
+                </div>
               </div>
-            ) : (
-          <>
+            )}
+
+            {/* Desktop Tramites View (when home falls back to tramites) */}
+            {(!isMobile && activeTab === 'home') && (() => {
+              setActiveTab('tramites');
+              return null;
+            })()}
+
+            {/* Content Container (Hidden on mobile home) */}
+            {(!isMobile || activeTab !== 'home') && (
+              <div className="w-full px-4 md:px-0">
             {/* LATEST UPDATE BANNER (TEST) */}
             {showUpdateBanner && latestUpdate && (
               <div className="mb-4 bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm relative pr-8 transition-all">
@@ -3940,9 +4048,98 @@ export default function App() {
             </div>
           </div>
         )}
-        </>
-        )}
+        </div>
+      )}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      {user && isMobile && (
+        <>
+          {/* Add Floating Action Button on mobile for adding if admin */}
+          {isAdmin && activeTab !== 'home' && (
+            <div className="fixed bottom-24 right-4 z-50">
+              <button
+                onClick={() => {
+                  if (activeTab === 'tramites') { setEditingTramite(null); setIsModalOpen(true); }
+                  else if (activeTab === 'prestadores') { setEditingPrestador(null); setIsPrestadorModalOpen(true); }
+                  else if (activeTab === 'practicas') { setEditingPractica(null); setIsPracticaModalOpen(true); }
+                  else if (activeTab === 'centros') { setEditingCentro(null); setIsCentroModalOpen(true); }
+                  else if (activeTab === 'folletos') { setEditingFolleto(null); setIsFolletoModalOpen(true); }
+                  else if (activeTab === 'telefonos') { setEditingTelefono(null); /* Add phone modal if exists */ }
+                }}
+                className="w-14 h-14 bg-[#009EE3] text-white rounded-full shadow-lg shadow-[#009EE3]/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
+                <Plus size={24} strokeWidth={3} />
+              </button>
+            </div>
+          )}
+          
+          {/* Bottom Bar */}
+          <div className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-50 flex items-center justify-around px-6 pb-2">
+            <button 
+              onClick={() => setActiveTab('home')}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 min-w-[64px]",
+                activeTab === 'home' ? "text-[#009EE3]" : "text-gray-400"
+              )}
+            >
+              <div className={cn("p-2 rounded-2xl transition-colors", activeTab === 'home' && "bg-[#009EE3]/10")}>
+                <Home size={22} className={activeTab === 'home' ? "fill-[#009EE3]" : ""} />
+              </div>
+              <span className={cn("text-[10px] font-bold tracking-wide", activeTab === 'home' ? "text-[#009EE3]" : "")}>Home</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('folletos')}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 min-w-[64px]",
+                activeTab === 'folletos' ? "text-[#009EE3]" : "text-gray-400"
+              )}
+            >
+              <div className={cn("p-2 rounded-2xl transition-colors", activeTab === 'folletos' && "bg-[#009EE3]/10")}>
+                <BookOpen size={22} className={activeTab === 'folletos' ? "fill-[#009EE3]" : ""} />
+              </div>
+              <span className={cn("text-[10px] font-bold tracking-wide", activeTab === 'folletos' ? "text-[#009EE3]" : "")}>Folletos</span>
+            </button>
+
+            {/* Center + Button / Main Action */}
+            <div className="relative -top-6">
+              <button 
+                onClick={() => setActiveTab('tramites')}
+                className="w-14 h-14 bg-[#009EE3] rounded-full flex items-center justify-center text-white shadow-lg shadow-[#009EE3]/30 transform active:scale-95 transition-all border-4 border-[#F0F4F8]"
+              >
+                <FileText size={24} />
+              </button>
+            </div>
+
+            <button 
+              onClick={() => setActiveTab('prestadores')}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 min-w-[64px]",
+                activeTab === 'prestadores' ? "text-[#009EE3]" : "text-gray-400"
+              )}
+            >
+              <div className={cn("p-2 rounded-2xl transition-colors", activeTab === 'prestadores' && "bg-[#009EE3]/10")}>
+                <Stethoscope size={22} className={activeTab === 'prestadores' ? "fill-[#009EE3]" : ""} />
+              </div>
+              <span className={cn("text-[10px] font-bold tracking-wide", activeTab === 'prestadores' ? "text-[#009EE3]" : "")}>Medicos</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('centros')}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 min-w-[64px]",
+                activeTab === 'centros' ? "text-[#009EE3]" : "text-gray-400"
+              )}
+            >
+              <div className={cn("p-2 rounded-2xl transition-colors", activeTab === 'centros' && "bg-[#009EE3]/10")}>
+                <Hospital size={22} className={activeTab === 'centros' ? "fill-[#009EE3]" : ""} />
+              </div>
+              <span className={cn("text-[10px] font-bold tracking-wide", activeTab === 'centros' ? "text-[#009EE3]" : "")}>Centros</span>
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Modal for Add/Edit Tramite */}
       <Modal 
