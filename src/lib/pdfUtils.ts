@@ -13,12 +13,31 @@ interface Tramite {
  * @returns A Blob URL of the combined PDF.
  */
 export async function generateFullTramitePdf(tramite: Tramite, originalPdfUrl: string): Promise<string> {
-  // 1. Fetch the original PDF
-  const response = await fetch(originalPdfUrl);
-  if (!response.ok) {
-    throw new Error('No se pudo descargar el formulario PDF original.');
+  // 1. Fetch the original PDF with a timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+  let originalPdfBytes: ArrayBuffer;
+  try {
+    const response = await fetch(originalPdfUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`No se pudo descargar el archivo original (Error ${response.status}).`);
+    }
+    originalPdfBytes = await response.arrayBuffer();
+    
+    if (originalPdfBytes.byteLength === 0) {
+      throw new Error('El archivo PDF original está vacío.');
+    }
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    console.error('Fetch error:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('La descarga del archivo original tardó demasiado tiempo.');
+    }
+    throw new Error('No se pudo acceder al archivo original. Esto puede deberse a restricciones de seguridad (CORS).');
   }
-  const originalPdfBytes = await response.arrayBuffer();
 
   // 2. Generate the guide PDF using jsPDF
   const doc = new jsPDF({

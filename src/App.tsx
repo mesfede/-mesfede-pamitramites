@@ -2874,7 +2874,6 @@ export default function App() {
                                             const isDriveUrl = pdfDoc.url.includes('drive.google.com') || pdfDoc.url.includes('docs.google.com');
                                             
                                             if (isDriveUrl) {
-                                              alert("No se puede generar un PDF combinado automáticamente con archivos de Google Drive debido a restricciones de seguridad. Por favor, abre el formulario e imprímelo manualmente junto con la guía.");
                                               window.open(pdfDoc.url, '_blank');
                                               return;
                                             }
@@ -2992,15 +2991,13 @@ export default function App() {
                                           >
                                             <Paperclip size={16} />
                                           </button>
-                                          <a 
-                                            href={doc.url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
+                                          <button 
+                                            onClick={() => window.open(doc.url, '_blank')}
                                             className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-pami-blue shadow-sm sm:shadow-none hover:shadow-sm transition-colors flex items-center justify-center"
                                             title="Imprimir"
                                           >
                                             <Printer size={16} />
-                                          </a>
+                                          </button>
                                         </div>
                                       </div>
                                     ))}
