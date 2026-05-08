@@ -62,7 +62,8 @@ import {
   Menu,
   EyeOff,
   RotateCcw,
-  Home
+  Home,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -826,6 +827,7 @@ export default function App() {
   const [isTelefonoModalOpen, setIsTelefonoModalOpen] = useState(false);
   const [isDeleteTelefonoModalOpen, setIsDeleteTelefonoModalOpen] = useState(false);
   const [editingTelefono, setEditingTelefono] = useState<TelefonoInterno | null>(null);
+  const [editingFolleto, setEditingFolleto] = useState<Folleto | null>(null);
   const [telefonoToDelete, setTelefonoToDelete] = useState<TelefonoInterno | null>(null);
   const ITEMS_PER_PAGE = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2869,6 +2871,14 @@ export default function App() {
                                             const pdfDoc = t.documentos?.find(d => d.nombre.toLowerCase().endsWith('.pdf'));
                                             if (!pdfDoc) return;
                                             
+                                            const isDriveUrl = pdfDoc.url.includes('drive.google.com') || pdfDoc.url.includes('docs.google.com');
+                                            
+                                            if (isDriveUrl) {
+                                              alert("No se puede generar un PDF combinado automáticamente con archivos de Google Drive debido a restricciones de seguridad. Por favor, abre el formulario e imprímelo manualmente junto con la guía.");
+                                              window.open(pdfDoc.url, '_blank');
+                                              return;
+                                            }
+
                                             setIsPrintingFull(t.id);
                                             try {
                                               const combinedPdfUrl = await generateFullTramitePdf(t, pdfDoc.url);
@@ -2982,24 +2992,15 @@ export default function App() {
                                           >
                                             <Paperclip size={16} />
                                           </button>
-                                          <button 
-                                            onClick={() => {
-                                              const printWindow = window.open(doc.url, '_blank');
-                                              if (!printWindow) {
-                                                alert("El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio o usa el botón de 'Ver / Descargar'.");
-                                                return;
-                                              }
-                                              if (doc.nombre.toLowerCase().endsWith('.pdf')) {
-                                                printWindow.onload = () => {
-                                                  try { printWindow.print(); } catch (e) { /* Ignore cross-origin errors */ }
-                                                };
-                                              }
-                                            }}
-                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-pami-blue shadow-sm sm:shadow-none hover:shadow-sm transition-colors"
+                                          <a 
+                                            href={doc.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-pami-blue shadow-sm sm:shadow-none hover:shadow-sm transition-colors flex items-center justify-center"
                                             title="Imprimir"
                                           >
                                             <Printer size={16} />
-                                          </button>
+                                          </a>
                                         </div>
                                       </div>
                                     ))}
