@@ -776,6 +776,12 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    if (!isMobile && activeTab === 'home') {
+      setActiveTab('tramites');
+    }
+  }, [isMobile, activeTab]);
+
   const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -2529,10 +2535,6 @@ export default function App() {
             )}
 
             {/* Desktop Tramites View (when home falls back to tramites) */}
-            {(!isMobile && activeTab === 'home') && (() => {
-              setActiveTab('tramites');
-              return null;
-            })()}
 
             {/* Content Container (Hidden on mobile home) */}
             {(!isMobile || activeTab !== 'home') && (
