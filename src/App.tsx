@@ -806,7 +806,8 @@ export default function App() {
   const [centroToDelete, setCentroToDelete] = useState<CentroCoordinador | null>(null);
   const [isDeletePracticaModalOpen, setIsDeletePracticaModalOpen] = useState(false);
   const [isPurgeSpecialtyModalOpen, setIsPurgeSpecialtyModalOpen] = useState(false);
-  const [specialtyToPurge, setSpecialtyToPurge] = useState<string | null>(null);
+  const [specialtiesToPurge, setSpecialtiesToPurge] = useState<string[]>([]);
+  const [selectedSpecialtiesForPurge, setSelectedSpecialtiesForPurge] = useState<string[]>([]);
   const [editingPrestador, setEditingPrestador] = useState<Prestador | null>(null);
   const [prestadorTags, setPrestadorTags] = useState<string[]>([]);
   const [editingPractica, setEditingPractica] = useState<PracticaOME | null>(null);
@@ -1829,19 +1830,20 @@ export default function App() {
   };
 
   const handlePurgeSpecialty = async () => {
-    if (!specialtyToPurge) return;
+    if (specialtiesToPurge.length === 0) return;
     setIsSaving(true);
     try {
-      await purgeSpecialtyFromDatabase(specialtyToPurge);
+      await purgeSpecialtyFromDatabase(specialtiesToPurge);
       setIsPurgeSpecialtyModalOpen(false);
-      setSpecialtyToPurge(null);
+      setSpecialtiesToPurge([]);
+      setSelectedSpecialtiesForPurge([]);
       setAdminMessage({ 
-        text: `La especialidad "${specialtyToPurge}" ha sido eliminada de todo el sistema correctamente.`, 
+        text: `Se han eliminado ${specialtiesToPurge.length} especialidades/prácticas de todo el sistema correctamente.`, 
         type: 'success' 
       });
     } catch (err) {
       console.error("Error purging specialty:", err);
-      setAdminMessage({ text: "Error al purgar la especialidad.", type: 'error' });
+      setAdminMessage({ text: "Error al purgar las especialidades.", type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -4070,18 +4072,62 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
                 <AdminUsers />
               ) : adminSubTab === 'especialidades' ? (
                 <div className="p-6">
-                  <div className="mb-6">
-                    <h3 className="text-lg font-bold text-pami-text">Purgado Global de Especialidades</h3>
-                    <p className="text-sm text-pami-muted">Aquí puedes ver todos los nombres de especialidades y prácticas que el sistema ha detectado en prestadores y nomenclador. Úsalo para eliminar nombres mal escritos o duplicados de TODO el sistema.</p>
+                  <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-pami-text">Purgado Global de Especialidades</h3>
+                      <p className="text-sm text-pami-muted">Selecciona uno o varios nombres de especialidades y prácticas para eliminarlos de TODO el sistema (Prestadores y Nomenclador).</p>
+                    </div>
+                    {selectedSpecialtiesForPurge.length > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        className="bg-red-50 text-red-600 hover:bg-red-100 border-red-100 flex items-center gap-2 px-4 shadow-sm"
+                        onClick={() => {
+                          setSpecialtiesToPurge(selectedSpecialtiesForPurge);
+                          setIsPurgeSpecialtyModalOpen(true);
+                        }}
+                      >
+                        <Trash2 size={16} />
+                        Eliminar Seleccionados ({selectedSpecialtiesForPurge.length})
+                      </Button>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {allSpecialties.map((s, idx) => (
-                      <div key={`${s}-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-red-200 transition-all group">
-                        <span className="text-xs font-bold uppercase truncate pr-4">{s}</span>
+                      <div 
+                        key={`${s}-${idx}`} 
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-xl border transition-all group cursor-pointer",
+                          selectedSpecialtiesForPurge.includes(s) 
+                            ? "bg-red-50 border-red-200" 
+                            : "bg-gray-50 border-gray-100 hover:border-pami-blue/30"
+                        )}
+                        onClick={() => {
+                          if (selectedSpecialtiesForPurge.includes(s)) {
+                            setSelectedSpecialtiesForPurge(prev => prev.filter(item => item !== s));
+                          } else {
+                            setSelectedSpecialtiesForPurge(prev => [...prev, s]);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3 truncate pr-4">
+                          <div className={cn(
+                            "w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0",
+                            selectedSpecialtiesForPurge.includes(s) 
+                              ? "bg-red-600 border-red-600 text-white" 
+                              : "bg-white border-gray-300"
+                          )}>
+                            {selectedSpecialtiesForPurge.includes(s) && <div className="w-2 h-2 bg-white rounded-full" />}
+                          </div>
+                          <span className="text-xs font-bold uppercase truncate">{s}</span>
+                        </div>
                         <button 
-                          onClick={() => { setSpecialtyToPurge(s); setIsPurgeSpecialtyModalOpen(true); }}
-                          className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          onClick={(e) => { 
+                            e.stopPropagation();
+                            setSpecialtiesToPurge([s]); 
+                            setIsPurgeSpecialtyModalOpen(true); 
+                          }}
+                          className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all shrink-0"
                           title="Purgar de todo el sistema"
                         >
                           <Trash2 size={14} />
@@ -4643,21 +4689,27 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
       <Modal 
         isOpen={isPurgeSpecialtyModalOpen} 
         onClose={() => setIsPurgeSpecialtyModalOpen(false)} 
-        title="Purgado Global de Especialidad"
+        title={specialtiesToPurge.length > 1 ? "Eliminación Masiva" : "Eliminar de todo el sistema"}
       >
         <div className="space-y-6">
           <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-4 text-red-700">
             <Trash2 className="shrink-0 mt-1" size={24} />
             <div>
-              <p className="font-bold">¿Eliminar "{specialtyToPurge}" de todo el sistema?</p>
-              <p className="text-xs mt-2 opacity-80 leading-relaxed">
-                Esta acción es IRREVERSIBLE y de alto impacto:
+              <p className="font-bold">
+                {specialtiesToPurge.length > 1 
+                  ? `¿Eliminar ${specialtiesToPurge.length} elementos seleccionados?` 
+                  : `¿Eliminar "${specialtiesToPurge[0]}" de todo el sistema?`}
               </p>
-              <ul className="text-[10px] mt-2 list-disc list-inside space-y-1 opacity-80">
-                <li>Se eliminará la especialidad de TODOS los prestadores que la tengan.</li>
-                <li>Se borrará del Nomenclador OME si existe.</li>
-                <li>No aparecerá más en los filtros de búsqueda.</li>
-              </ul>
+              <p className="text-xs mt-2 opacity-80 leading-relaxed">
+                Esta acción borrará permanentemente de TODOS los prestadores y del nomenclador los registros que coincidan exactamente con:
+              </p>
+              <div className="mt-3 max-h-32 overflow-y-auto bg-white/50 p-2 rounded-lg border border-red-100">
+                <ul className="text-[10px] list-disc list-inside space-y-1 font-bold">
+                  {specialtiesToPurge.map((s, i) => (
+                    <li key={i} className="uppercase">{s}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
           <div className="flex gap-3">
@@ -4674,7 +4726,7 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
               onClick={handlePurgeSpecialty}
               isLoading={isSaving}
             >
-              Confirmar Purga Global
+              Confirmar Eliminación
             </Button>
           </div>
         </div>

@@ -716,9 +716,10 @@ export async function deletePractica(id: string) {
   }
 }
 
-export async function purgeSpecialtyFromDatabase(specialtyName: string) {
+export async function purgeSpecialtyFromDatabase(specialtyNames: string[]) {
   try {
-    const target = specialtyName.trim();
+    const targets = specialtyNames.map(s => s.trim());
+    if (targets.length === 0) return true;
     
     // 1. Get all documents to process
     const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
@@ -729,7 +730,9 @@ export async function purgeSpecialtyFromDatabase(specialtyName: string) {
     // Filter practicas - Strict match on descripcion or sinonimo
     practicasSnap.docs.forEach(doc => {
       const data = doc.data();
-      if ((data.descripcion || "").trim() === target || (data.sinonimo || "").trim() === target) {
+      const desc = (data.descripcion || "").trim();
+      const sino = (data.sinonimo || "").trim();
+      if (targets.includes(desc) || targets.includes(sino)) {
         allOps.push({ type: 'delete', ref: doc.ref });
       }
     });
@@ -738,9 +741,9 @@ export async function purgeSpecialtyFromDatabase(specialtyName: string) {
     prestadoresSnap.docs.forEach(doc => {
       const data = doc.data();
       const specs = data.especialidades || [];
-      const hasTarget = specs.some((s: string) => s.trim() === target);
+      const hasTarget = specs.some((s: string) => targets.includes(s.trim()));
       if (hasTarget) {
-        const newSpecs = specs.filter((s: string) => s.trim() !== target);
+        const newSpecs = specs.filter((s: string) => !targets.includes(s.trim()));
         allOps.push({ 
           type: 'update', 
           ref: doc.ref, 
@@ -766,7 +769,7 @@ export async function purgeSpecialtyFromDatabase(specialtyName: string) {
       await batch.commit();
     }
 
-    await logUpdate(`Se purgó la especialidad (coincidencia exacta): ${target}`);
+    await logUpdate(`Se purgaron ${targets.length} especialidades/prácticas (coincidencia exacta): ${targets.join(', ')}`);
 
     return true;
   } catch (error) {
