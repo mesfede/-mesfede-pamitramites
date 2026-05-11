@@ -718,37 +718,60 @@ export async function deletePractica(id: string) {
 
 export async function purgeSpecialtyFromDatabase(specialtyName: string) {
   try {
-    const batch = writeBatch(db);
-    const lowerName = specialtyName.trim().toLowerCase();
+    const target = specialtyName.trim();
     
-    // 1. Delete from Practicas OME collection
+    // 1. Get all documents to process
     const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
+    const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+    
+    const allOps: { type: 'delete' | 'update', ref: any, data?: any }[] = [];
+
+    // Filter practicas - Strict match on descripcion or sinonimo
     practicasSnap.docs.forEach(doc => {
       const data = doc.data();
-      if ((data.descripcion || "").trim().toLowerCase() === lowerName || (data.sinonimo || "").trim().toLowerCase() === lowerName) {
-        batch.delete(doc.ref);
+      if ((data.descripcion || "").trim() === target || (data.sinonimo || "").trim() === target) {
+        allOps.push({ type: 'delete', ref: doc.ref });
       }
     });
 
-    // 2. Remove from all Prestadores
-    const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+    // Filter prestadores - Strict match in specialities array
     prestadoresSnap.docs.forEach(doc => {
       const data = doc.data();
       const specs = data.especialidades || [];
-      if (specs.some((s: string) => s.trim().toLowerCase() === lowerName)) {
-        const newSpecs = specs.filter((s: string) => s.trim().toLowerCase() !== lowerName);
-        batch.update(doc.ref, { especialidades: newSpecs });
+      const hasTarget = specs.some((s: string) => s.trim() === target);
+      if (hasTarget) {
+        const newSpecs = specs.filter((s: string) => s.trim() !== target);
+        allOps.push({ 
+          type: 'update', 
+          ref: doc.ref, 
+          data: { 
+            especialidades: newSpecs,
+            updatedAt: serverTimestamp()
+          } 
+        });
       }
     });
 
-    // 3. Log as deleted item to prevent re-sync
-    await logDeletedItem('specialty_purge', specialtyName);
-    await logUpdate(`Se purgó la especialidad de TODO el sistema: ${specialtyName}`);
+    // Execute in batches
+    for (let i = 0; i < allOps.length; i += 500) {
+      const batch = writeBatch(db);
+      const chunk = allOps.slice(i, i + 500);
+      chunk.forEach(op => {
+        if (op.type === 'delete') {
+          batch.delete(op.ref);
+        } else {
+          batch.update(op.ref, op.data);
+        }
+      });
+      await batch.commit();
+    }
 
-    await batch.commit();
+    await logUpdate(`Se purgó la especialidad (coincidencia exacta): ${target}`);
+
     return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, 'global_purge');
+    throw error;
   }
 }
 
@@ -1421,7 +1444,18 @@ export const unifyTerms = (specs: string[]): string[] => {
     'COLOCACION DE MARCAPASOS': 'COLOCACIÓN DE MARCAPASOS'
   };
 
+  // Expand comma-separated lists first
+  const expandedSpecs: string[] = [];
   for (const s of specs) {
+    if (s.includes(',') || s.includes(';')) {
+      const parts = s.split(/[;,]/).map(p => p.trim()).filter(Boolean);
+      expandedSpecs.push(...parts);
+    } else {
+      expandedSpecs.push(s);
+    }
+  }
+
+  for (const s of expandedSpecs) {
     // Aggressive normalization: remove accents, uppercase, trim
     let upper = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
     

@@ -1149,18 +1149,19 @@ export default function App() {
   const allSpecialties = useMemo(() => {
     const specs = new Set<string>();
     prestadores.forEach(p => {
-      const unified = unifyTerms(p.especialidades || []);
-      unified.forEach(s => specs.add(s));
+      (p.especialidades || []).forEach(s => {
+        if (s && s.trim()) specs.add(s.trim());
+      });
     });
     practicas.forEach(p => {
-      if (p.descripcion) {
-        unifyTerms([p.descripcion]).forEach(s => specs.add(s));
+      if (p.descripcion && p.descripcion.trim()) {
+        specs.add(p.descripcion.trim());
       }
-      if (p.sinonimo) {
-        unifyTerms([p.sinonimo]).forEach(s => specs.add(s));
+      if (p.sinonimo && p.sinonimo.trim()) {
+        specs.add(p.sinonimo.trim());
       }
     });
-    return Array.from(specs).sort();
+    return Array.from(specs).sort((a, b) => a.localeCompare(b));
   }, [prestadores, practicas]);
 
   const filteredPrestadores = useMemo(() => {
