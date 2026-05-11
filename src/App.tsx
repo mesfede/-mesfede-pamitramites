@@ -115,7 +115,10 @@ import {
   cleanupFolletos,
   cleanupTelefonos,
   resetAllTopes,
-  unifyTerms
+  unifyTerms,
+  purgeSpecialtyFromDatabase,
+  getExportableData,
+  deletePractica
 } from './services/firestore';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
@@ -754,6 +757,7 @@ export default function App() {
 
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'viewer' | null>(null);
+  const [userIsDisabled, setUserIsDisabled] = useState<boolean>(false);
   const [tramites, setTramites] = useState<Tramite[]>([]);
   const [prestadores, setPrestadores] = useState<Prestador[]>([]);
   const [folletos, setFolletos] = useState<Folleto[]>([]);
@@ -783,7 +787,7 @@ export default function App() {
     }
   }, [isMobile, activeTab]);
 
-  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios'>('tramites');
+  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios' | 'especialidades'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletePrestadorModalOpen, setIsDeletePrestadorModalOpen] = useState(false);
@@ -801,6 +805,8 @@ export default function App() {
   const [practicaToDelete, setPracticaToDelete] = useState<PracticaOME | null>(null);
   const [centroToDelete, setCentroToDelete] = useState<CentroCoordinador | null>(null);
   const [isDeletePracticaModalOpen, setIsDeletePracticaModalOpen] = useState(false);
+  const [isPurgeSpecialtyModalOpen, setIsPurgeSpecialtyModalOpen] = useState(false);
+  const [specialtyToPurge, setSpecialtyToPurge] = useState<string | null>(null);
   const [editingPrestador, setEditingPrestador] = useState<Prestador | null>(null);
   const [prestadorTags, setPrestadorTags] = useState<string[]>([]);
   const [editingPractica, setEditingPractica] = useState<PracticaOME | null>(null);
@@ -935,15 +941,19 @@ export default function App() {
           const userDoc = await getDoc(doc(db, 'users', u.uid));
           if (userDoc.exists()) {
             setUserRole(userDoc.data().role);
+            setUserIsDisabled(userDoc.data().isDisabled || false);
           } else {
             setUserRole(null);
+            setUserIsDisabled(false);
           }
         } catch (err) {
           console.error("Error fetching user role:", err);
           setUserRole(null);
+          setUserIsDisabled(false);
         }
       } else {
         setUserRole(null);
+        setUserIsDisabled(false);
       }
       setIsAuthReady(true);
       setLoading(false);
@@ -1122,35 +1132,8 @@ export default function App() {
       return matchesSearch && matchesCat;
     });
 
-    if (searchNorm === "") {
-      return filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
-    }
-
-    return filtered.sort((a, b) => {
-      const nameA = normalize(a.nombre || "");
-      const nameB = normalize(b.nombre || "");
-      const descA = normalize(a.descripcion || "");
-      const descB = normalize(b.descripcion || "");
-      
-      const getScore = (name: string, desc: string) => {
-        if (name === searchNorm) return 100;
-        if (name.startsWith(searchNorm + " ")) return 90;
-        if (name.startsWith(searchNorm)) return 80;
-        if (name.includes(" " + searchNorm + " ")) return 70;
-        if (name.includes(searchNorm)) return 60;
-        if (desc.includes(searchNorm)) return 40;
-        return 0;
-      };
-
-      const scoreA = getScore(nameA, descA);
-      const scoreB = getScore(nameB, descB);
-
-      if (scoreA !== scoreB) {
-        return scoreB - scoreA; // Descending order
-      }
-      return nameA.localeCompare(nameB); // Alphabetical fallback
-    });
-  }, [tramites, search, selectedCat]);
+    return filtered.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
+  }, [tramites, search, selectedCat, isAdmin]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1188,7 +1171,7 @@ export default function App() {
     const specialtyNorm = normalize(selectedSpecialty.replace(/\s+/g, ' '));
 
     if (searchNorm === "" && specialtyNorm === "") {
-      return [];
+      return prestadores.sort((a, b) => a.nombre.localeCompare(b.nombre));
     }
 
     const filtered = prestadores.filter(p => {
@@ -1835,8 +1818,29 @@ export default function App() {
       await deletePractica(practicaToDelete.id);
       setIsDeletePracticaModalOpen(false);
       setPracticaToDelete(null);
+      setAdminMessage({ text: "Práctica eliminada correctamente.", type: 'success' });
     } catch (error) {
       console.error("Error deleting practica:", error);
+      setAdminMessage({ text: "Error al eliminar la práctica.", type: 'error' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePurgeSpecialty = async () => {
+    if (!specialtyToPurge) return;
+    setIsSaving(true);
+    try {
+      await purgeSpecialtyFromDatabase(specialtyToPurge);
+      setIsPurgeSpecialtyModalOpen(false);
+      setSpecialtyToPurge(null);
+      setAdminMessage({ 
+        text: `La especialidad "${specialtyToPurge}" ha sido eliminada de todo el sistema correctamente.`, 
+        type: 'success' 
+      });
+    } catch (err) {
+      console.error("Error purging specialty:", err);
+      setAdminMessage({ text: "Error al purgar la especialidad.", type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -1996,6 +2000,8 @@ export default function App() {
   };
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportedCode, setExportedCode] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
   const [confirmMessage, setConfirmMessage] = useState("");
   const [adminMessage, setAdminMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
@@ -2081,6 +2087,28 @@ export default function App() {
     }
   };
 
+  const handleExportData = async () => {
+    setIsSaving(true);
+    try {
+      const data = await getExportableData();
+      const code = `
+// REEMPLAZAR EL CONTENIDO DE src/initialData.ts CON ESTO PARA HACER LOS CAMBIOS PERMANENTES
+export const INITIAL_TRAMITES = ${JSON.stringify(data.tramites, null, 2)};
+
+export const INITIAL_PRESTADORES = ${JSON.stringify(data.prestadores, null, 2)};
+
+export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
+      `;
+      setExportedCode(code);
+      setIsExportModalOpen(true);
+    } catch (err) {
+      console.error("Error exporting data:", err);
+      setAdminMessage({ text: "Error al generar el backup de datos.", type: 'error' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleResetDeletions = async () => {
     if (!window.confirm("¿Estás seguro de que quieres limpiar el historial de elementos eliminados? Esto permitirá que los elementos originales vuelvan a aparecer en la próxima sincronización.")) return;
     setIsSaving(true);
@@ -2127,6 +2155,20 @@ export default function App() {
       {!user ? (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-pami-blue/5 to-pami-cyan/5">
           <Login />
+        </div>
+      ) : userIsDisabled ? (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-pami-bg">
+          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4 border border-gray-100">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-pami-text">Cuenta Suspendida</h2>
+            <p className="text-pami-muted">Tu cuenta ({user.email}) ha sido inhabilitada para el uso de esta aplicación.</p>
+            <p className="text-sm text-pami-muted">Por favor, contacta al administrador del sistema.</p>
+            <Button variant="outline" className="w-full mt-4" onClick={logout}>
+              Cerrar Sesión
+            </Button>
+          </div>
         </div>
       ) : !isViewer ? (
         <div className="min-h-screen flex items-center justify-center p-4 bg-pami-bg">
@@ -3416,7 +3458,7 @@ export default function App() {
                             </td>
                             {user && (
                               <td className="px-6 py-4">
-                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center justify-end gap-2 transition-opacity">
                                   <button 
                                     onClick={() => {
                                       setEditingPractica(p);
@@ -3425,17 +3467,17 @@ export default function App() {
                                     className="p-1.5 text-pami-muted hover:text-pami-blue hover:bg-pami-blue/5 rounded-lg transition-colors"
                                     title="Editar"
                                   >
-                                    <Edit2 size={14} />
+                                    <Edit2 size={16} />
                                   </button>
                                   <button 
                                     onClick={() => {
                                       setPracticaToDelete(p);
                                       setIsDeletePracticaModalOpen(true);
                                     }}
-                                    className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Borrar"
+                                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Eliminar permanentemente"
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={16} />
                                   </button>
                                 </div>
                               </td>
@@ -3829,6 +3871,15 @@ export default function App() {
                   Folletos
                 </button>
                 <button 
+                  onClick={() => setAdminSubTab('especialidades')}
+                  className={cn(
+                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                    adminSubTab === 'especialidades' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
+                  )}
+                >
+                  Gestión Especialidades
+                </button>
+                <button 
                   onClick={() => setAdminSubTab('usuarios')}
                   className={cn(
                     "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
@@ -3852,6 +3903,9 @@ export default function App() {
                   </Button>
                   <Button variant="outline" className="text-[10px] py-1 h-auto px-3 bg-pami-blue/5 border-pami-blue/20 text-pami-blue" onClick={handleMigrate} isLoading={isSaving} title="Unifica nombres de hospitales (Gutierrez, San Roque, etc)">
                     Unificar Nombres
+                  </Button>
+                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3 text-pami-blue border-pami-blue/20 hover:bg-pami-blue/5" onClick={handleExportData} isLoading={isSaving} title="Genera el código para respaldar tus cambios manuales en el archivo del sistema">
+                    Protección de Datos (Exportar a Código)
                   </Button>
                   <Button variant="outline" className="text-[10px] py-1 h-auto px-3 text-red-600 border-red-200 hover:bg-red-50" onClick={handleResetDeletions} isLoading={isSaving} title="Permite que los items borrados vuelvan a aparecer al sincronizar">
                     Limpiar Historial Borrados
@@ -4013,6 +4067,28 @@ export default function App() {
                 </div>
               ) : adminSubTab === 'usuarios' ? (
                 <AdminUsers />
+              ) : adminSubTab === 'especialidades' ? (
+                <div className="p-6">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-pami-text">Purgado Global de Especialidades</h3>
+                    <p className="text-sm text-pami-muted">Aquí puedes ver todos los nombres de especialidades y prácticas que el sistema ha detectado en prestadores y nomenclador. Úsalo para eliminar nombres mal escritos o duplicados de TODO el sistema.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {allSpecialties.map((s, idx) => (
+                      <div key={`${s}-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-red-200 transition-all group">
+                        <span className="text-xs font-bold uppercase truncate pr-4">{s}</span>
+                        <button 
+                          onClick={() => { setSpecialtyToPurge(s); setIsPurgeSpecialtyModalOpen(true); }}
+                          className="p-1.5 text-pami-muted hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          title="Purgar de todo el sistema"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -4467,6 +4543,53 @@ export default function App() {
         </form>
       </Modal>
 
+      {/* Export Modal */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-pami-blue/40 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col p-8"
+          >
+            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+              <div>
+                <h3 className="text-xl font-bold text-pami-text flex items-center gap-2">
+                  <ShieldCheck className="text-pami-blue" />
+                  Protección Total de Datos
+                </h3>
+                <p className="text-sm text-pami-muted mt-1">Este código contiene TODO lo que hay en la base de datos hoy. Copia esto y pégalo en el chat para que yo lo actualice en el sistema para siempre.</p>
+              </div>
+              <button 
+                onClick={() => setIsExportModalOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto bg-gray-900 rounded-xl p-6 font-mono text-[10px] leading-relaxed text-blue-300">
+              <pre>{exportedCode}</pre>
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-4">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  navigator.clipboard.writeText(exportedCode);
+                  setAdminMessage({ text: "¡Código copiado! Pégalo en el chat para que yo lo guarde permanentemente.", type: 'success' });
+                }}
+              >
+                <Copy size={16} className="mr-2" />
+                Copiar Código Completo
+              </Button>
+              <Button onClick={() => setIsExportModalOpen(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Modal for Delete Confirmation */}
       <Modal 
         isOpen={isDeleteModalOpen} 
@@ -4510,6 +4633,47 @@ export default function App() {
             <Button type="button" variant="danger" onClick={confirmDeletePrestador} isLoading={isSaving}>
               <Trash2 size={18} />
               <span>Eliminar Prestador</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Purge Specialty Modal */}
+      <Modal 
+        isOpen={isPurgeSpecialtyModalOpen} 
+        onClose={() => setIsPurgeSpecialtyModalOpen(false)} 
+        title="Purgado Global de Especialidad"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-4 text-red-700">
+            <Trash2 className="shrink-0 mt-1" size={24} />
+            <div>
+              <p className="font-bold">¿Eliminar "{specialtyToPurge}" de todo el sistema?</p>
+              <p className="text-xs mt-2 opacity-80 leading-relaxed">
+                Esta acción es IRREVERSIBLE y de alto impacto:
+              </p>
+              <ul className="text-[10px] mt-2 list-disc list-inside space-y-1 opacity-80">
+                <li>Se eliminará la especialidad de TODOS los prestadores que la tengan.</li>
+                <li>Se borrará del Nomenclador OME si existe.</li>
+                <li>No aparecerá más en los filtros de búsqueda.</li>
+              </ul>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={() => setIsPurgeSpecialtyModalOpen(false)}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              className="flex-1 bg-red-600 hover:bg-red-700 border-red-600" 
+              onClick={handlePurgeSpecialty}
+              isLoading={isSaving}
+            >
+              Confirmar Purga Global
             </Button>
           </div>
         </div>

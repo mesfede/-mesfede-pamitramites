@@ -13,7 +13,8 @@ import {
   writeBatch,
   getDocFromServer,
   setDoc,
-  limit
+  limit,
+  Timestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
@@ -703,15 +704,197 @@ export async function deletePractica(id: string) {
   try {
     const docRef = doc(db, PRACTICAS_COLLECTION, id);
     const snapshot = await getDoc(docRef);
-    await deleteDoc(docRef);
     if (snapshot.exists()) {
-      const p = snapshot.data();
-      const key = `${p.codigo}|${p.descripcion}|${p.descImpresa || ''}|${p.sinonimo || ''}`.trim();
-      await logDeletedItem('practica', key);
-      await logUpdate(`Se eliminó la práctica: ${p.descripcion}`);
+      const data = snapshot.data();
+      const identifier = `${data.codigo}|${data.descripcion}`;
+      await logDeletedItem('practica', identifier);
+      await logUpdate(`Se eliminó la práctica OME: ${data.descripcion}`);
     }
+    await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, PRACTICAS_COLLECTION);
+  }
+}
+
+export async function purgeSpecialtyFromDatabase(specialtyName: string) {
+  try {
+    const batch = writeBatch(db);
+    const lowerName = specialtyName.trim().toLowerCase();
+    
+    // 1. Delete from Practicas OME collection
+    const practicasSnap = await getDocs(collection(db, PRACTICAS_COLLECTION));
+    practicasSnap.docs.forEach(doc => {
+      const data = doc.data();
+      if ((data.descripcion || "").trim().toLowerCase() === lowerName || (data.sinonimo || "").trim().toLowerCase() === lowerName) {
+        batch.delete(doc.ref);
+      }
+    });
+
+    // 2. Remove from all Prestadores
+    const prestadoresSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+    prestadoresSnap.docs.forEach(doc => {
+      const data = doc.data();
+      const specs = data.especialidades || [];
+      if (specs.some((s: string) => s.trim().toLowerCase() === lowerName)) {
+        const newSpecs = specs.filter((s: string) => s.trim().toLowerCase() !== lowerName);
+        batch.update(doc.ref, { especialidades: newSpecs });
+      }
+    });
+
+    // 3. Log as deleted item to prevent re-sync
+    await logDeletedItem('specialty_purge', specialtyName);
+    await logUpdate(`Se purgó la especialidad de TODO el sistema: ${specialtyName}`);
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'global_purge');
+  }
+}
+
+export async function getExportableData() {
+  try {
+    const tSnap = await getDocs(collection(db, TRAMITES_COLLECTION));
+    const pSnap = await getDocs(collection(db, PRESTADORES_COLLECTION));
+    const fSnap = await getDocs(collection(db, FOLLETOS_COLLECTION));
+    
+    const tramites = tSnap.docs.map(d => {
+      const data = d.data();
+      return {
+        nombre: data.nombre,
+        categoria: data.categoria,
+        descripcion: data.descripcion,
+        fuente: data.fuente || 'Manual'
+      };
+    }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    
+    const prestadores = pSnap.docs.map(d => {
+      const data = d.data();
+      return {
+        nombre: data.nombre,
+        especialidad: data.especialidad,
+        domicilio: data.domicilio,
+        localidad: data.localidad,
+        telefono: data.telefono,
+        notas: data.notas,
+        tieneTope: data.tieneTope
+      };
+    }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    const folletos = fSnap.docs.map(d => {
+      const data = d.data();
+      return {
+        nombre: data.nombre,
+        url: data.url,
+        categoria: data.categoria
+      };
+    }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    
+    return { tramites, prestadores, folletos };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'export all');
+    throw error;
+  }
+}
+
+export async function purgeRecentRecords(thresholdDate: Date) {
+  try {
+    let totalDeleted = 0;
+    let batch = writeBatch(db);
+    let batchCount = 0;
+
+    // 1. Clear deleted log
+    const deletedSnap = await getDocs(collection(db, DELETED_ITEMS_COLLECTION));
+    for (const d of deletedSnap.docs) {
+      batch.delete(d.ref);
+      batchCount++;
+      if (batchCount >= 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        batchCount = 0;
+      }
+    }
+    if (batchCount > 0) { await batch.commit(); batch = writeBatch(db); batchCount = 0; }
+
+    // 2. Only delete medical junk
+    const snap = await getDocs(collection(db, PRACTICAS_COLLECTION));
+    const docsToDelete = snap.docs.filter(d => {
+      const data = d.data();
+      const desc = (data.descripcion || '').toUpperCase();
+      const bad = ['BACTERIOLOGICO', 'ACIDO', 'ESTADO ACIDO', 'ABDOMEN', 'ACETONA', 'ACIDIMETRIA', 'ADDIS', 'ADH'];
+      return bad.some(kw => desc.includes(kw));
+    });
+
+    for (const d of docsToDelete) {
+      batch.delete(d.ref);
+      totalDeleted++;
+      batchCount++;
+      if (batchCount >= 450) { await batch.commit(); batch = writeBatch(db); batchCount = 0; }
+    }
+    if (batchCount > 0) await batch.commit();
+
+    if (totalDeleted > 0) await logUpdate(`Limpieza: ${totalDeleted} prácticas basura eliminadas.`);
+    return totalDeleted;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'cleanup');
+    return 0;
+  }
+}
+
+export async function resetToBaseline(
+  initialTramites: any[], 
+  initialPrestadores: any[], 
+  initialFolletos: any[], 
+  initialPracticas: any[], 
+  initialCentros: any[], 
+  initialTelefonos: any[]
+) {
+  try {
+    const collections = [
+      TRAMITES_COLLECTION,
+      PRESTADORES_COLLECTION,
+      FOLLETOS_COLLECTION,
+      PRACTICAS_COLLECTION,
+      CENTROS_COORDINADORES_COLLECTION,
+      TELEFONOS_COLLECTION,
+      DELETED_ITEMS_COLLECTION // Also clear history of deleted items so they re-populate correctly
+    ];
+
+    let totalDeleted = 0;
+    
+    // 1. Wipe everything
+    for (const colName of collections) {
+      const snap = await getDocs(collection(db, colName));
+      let batch = writeBatch(db);
+      let count = 0;
+      for (const d of snap.docs) {
+        batch.delete(d.ref);
+        count++;
+        totalDeleted++;
+        if (count >= 450) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+      if (count > 0) await batch.commit();
+    }
+
+    // 2. Seed from baseline
+    await seedDatabase(
+      initialTramites, 
+      initialPrestadores, 
+      initialFolletos, 
+      initialPracticas, 
+      initialCentros, 
+      initialTelefonos
+    );
+
+    await logUpdate("REINICIO TOTAL DEL SISTEMA: Se eliminaron todos los registros y se restauró la base de datos desde los archivos locales.");
+    return totalDeleted;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, "reset all");
+    throw error;
   }
 }
 
@@ -917,6 +1100,18 @@ export async function deleteUser(uid: string) {
     return await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, 'users');
+  }
+}
+
+export async function toggleUserStatus(uid: string, isDisabled: boolean) {
+  try {
+    const docRef = doc(db, 'users', uid);
+    return await updateDoc(docRef, {
+      isDisabled,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'users');
   }
 }
 

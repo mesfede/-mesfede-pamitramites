@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { subscribeToUsers, setUserRole, deleteUser } from '../services/firestore';
-import { UserPlus, Trash2, Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { subscribeToUsers, setUserRole, deleteUser, toggleUserStatus } from '../services/firestore';
+import { UserPlus, Trash2, Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff, UserX, UserCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -67,19 +67,42 @@ export const AdminUsers: React.FC = () => {
       return;
     }
 
-    if (window.confirm(`¿Estás seguro de que deseas eliminar al usuario ${userEmail}?`)) {
-      setDeletingIds(prev => ({ ...prev, [uid]: true }));
-      setError(null);
-      setSuccess(null);
-      try {
-        await deleteUser(uid);
-        setSuccess(`Usuario ${userEmail} eliminado correctamente.`);
-      } catch (err) {
-        console.error("Error deleting user record:", err);
-        setError('Error al eliminar el usuario. Verifique los permisos.');
-      } finally {
-        setDeletingIds(prev => ({ ...prev, [uid]: false }));
-      }
+    setDeletingIds(prev => ({ ...prev, [uid]: true }));
+    setError(null);
+    setSuccess(null);
+    try {
+      await deleteUser(uid);
+      setSuccess(`Usuario ${userEmail} eliminado correctamente.`);
+    } catch (err) {
+      console.error("Error deleting user record:", err);
+      setError('Error al eliminar el usuario. Verifique los permisos.');
+    } finally {
+      setDeletingIds(prev => ({ ...prev, [uid]: false }));
+    }
+  };
+
+  const [togglingIds, setTogglingIds] = useState<Record<string, boolean>>({});
+
+  const handleToggleStatus = async (uid: string, userEmail: string, currentStatus: boolean | undefined) => {
+    if (auth.currentUser?.uid === uid) {
+      setError('No puedes inhabilitar tu propio usuario.');
+      return;
+    }
+    
+    const newStatus = !currentStatus;
+    const actionText = newStatus ? 'inhabilitar' : 'habilitar';
+    
+    setTogglingIds(prev => ({ ...prev, [uid]: true }));
+    setError(null);
+    setSuccess(null);
+    try {
+      await toggleUserStatus(uid, newStatus);
+      setSuccess(`Usuario ${userEmail} ${newStatus ? 'inhabilitado' : 'habilitado'} correctamente.`);
+    } catch (err) {
+      console.error(`Error toggling user status for ${uid}:`, err);
+      setError(`Error al ${actionText} el usuario. Verifique los permisos.`);
+    } finally {
+      setTogglingIds(prev => ({ ...prev, [uid]: false }));
     }
   };
 
@@ -187,12 +210,13 @@ export const AdminUsers: React.FC = () => {
                 <th className="px-6 py-4">Usuario</th>
                 <th className="px-6 py-4">Rol</th>
                 <th className="px-6 py-4">Password</th>
+                <th className="px-6 py-4">Estado</th>
                 <th className="px-6 py-4">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${u.isDisabled ? 'opacity-60' : ''}`}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
@@ -234,20 +258,43 @@ export const AdminUsers: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => handleDeleteUser(u.id, u.email)}
-                      disabled={deletingIds[u.id]}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
-                      title="Eliminar acceso"
-                    >
-                      {deletingIds[u.id] ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-                    </button>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      u.isDisabled 
+                        ? 'bg-red-100 text-red-700 border border-red-200' 
+                        : 'bg-green-100 text-green-700 border border-green-200'
+                    }`}>
+                      {u.isDisabled ? 'Inactivo' : 'Activo'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleStatus(u.id, u.email, u.isDisabled)}
+                        disabled={togglingIds[u.id]}
+                        className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
+                          u.isDisabled 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-amber-500 hover:bg-amber-50'
+                        }`}
+                        title={u.isDisabled ? "Habilitar acceso" : "Inhabilitar acceso"}
+                      >
+                        {togglingIds[u.id] ? <Loader2 size={18} className="animate-spin" /> : (u.isDisabled ? <UserCheck size={18} /> : <UserX size={18} />)}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(u.id, u.email)}
+                        disabled={deletingIds[u.id]}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
+                        title="Eliminar usuario"
+                      >
+                        {deletingIds[u.id] ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
                     No hay usuarios registrados manualmente.
                   </td>
                 </tr>
