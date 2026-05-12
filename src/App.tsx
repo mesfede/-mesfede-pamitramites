@@ -1156,23 +1156,51 @@ export default function App() {
       const nameA = normalize(a.nombre || "");
       const nameB = normalize(b.nombre || "");
       
-      const getScore = (name: string) => {
-        if (name === searchNorm) return 100;
-        if (name.startsWith(searchNorm + " ")) return 90;
-        if (name.startsWith(searchNorm)) return 80;
-        if (name.includes(" " + searchNorm + " ")) return 70;
-        if (name.includes(searchNorm)) return 60;
-        
-        // Check word fragments
+      const getScore = (name: string, desc: string, cat: string) => {
         let score = 0;
+        
+        // Exact full match
+        if (name === searchNorm) return 1000;
+        
+        // Starts with search string
+        if (name.startsWith(searchNorm + " ")) score += 900;
+        else if (name.startsWith(searchNorm)) score += 800;
+        
+        // Includes as full word
+        if (name.includes(" " + searchNorm + " ") || name.endsWith(" " + searchNorm)) score += 700;
+        
+        // Description exact / starts
+        if (desc === searchNorm) score += 600;
+        else if (desc.startsWith(searchNorm + " ")) score += 500;
+        else if (desc.startsWith(searchNorm)) score += 400;
+
+        // Check word fragments for partial scoring
         for (const word of searchWords) {
-          if (name.includes(word)) score += 10;
+          // Name matching
+          if (name.startsWith(word) || name.includes(" " + word)) {
+            score += 50; // Starts a word
+            if (name === word) score += 150; // Exact word match
+          } else if (name.includes(word)) {
+            score += 10; // Embedded in a word
+          }
+          
+          // Description matching
+          if (desc.startsWith(word) || desc.includes(" " + word)) {
+            score += 20; // Starts a word
+          } else if (desc.includes(word)) {
+            score += 5; // Embedded in a word
+          }
+          
+          // Category matching
+          if (cat.startsWith(word) || cat.includes(" " + word)) {
+            score += 15;
+          }
         }
         return score;
       };
 
-      const scoreA = getScore(nameA);
-      const scoreB = getScore(nameB);
+      const scoreA = getScore(nameA, normalize(a.descripcion || ""), normalize(a.categoria || ""));
+      const scoreB = getScore(nameB, normalize(b.descripcion || ""), normalize(b.categoria || ""));
 
       if (scoreA !== scoreB) {
         return scoreB - scoreA;
@@ -1263,18 +1291,44 @@ export default function App() {
     return filtered.sort((a, b) => {
       const nameA = normalize(a.nombre);
       const nameB = normalize(b.nombre);
+      const unifiedSpecsA = unifyTerms(a.especialidades || []);
+      const specsNormA = unifiedSpecsA.map(s => normalize(s.replace(/\s+/g, ' '))).join(' ');
+      const unifiedSpecsB = unifyTerms(b.especialidades || []);
+      const specsNormB = unifiedSpecsB.map(s => normalize(s.replace(/\s+/g, ' '))).join(' ');
       
-      const getScore = (name: string) => {
-        if (name === searchNorm) return 100;
-        if (name.startsWith(searchNorm + " ")) return 90;
-        if (name.startsWith(searchNorm)) return 80;
-        if (name.includes(" " + searchNorm + " ")) return 70;
-        if (name.includes(searchNorm)) return 60;
-        return 0;
+      const searchWords = searchNorm.split(/\s+/);
+
+      const getScore = (name: string, specs: string) => {
+        let score = 0;
+        
+        if (name === searchNorm) return 1000;
+        if (name.startsWith(searchNorm + " ")) score += 900;
+        else if (name.startsWith(searchNorm)) score += 800;
+        if (name.includes(" " + searchNorm + " ") || name.endsWith(" " + searchNorm)) score += 700;
+
+        if (specs === searchNorm) score += 600;
+        else if (specs.startsWith(searchNorm + " ")) score += 500;
+        else if (specs.startsWith(searchNorm)) score += 400;
+
+        for (const word of searchWords) {
+          if (name.startsWith(word) || name.includes(" " + word)) {
+            score += 50;
+            if (name === word) score += 150;
+          } else if (name.includes(word)) {
+            score += 10;
+          }
+          
+          if (specs.startsWith(word) || specs.includes(" " + word)) {
+            score += 20;
+          } else if (specs.includes(word)) {
+            score += 5;
+          }
+        }
+        return score;
       };
 
-      const scoreA = getScore(nameA);
-      const scoreB = getScore(nameB);
+      const scoreA = getScore(nameA, specsNormA);
+      const scoreB = getScore(nameB, specsNormB);
 
       if (scoreA !== scoreB) {
         return scoreB - scoreA;
@@ -1591,17 +1645,51 @@ export default function App() {
       const descA = normalize(a.descripcion || "");
       const descB = normalize(b.descripcion || "");
       
-      const getScore = (desc: string) => {
-        if (desc === searchNorm) return 100;
-        if (desc.startsWith(searchNorm + " ")) return 90;
-        if (desc.startsWith(searchNorm)) return 80;
-        if (desc.includes(" " + searchNorm + " ")) return 70;
-        if (desc.includes(searchNorm)) return 60;
-        return 0;
+      const getScore = (desc: string, sino: string, cod: string) => {
+        let score = 0;
+        
+        // Exact matches
+        if (desc === searchNorm) return 1000;
+        if (cod === searchNorm) return 1000;
+        if (sino === searchNorm) return 900;
+        
+        // Starts with search string
+        if (desc.startsWith(searchNorm + " ")) score += 800;
+        else if (desc.startsWith(searchNorm)) score += 700;
+        
+        // Includes as full word
+        if (desc.includes(" " + searchNorm + " ") || desc.endsWith(" " + searchNorm)) score += 600;
+
+        // Check word fragments
+        for (const word of searchWords) {
+          // Description matching
+          if (desc.startsWith(word) || desc.includes(" " + word)) {
+            score += 50;
+            if (desc === word) score += 150;
+          } else if (desc.includes(word)) {
+            score += 10;
+          }
+          
+          // Sinonimo matching
+          if (sino.startsWith(word) || sino.includes(" " + word)) {
+            score += 40;
+          } else if (sino.includes(word)) {
+            score += 5;
+          }
+          
+          // Codigo matching
+          if (cod.startsWith(word)) {
+            score += 30;
+          } else if (cod.includes(word)) {
+            score += 5;
+          }
+        }
+        
+        return score;
       };
 
-      const scoreA = getScore(descA);
-      const scoreB = getScore(descB);
+      const scoreA = getScore(descA, normalize(a.sinonimo || ""), normalize(a.codigo || ""));
+      const scoreB = getScore(descB, normalize(b.sinonimo || ""), normalize(b.codigo || ""));
 
       if (scoreA !== scoreB) {
         return scoreB - scoreA;
@@ -1628,14 +1716,24 @@ export default function App() {
     return filtered.sort((a, b) => {
       const nameA = normalize(a.nombre || "");
       const nameB = normalize(b.nombre || "");
+      const searchWords = searchNorm.split(/\s+/);
       
       const getScore = (name: string) => {
-        if (name === searchNorm) return 100;
-        if (name.startsWith(searchNorm + " ")) return 90;
-        if (name.startsWith(searchNorm)) return 80;
-        if (name.includes(" " + searchNorm + " ")) return 70;
-        if (name.includes(searchNorm)) return 60;
-        return 0;
+        let score = 0;
+        if (name === searchNorm) return 1000;
+        if (name.startsWith(searchNorm + " ")) score += 900;
+        else if (name.startsWith(searchNorm)) score += 800;
+        if (name.includes(" " + searchNorm + " ") || name.endsWith(" " + searchNorm)) score += 700;
+        
+        for (const word of searchWords) {
+          if (name.startsWith(word) || name.includes(" " + word)) {
+            score += 50;
+            if (name === word) score += 150;
+          } else if (name.includes(word)) {
+            score += 10;
+          }
+        }
+        return score;
       };
 
       const scoreA = getScore(nameA);
