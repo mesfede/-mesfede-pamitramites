@@ -97,3 +97,26 @@
 .markdown-body code {
   @apply bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono;
 }
+
+/* Rich Text Editor Styles */
+.rich-text-content b, .rich-text-content strong {
+  @apply font-bold text-gray-900;
+}
+.rich-text-content i, .rich-text-content em {
+  @apply italic;
+}
+.rich-text-content u {
+  text-decoration: underline;
+}
+.rich-text-content ul {
+  @apply list-disc list-inside my-2 space-y-1 ml-2;
+}
+.rich-text-content ol {
+  @apply list-decimal list-inside my-2 space-y-1 ml-2;
+}
+.rich-text-content li {
+  @apply leading-relaxed;
+}
+.rich-text-content p {
+  @apply my-1 min-h-[1.5em];
+}

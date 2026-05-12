@@ -129,6 +129,7 @@ import { cn } from './lib/utils';
 import { PamiLogo } from './components/PamiLogo';
 import { AttentionCountdown } from './components/AttentionCountdown';
 import { AnimatedLogo } from './components/AnimatedLogo';
+import { RichTextEditor } from './components/RichTextEditor';
 
 const getFileIcon = (nombre: string) => {
   const lowerName = nombre.toLowerCase();
@@ -3016,9 +3017,10 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
                                       </table>
                                     </div>
                                   ) : (
-                                    <p className="text-sm text-pami-muted leading-relaxed whitespace-pre-line">
-                                      {t.descripcion}
-                                    </p>
+                                    <div 
+                                      className="text-sm text-pami-muted leading-relaxed whitespace-pre-line rich-text-content"
+                                      dangerouslySetInnerHTML={{ __html: t.descripcion }}
+                                    />
                                   )}
                                 </div>
                               )}
@@ -4432,7 +4434,7 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
 
           <div className="space-y-2">
             <label className="text-sm font-semibold text-pami-muted">Descripción / Procedimiento (opcional)</label>
-            <TextArea 
+            <RichTextEditor 
               name="descripcion" 
               defaultValue={editingTramite?.descripcion} 
               placeholder="Detalles adicionales sobre el trámite..." 

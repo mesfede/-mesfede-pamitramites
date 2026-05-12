@@ -86,6 +86,10 @@ export function AnimatedLogo({ className, onClick, variant = 'blue' }: AnimatedL
       >
         !
       </motion.span>
+      <sup className={cn(
+        "font-bold -ml-[1px] mt-3 opacity-60 text-[0.35em]",
+        variant === 'white' ? "text-white" : "text-pami-blue"
+      )}>®</sup>
     </div>
   );
 }
