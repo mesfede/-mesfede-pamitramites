@@ -1115,25 +1115,70 @@ export default function App() {
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     
     const searchNorm = normalize(search.trim());
+    const searchWords = searchNorm.split(/\s+/);
 
-    const filtered = tramites.filter(t => {
-      // Hide tramites marked as oculto for non-admins
-      if (t.oculto && !isAdmin) return false;
+    let filtered = tramites;
 
-      const nameNorm = normalize(t.nombre || "");
-      const descNorm = normalize(t.descripcion || "");
-      const catNorm = normalize(t.categoria || "");
+    // Filter by admin rules
+    if (!isAdmin) {
+      filtered = filtered.filter(t => !t.oculto);
+    }
+
+    if (searchNorm !== "" || selectedCat !== 'all') {
+      filtered = filtered.filter(t => {
+        const nameNorm = normalize(t.nombre || "");
+        const descNorm = normalize(t.descripcion || "");
+        const catNorm = normalize(t.categoria || "");
+        
+        let matchesSearch = true;
+        if (searchNorm !== "") {
+          const fields = [nameNorm, descNorm, catNorm];
+          const fieldsNoSpace = fields.map(f => f.replace(/\s+/g, ""));
+          
+          matchesSearch = searchWords.every(word => {
+            const wordNoSpace = word.replace(/\s+/g, "");
+            return fields.some(field => field.includes(word)) || 
+                   fieldsNoSpace.some(fieldNoSpace => fieldNoSpace.includes(wordNoSpace));
+          });
+        }
+        
+        // If there's a search term, we ignore the category filter (global search)
+        const matchesCat = searchNorm !== "" || selectedCat === 'all' || t.categoria === selectedCat;
+        return matchesSearch && matchesCat;
+      });
+    }
+
+    return filtered.sort((a, b) => {
+      if (!searchNorm) {
+        return (a.nombre || "").localeCompare(b.nombre || "");
+      }
       
-      const matchesSearch = nameNorm.includes(searchNorm) || 
-                           descNorm.includes(searchNorm) || 
-                           catNorm.includes(searchNorm);
+      const nameA = normalize(a.nombre || "");
+      const nameB = normalize(b.nombre || "");
       
-      // Si hay búsqueda, ignoramos el filtro de categoría para que sea global
-      const matchesCat = searchNorm !== "" || selectedCat === 'all' || t.categoria === selectedCat;
-      return matchesSearch && matchesCat;
+      const getScore = (name: string) => {
+        if (name === searchNorm) return 100;
+        if (name.startsWith(searchNorm + " ")) return 90;
+        if (name.startsWith(searchNorm)) return 80;
+        if (name.includes(" " + searchNorm + " ")) return 70;
+        if (name.includes(searchNorm)) return 60;
+        
+        // Check word fragments
+        let score = 0;
+        for (const word of searchWords) {
+          if (name.includes(word)) score += 10;
+        }
+        return score;
+      };
+
+      const scoreA = getScore(nameA);
+      const scoreB = getScore(nameB);
+
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      return nameA.localeCompare(nameB);
     });
-
-    return filtered.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
   }, [tramites, search, selectedCat, isAdmin]);
 
   useEffect(() => {
