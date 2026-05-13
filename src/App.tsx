@@ -421,6 +421,129 @@ const AutocompleteTagInput = ({
   );
 }
 
+const AutocompleteSingleSelect = ({
+  value,
+  onChange,
+  options,
+  placeholder = "Buscar...",
+  className,
+  emptyOptionText = "Limpiar selección"
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  placeholder?: string;
+  className?: string;
+  emptyOptionText?: string;
+}) => {
+  const [inputValue, setInputValue] = useState(value);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const normalize = useCallback((str: string) => 
+    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(), 
+  []);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        setInputValue(value);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value]);
+
+  const filteredOptions = options.filter(s => 
+    normalize(s).includes(normalize(inputValue))
+  );
+
+  const optionsToDisplay = [
+    ...(inputValue.trim() === '' ? [] : options.filter(s => normalize(s) === normalize(inputValue))),
+    ...filteredOptions.filter(s => normalize(s) !== normalize(inputValue))
+  ].slice(0, 50); // Limit to 50 results
+
+  return (
+    <div className={cn("relative", className)} ref={containerRef}>
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          onChange(e.target.value);
+          setShowSuggestions(true);
+        }}
+        onFocus={() => setShowSuggestions(true)}
+        placeholder={placeholder}
+        className="w-full pl-10 pr-10 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all text-pami-text"
+      />
+      
+      {showSuggestions && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
+          <div 
+            className={cn(
+              "px-4 py-2 cursor-pointer text-sm font-medium transition-colors hover:bg-gray-50",
+              value === "" ? "text-pami-blue bg-pami-blue/5" : "text-gray-700 hover:text-pami-blue"
+            )}
+            onMouseDown={(e) => { 
+              e.preventDefault(); 
+              onChange(""); 
+              setInputValue("");
+              setShowSuggestions(false); 
+            }}
+          >
+            {emptyOptionText}
+          </div>
+          {optionsToDisplay.map((option, i) => {
+            const index = option.toLowerCase().indexOf(inputValue.toLowerCase());
+            const beforeStr = option.substring(0, index);
+            const matchStr = option.substring(index, index + inputValue.length);
+            const afterStr = option.substring(index + inputValue.length);
+
+            return (
+              <div 
+                key={i}
+                className={cn(
+                  "px-4 py-2 hover:bg-pami-cyan/5 cursor-pointer text-sm font-medium uppercase transition-colors flex items-center justify-between group",
+                  value === option ? "text-pami-blue bg-pami-blue/5" : "text-gray-700 hover:text-pami-blue"
+                )}
+                onMouseDown={(e) => { 
+                  e.preventDefault(); 
+                  onChange(option); 
+                  setInputValue(option);
+                  setShowSuggestions(false); 
+                }}
+              >
+                <div>
+                  {index >= 0 && inputValue ? (
+                    <>
+                      {beforeStr}
+                      <span className="font-extrabold text-pami-blue">{matchStr}</span>
+                      {afterStr}
+                    </>
+                  ) : (
+                    option
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {optionsToDisplay.length === 0 && (
+            <div className="px-4 py-3 text-sm text-gray-500 text-center italic">
+              No se encontraron resultados
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => (
   <AnimatePresence>
     {isOpen && (
@@ -1191,6 +1314,10 @@ export default function App() {
   }, [filteredTramites, currentPage]);
 
   const totalPages = Math.ceil(filteredTramites.length / ITEMS_PER_PAGE);
+
+  const allPrestadorNames = useMemo(() => {
+    return Array.from(new Set(prestadores.filter(p => !p.oculto || isAdmin).map(p => p.nombre))).sort((a, b) => a.localeCompare(b));
+  }, [prestadores, isAdmin]);
 
   const allSpecialties = useMemo(() => {
     const specs = new Set<string>();
@@ -3389,44 +3516,44 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-pami-muted uppercase tracking-wider">Filtrar por Especialidad o Práctica</label>
                   <div className="relative">
-                    <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
-                    <select 
-                      className="w-full pl-10 pr-10 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all appearance-none text-pami-text"
+                    <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted z-10" size={18} />
+                    <AutocompleteSingleSelect
                       value={selectedSpecialty}
-                      onChange={(e) => setSelectedSpecialty(e.target.value)}
-                    >
-                      <option value="">Todas las especialidades / prácticas</option>
-                      {allSpecialties.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      onChange={setSelectedSpecialty}
+                      options={allSpecialties}
+                      placeholder="Todas las especialidades / prácticas"
+                      emptyOptionText="Todas las especialidades / prácticas"
+                      className="w-full"
+                    />
                     {selectedSpecialty ? (
                       <button 
                         onClick={() => setSelectedSpecialty('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted hover:text-red-500 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted hover:text-red-500 transition-colors z-10"
                         title="Limpiar filtro"
                       >
                         <X size={18} />
                       </button>
                     ) : (
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted pointer-events-none" size={18} />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted pointer-events-none z-10" size={18} />
                     )}
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-pami-muted uppercase tracking-wider">Buscar por Nombre</label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
-                    <Input 
-                      placeholder="Ej: Clínica San Miguel..." 
-                      className="pl-10"
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted z-10" size={18} />
+                    <AutocompleteSingleSelect
                       value={prestadorSearch}
-                      onChange={(e) => setPrestadorSearch(e.target.value)}
+                      onChange={setPrestadorSearch}
+                      options={allPrestadorNames}
+                      placeholder="Ej: Clínica San Miguel..."
+                      emptyOptionText="Todos los prestadores"
+                      className="w-full"
                     />
                     {prestadorSearch && (
                       <button 
                         onClick={() => setPrestadorSearch('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted hover:text-red-500 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-pami-muted hover:text-red-500 transition-colors z-10"
                         title="Limpiar búsqueda"
                       >
                         <X size={18} />
