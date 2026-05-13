@@ -87,7 +87,7 @@ export function RichTextEditor({ name, defaultValue = '', placeholder, required 
       </div>
       
       {/* Hidden input to pass value in form.get('name') */}
-      <input type="hidden" name={name} value={htmlValue} required={required} readOnly />
+      <textarea className="hidden" name={name} value={htmlValue} required={required} readOnly />
 
       {/* Editor */}
       <div

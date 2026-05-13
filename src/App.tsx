@@ -139,38 +139,9 @@ const getFileIcon = (nombre: string) => {
   const isExcel = lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.includes('excel') || lowerName.includes('planilla');
   const isImage = lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.png') || lowerName.includes('foto') || lowerName.includes('imagen');
   
-  const imgClass = "w-7 h-7 flex-shrink-0 object-contain";
-  
-  if (isPdf) return (
-    <img 
-      src="https://upload.wikimedia.org/wikipedia/commons/3/3d/Adobe_Acrobat_logo.svg" 
-      className={imgClass} 
-      alt="PDF" 
-      title="Adobe PDF"
-      referrerPolicy="no-referrer" 
-    />
-  );
-  
-  if (isDoc) return (
-    <img 
-      src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Microsoft_Office_Word_%282019%E2%80%93present%29.svg" 
-      className={imgClass} 
-      alt="Word" 
-      title="Microsoft Word"
-      referrerPolicy="no-referrer" 
-    />
-  );
-  
-  if (isExcel) return (
-    <img 
-      src="https://upload.wikimedia.org/wikipedia/commons/3/34/Microsoft_Office_Excel_%282019%E2%80%93present%29.svg" 
-      className={imgClass} 
-      alt="Excel" 
-      title="Microsoft Excel"
-      referrerPolicy="no-referrer" 
-    />
-  );
-  
+  if (isPdf) return <FileText size={28} className="text-red-500 shrink-0" />;
+  if (isDoc) return <FileText size={28} className="text-blue-600 shrink-0" />;
+  if (isExcel) return <FileSpreadsheet size={28} className="text-green-600 shrink-0" />;
   if (isImage) return <FileImage size={28} className="text-purple-500 shrink-0" />;
   
   return <File size={28} className="text-gray-400 shrink-0" />;
@@ -867,6 +838,30 @@ export default function App() {
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
   const isAdmin = user?.email && (ADMIN_EMAILS.includes(user.email) || userRole === 'admin');
   const isViewer = isAdmin || userRole === 'viewer';
+
+  const hasRunFixUppercase = useRef(false);
+  useEffect(() => {
+    if (isAdmin && prestadores.length > 0 && !hasRunFixUppercase.current) {
+      hasRunFixUppercase.current = true;
+      const fixLowercasePrestadores = async () => {
+        let count = 0;
+        for (const p of prestadores) {
+          if (p.nombre && p.nombre !== p.nombre.toUpperCase()) {
+            try {
+              await updatePrestador(p.id, { nombre: p.nombre.toUpperCase() });
+              count++;
+            } catch (e) {
+              console.error("Failed to update uppercase:", e);
+            }
+          }
+        }
+        if (count > 0) {
+          console.log(`Updated ${count} prestadores to uppercase.`);
+        }
+      };
+      fixLowercasePrestadores();
+    }
+  }, [isAdmin, prestadores]);
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -2084,7 +2079,7 @@ export default function App() {
     const isTimeTableSpecialty = specsLower.includes('cabecera') || specsLower.includes('odontolog');
     
     const data: any = {
-      nombre: formData.get('nombre') as string,
+      nombre: (formData.get('nombre') as string).toUpperCase(),
       especialidades: (formData.get('especialidades') as string).split('\n').filter(p => p.trim() !== ''),
       especialidadesTopeadas: (formData.get('especialidadesTopeadas') as string | null)?.split('\n').filter(p => p.trim() !== '') || [],
       notas: formData.get('notas') as string,
