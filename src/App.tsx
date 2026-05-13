@@ -507,7 +507,7 @@ const PrestadorCard = ({
             ) : (
               <Hospital size={18} className="text-pami-blue shrink-0" />
             )}
-            <span className="line-clamp-2">{p.nombre}</span>
+            <span className="break-words">{p.nombre}</span>
           </h3>
           {p.oculto && isAdmin && (
             <span className="w-fit bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1">
