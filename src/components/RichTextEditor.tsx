@@ -11,35 +11,30 @@ interface RichTextEditorProps {
 
 export function RichTextEditor({ name, defaultValue = '', placeholder, required }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [htmlValue, setHtmlValue] = useState('');
 
+  // Handle initialization
   useEffect(() => {
     if (editorRef.current && defaultValue && !editorRef.current.innerHTML) {
       // Basic normalizer to convert \n to <br> for older plaintext entries
-      const normalizedValue = defaultValue.includes('<') && defaultValue.includes('>') 
-        ? defaultValue 
-        : defaultValue.replace(/\ng/g, '<br/>');
-        // Actually simpler:
-      editorRef.current.innerHTML = defaultValue.replace(/\n/g, '<br/>');
-      // Wait, if it already has html tags, doing replace \n could add extra breaks. Let's do:
+      let initialValue = defaultValue;
       if (defaultValue.includes('<b>') || defaultValue.includes('<ul>') || defaultValue.includes('<br>')) {
-        editorRef.current.innerHTML = defaultValue;
+        initialValue = defaultValue;
       } else {
-        editorRef.current.innerHTML = defaultValue.replace(/\n/g, '<br/>');
+        initialValue = defaultValue.replace(/\n/g, '<br/>');
       }
       
-      if (hiddenInputRef.current) {
-        hiddenInputRef.current.value = editorRef.current.innerHTML;
-      }
+      editorRef.current.innerHTML = initialValue;
+      setHtmlValue(initialValue);
     }
   }, [defaultValue]);
 
   const handleInput = () => {
-    if (hiddenInputRef.current && editorRef.current) {
+    if (editorRef.current) {
       let val = editorRef.current.innerHTML;
       if (val === '<br>') val = '';
-      hiddenInputRef.current.value = val;
+      setHtmlValue(val);
     }
   };
 
@@ -92,22 +87,22 @@ export function RichTextEditor({ name, defaultValue = '', placeholder, required 
       </div>
       
       {/* Hidden input to pass value in form.get('name') */}
-      <input type="hidden" name={name} ref={hiddenInputRef} defaultValue={defaultValue} required={required} />
+      <input type="hidden" name={name} value={htmlValue} required={required} readOnly />
 
       {/* Editor */}
       <div
         ref={editorRef}
         className={cn(
           "p-3 min-h-[120px] max-h-[300px] overflow-y-auto focus:outline-none text-sm text-gray-700",
-          "prose prose-sm prose-p:my-1 prose-ul:my-1 prose-li:my-0 max-w-none"
+          "rich-text-content max-w-none"
         )}
         contentEditable
         onInput={handleInput}
-        onBlur={() => {setIsFocused(false); handleInput()}}
+        onKeyUp={handleInput}
+        onBlur={() => { setIsFocused(false); handleInput(); }}
         onFocus={() => setIsFocused(true)}
         data-placeholder={placeholder}
         style={{
-          whiteSpace: 'pre-wrap', 
           wordBreak: 'break-word',
           outline: 'none'
         }}

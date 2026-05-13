@@ -3018,7 +3018,7 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
                                     </div>
                                   ) : (
                                     <div 
-                                      className="text-sm text-pami-muted leading-relaxed whitespace-pre-line rich-text-content"
+                                      className="text-sm text-pami-muted leading-relaxed rich-text-content"
                                       dangerouslySetInnerHTML={{ __html: t.descripcion }}
                                     />
                                   )}
