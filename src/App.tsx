@@ -839,30 +839,6 @@ export default function App() {
   const isAdmin = user?.email && (ADMIN_EMAILS.includes(user.email) || userRole === 'admin');
   const isViewer = isAdmin || userRole === 'viewer';
 
-  const hasRunFixUppercase = useRef(false);
-  useEffect(() => {
-    if (isAdmin && prestadores.length > 0 && !hasRunFixUppercase.current) {
-      hasRunFixUppercase.current = true;
-      const fixLowercasePrestadores = async () => {
-        let count = 0;
-        for (const p of prestadores) {
-          if (p.nombre && p.nombre !== p.nombre.toUpperCase()) {
-            try {
-              await updatePrestador(p.id, { nombre: p.nombre.toUpperCase() });
-              count++;
-            } catch (e) {
-              console.error("Failed to update uppercase:", e);
-            }
-          }
-        }
-        if (count > 0) {
-          console.log(`Updated ${count} prestadores to uppercase.`);
-        }
-      };
-      fixLowercasePrestadores();
-    }
-  }, [isAdmin, prestadores]);
-
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleSimapClick = () => {
@@ -4593,7 +4569,15 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
         onClose={() => { setIsPrestadorModalOpen(false); setEditingPrestador(null); }}
         title={editingPrestador ? `Editar Prestador: ${editingPrestador.nombre}` : "Nuevo Prestador"}
       >
-        <form onSubmit={handleSavePrestador} className="space-y-6">
+        <form 
+          onSubmit={handleSavePrestador} 
+          className="space-y-6"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+              e.preventDefault();
+            }
+          }}
+        >
           <div className="space-y-2">
             <label className="text-sm font-semibold text-pami-muted">Nombre del Prestador</label>
             <Input name="nombre" defaultValue={editingPrestador?.nombre} required placeholder="Ej: Dr. Juan Pérez o Clínica San Miguel" />
