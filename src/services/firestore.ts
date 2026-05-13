@@ -223,14 +223,15 @@ export async function updateTramite(id: string, tramite: Partial<Tramite>) {
   }
 }
 
-async function logDeletedItem(type: string, identifier: string) {
+async function logDeletedItem(type: string, identifier: string, fullData?: any) {
   try {
     const safeId = identifier.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-    const logId = `${type}_${safeId}`;
+    const logId = `${type}_${safeId}_${Date.now()}`;
     await setDoc(doc(db, DELETED_ITEMS_COLLECTION, logId), {
       type,
       identifier: identifier.toLowerCase().trim(),
-      deletedAt: serverTimestamp()
+      deletedAt: serverTimestamp(),
+      data: fullData || null
     });
   } catch (e) {
     console.warn("Could not log deletion:", e);
@@ -243,7 +244,7 @@ export async function deleteTramite(id: string) {
     const snapshot = await getDoc(docRef);
     if (snapshot.exists()) {
       const data = snapshot.data();
-      await logDeletedItem('tramite', data.nombre);
+      await logDeletedItem('tramite', data.nombre || id, data);
       await logUpdate(`Se eliminó el trámite: ${data.nombre}`);
     }
     await deleteDoc(docRef);
@@ -345,7 +346,7 @@ export async function deletePrestador(id: string) {
     const snapshot = await getDoc(docRef);
     if (snapshot.exists()) {
       const data = snapshot.data();
-      await logDeletedItem('prestador', data.nombre);
+      await logDeletedItem('prestador', data.nombre || id, data);
       await logUpdate(`Se eliminó el prestador: ${data.nombre}`);
     }
     await deleteDoc(docRef);
@@ -707,7 +708,7 @@ export async function deletePractica(id: string) {
     if (snapshot.exists()) {
       const data = snapshot.data();
       const identifier = `${data.codigo}|${data.descripcion}`;
-      await logDeletedItem('practica', identifier);
+      await logDeletedItem('practica', identifier, data);
       await logUpdate(`Se eliminó la práctica OME: ${data.descripcion}`);
     }
     await deleteDoc(docRef);
@@ -944,7 +945,7 @@ export async function deleteFolleto(id: string) {
     await deleteDoc(docRef);
     if (snapshot.exists()) {
       const data = snapshot.data();
-      await logDeletedItem('folleto', data.nombre);
+      await logDeletedItem('folleto', data.nombre || id, data);
       await logUpdate(`Se eliminó el folleto: ${data.nombre}`);
     }
   } catch (error) {
@@ -1002,7 +1003,7 @@ export async function deleteCentroCoordinador(id: string) {
       const data = snapshot.data();
       const hospitalKey = normalizeHospitalName(data.hospital || "");
       const key = `${hospitalKey}|${data.trabajador}`;
-      await logDeletedItem('centro', key);
+      await logDeletedItem('centro', key, data);
       await logUpdate(`Se eliminó el centro coordinador: ${data.hospital}`);
     }
     await deleteDoc(docRef);
@@ -1061,7 +1062,7 @@ export async function deleteTelefono(id: string) {
     if (snapshot.exists()) {
       const data = snapshot.data();
       const key = `${data.area}|${data.nombre}|${data.interno}`.toLowerCase();
-      await logDeletedItem('telefono', key);
+      await logDeletedItem('telefono', key, data);
       await logUpdate(`Se eliminó el teléfono interno: ${data.area}`);
     }
     await deleteDoc(docRef);

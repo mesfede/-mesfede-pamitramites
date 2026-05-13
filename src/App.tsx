@@ -889,6 +889,13 @@ export default function App() {
   const [isDeleteFolletoModalOpen, setIsDeleteFolletoModalOpen] = useState(false);
   const [isPrestadorModalOpen, setIsPrestadorModalOpen] = useState(false);
   const [isFolletoModalOpen, setIsFolletoModalOpen] = useState(false);
+  const [isCartillaModalOpen, setIsCartillaModalOpen] = useState(false);
+  const [cartillaSelections, setCartillaSelections] = useState({
+    medicoCabecera: "",
+    odontologo: "",
+    kinesiologia: "",
+    guardia: ""
+  });
   const [isPracticaModalOpen, setIsPracticaModalOpen] = useState(false);
   const [isCentroModalOpen, setIsCentroModalOpen] = useState(false);
   const [isDeleteCentroModalOpen, setIsDeleteCentroModalOpen] = useState(false);
@@ -1585,6 +1592,185 @@ export default function App() {
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  const handlePrintCartilla = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const renderPrestadorModule = (title: string, name: string) => {
+      if (!name) return '';
+      const p = prestadores.find((p) => p.nombre === name);
+      if (!p) return '';
+
+      return `
+        <div class="cartilla-module">
+          <div class="module-title">${title}</div>
+          <div class="prestador-name">${p.nombre}</div>
+          <div class="prestador-info">
+            ${p.localidad ? `<div class="info-item"><strong>Localidad:</strong> ${p.localidad}</div>` : ''}
+            ${p.direccion ? `<div class="info-item"><strong>Dirección:</strong> ${p.direccion}</div>` : ''}
+            ${p.telefono ? `<div class="info-item"><strong>Teléfono:</strong> ${p.telefono}</div>` : ''}
+            ${p.whatsapp ? `<div class="info-item"><strong>WhatsApp:</strong> ${p.whatsapp}</div>` : ''}
+            ${p.email ? `<div class="info-item"><strong>Email:</strong> ${p.email}</div>` : ''}
+          </div>
+          ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
+            <div class="horarios-grid">
+              <div class="horarios-title-mini">Horarios de Atención</div>
+              ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
+                if (!hValue) return '';
+                return `<div class="horario-item">
+                  <span class="dia">${dia.substring(0, 3)}.</span>
+                  <span class="horas">${hValue}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          ` : ''}
+          ${p.notas ? `<div class="notas-box"><strong>Notas:</strong><br/>${p.notas}</div>` : ''}
+        </div>
+      `;
+    };
+
+    const modulesHtml = [
+      renderPrestadorModule("Médico de Cabecera", cartillaSelections.medicoCabecera),
+      renderPrestadorModule("Odontólogo", cartillaSelections.odontologo),
+      renderPrestadorModule("Kinesiología", cartillaSelections.kinesiologia),
+      renderPrestadorModule("Internación y Guardia", cartillaSelections.guardia)
+    ].filter(html => html !== '').join('');
+
+    const html = `
+      <html>
+        <head>
+          <title>Cartilla de Prestadores</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Varela+Round&display=swap');
+            @page { margin: 1.5cm; }
+            body { font-family: 'Inter', sans-serif; color: #1a202c; line-height: 1.4; padding: 0; margin: 0; }
+            .header { border-bottom: 2px solid #0b2344; padding-bottom: 10px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .cartilla-title { color: #0b2344; font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; }
+            .pami-info { text-align: right; color: #718096; line-height: 1.1; }
+            .pami-info .agency { font-size: 24px; font-weight: 700; color: #0b2344; font-family: 'Varela Round', sans-serif; }
+            
+            .cartilla-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 20px;
+            }
+            .cartilla-module {
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              padding: 18px;
+              background-color: #f8fafc;
+              break-inside: avoid;
+            }
+            .module-title {
+              font-size: 13px;
+              font-weight: 800;
+              text-transform: uppercase;
+              color: #009EE3;
+              margin-bottom: 8px;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 4px;
+              letter-spacing: 0.05em;
+            }
+            .prestador-name {
+              font-size: 18px;
+              font-weight: 700;
+              color: #0b2344;
+              margin-bottom: 10px;
+              text-transform: uppercase;
+              line-height: 1.2;
+            }
+            .prestador-info {
+              display: grid;
+              grid-template-columns: 1fr;
+              gap: 6px;
+              margin-bottom: 12px;
+            }
+            .info-item {
+              font-size: 13px;
+              color: #4a5568;
+            }
+            .info-item strong {
+              color: #2d3748;
+              font-weight: 600;
+            }
+            .horarios-grid {
+              background: #fff;
+              padding: 10px;
+              border-radius: 6px;
+              border: 1px dashed #cbd5e1;
+              margin-top: 10px;
+            }
+            .horarios-title-mini { 
+              font-size: 11px; 
+              font-weight: 700; 
+              color: #718096; 
+              margin-bottom: 6px; 
+              text-transform: uppercase; 
+            }
+            .horario-item { 
+              display: flex; 
+              justify-content: space-between; 
+              font-size: 12px;
+              padding: 2px 0;
+              border-bottom: 1px solid #f1f5f9;
+            }
+            .horario-item:last-child {
+              border-bottom: none;
+            }
+            .horario-item .dia { font-weight: 600; color: #4a5568; text-transform: uppercase; }
+            .horario-item .horas { color: #2d3748; }
+            .notas-box {
+              margin-top: 10px;
+              padding: 10px;
+              background-color: #fff;
+              border-left: 3px solid #cbd5e1;
+              font-size: 12px;
+              color: #4a5568;
+              border-radius: 0 4px 4px 0;
+            }
+            @media print {
+              .cartilla-module {
+                border: 1px solid #cbd5e1 !important;
+                background-color: #f8fafc !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="cartilla-title">Mi Cartilla PAMI</div>
+            <div class="pami-info">
+              <div class="agency">PAMI</div>
+              <div>Instituto Nacional de Servicios Sociales<br>para Jubilados y Pensionados</div>
+            </div>
+          </div>
+          
+          <div class="cartilla-grid">
+            ${modulesHtml || '<div style="grid-column: span 2; text-align: center; color: #718096; padding: 40px;">No se han seleccionado prestadores para esta cartilla.</div>'}
+          </div>
+          
+          <div style="margin-top: 30px; font-size: 11px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            Documento generado el ${new Date().toLocaleDateString('es-AR')} a las ${new Date().toLocaleTimeString('es-AR')}<br>
+            La información contenida en esta cartilla puede estar sujeta a cambios. Ante la duda, comuníquese telefónicamente con el prestador.
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+
+    setIsCartillaModalOpen(false);
+
     setTimeout(() => {
       printWindow.print();
     }, 500);
@@ -3426,6 +3612,18 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
               </div>
               <div className="flex items-center gap-3">
                 {(selectedSpecialty || prestadorSearch) && filteredPrestadores.length > 0 && (
+                  <>
+                  <Button 
+                    variant="outline" 
+                    className="border-pami-blue text-pami-blue hover:bg-pami-blue/5"
+                    onClick={() => {
+                      setCartillaSelections({ medicoCabecera: "", odontologo: "", kinesiologia: "", guardia: "" });
+                      setIsCartillaModalOpen(true);
+                    }}
+                  >
+                    <BookOpen size={18} className="mr-2" />
+                    Armar Cartilla
+                  </Button>
                   <Button 
                     variant="outline" 
                     className="border-pami-cyan text-pami-cyan hover:bg-pami-cyan/5"
@@ -3437,6 +3635,7 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
                     <Printer size={18} className="mr-2" />
                     Preparar Impresión
                   </Button>
+                  </>
                 )}
                 {isAdmin && (
                   <Button 
@@ -4685,6 +4884,76 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
             </Button>
             <Button onClick={confirmAction} isLoading={isSaving}>
               Confirmar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={isCartillaModalOpen} 
+        onClose={() => setIsCartillaModalOpen(false)}
+        title="Armar Cartilla Personalizada"
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-pami-muted mb-4">
+            Seleccione los prestadores que desea incluir en la cartilla. Solo se imprimirán las secciones que tengan un prestador seleccionado.
+          </p>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Médico de Cabecera</label>
+              <AutocompleteSingleSelect
+                value={cartillaSelections.medicoCabecera}
+                onChange={(val) => setCartillaSelections(prev => ({ ...prev, medicoCabecera: val }))}
+                options={allPrestadorNames}
+                placeholder="Buscar médico de cabecera..."
+                emptyOptionText="Ninguno"
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Odontólogo</label>
+              <AutocompleteSingleSelect
+                value={cartillaSelections.odontologo}
+                onChange={(val) => setCartillaSelections(prev => ({ ...prev, odontologo: val }))}
+                options={allPrestadorNames}
+                placeholder="Buscar odontólogo..."
+                emptyOptionText="Ninguno"
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Kinesiología</label>
+              <AutocompleteSingleSelect
+                value={cartillaSelections.kinesiologia}
+                onChange={(val) => setCartillaSelections(prev => ({ ...prev, kinesiologia: val }))}
+                options={allPrestadorNames}
+                placeholder="Buscar kinesiología..."
+                emptyOptionText="Ninguno"
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-pami-muted">Internación y Guardia</label>
+              <AutocompleteSingleSelect
+                value={cartillaSelections.guardia}
+                onChange={(val) => setCartillaSelections(prev => ({ ...prev, guardia: val }))}
+                options={allPrestadorNames}
+                placeholder="Buscar centro de internación/guardia..."
+                emptyOptionText="Ninguno"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button variant="ghost" onClick={() => setIsCartillaModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handlePrintCartilla}>
+              <Printer size={18} className="mr-2" />
+              Imprimir Cartilla
             </Button>
           </div>
         </div>
