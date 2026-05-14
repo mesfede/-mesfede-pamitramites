@@ -701,6 +701,51 @@ export async function updatePractica(id: string, practica: Partial<PracticaOME>)
   }
 }
 
+export async function importPracticasBatch(practicas: Omit<PracticaOME, 'id'>[]) {
+  try {
+    const snap = await getDocs(collection(db, PRACTICAS_COLLECTION));
+    const existingPracticas = new Map();
+    snap.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.codigo) {
+        existingPracticas.set(data.codigo.trim(), doc.id);
+      }
+    });
+
+    const chunks = [];
+    for (let i = 0; i < practicas.length; i += 400) {
+      chunks.push(practicas.slice(i, i + 400));
+    }
+
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      for (const p of chunk) {
+        if (!p.codigo) continue;
+        const cod = p.codigo.trim();
+        if (existingPracticas.has(cod)) {
+          const docId = existingPracticas.get(cod);
+          const docRef = doc(db, PRACTICAS_COLLECTION, docId);
+          batch.update(docRef, { ...p, updatedAt: serverTimestamp() });
+          updatedCount++;
+        } else {
+          const docRef = doc(collection(db, PRACTICAS_COLLECTION));
+          batch.set(docRef, { ...p, createdAt: serverTimestamp() });
+          addedCount++;
+        }
+      }
+      await batch.commit();
+    }
+
+    return { addedCount, updatedCount };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, PRACTICAS_COLLECTION);
+    throw error;
+  }
+}
+
 export async function deletePractica(id: string) {
   try {
     const docRef = doc(db, PRACTICAS_COLLECTION, id);
@@ -775,6 +820,31 @@ export async function purgeSpecialtyFromDatabase(specialtyNames: string[]) {
     return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, 'global_purge');
+    throw error;
+  }
+}
+
+export async function getCompleteBackup() {
+  try {
+    const collections = [
+      TRAMITES_COLLECTION,
+      PRESTADORES_COLLECTION,
+      FOLLETOS_COLLECTION,
+      PRACTICAS_COLLECTION,
+      CENTROS_COORDINADORES_COLLECTION,
+      TELEFONOS_COLLECTION,
+      APP_UPDATES_COLLECTION,
+      DELETED_ITEMS_COLLECTION
+    ];
+    
+    const dbData: any = {};
+    for (const coll of collections) {
+      const snap = await getDocs(collection(db, coll));
+      dbData[coll] = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+    return dbData;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'complete backup');
     throw error;
   }
 }

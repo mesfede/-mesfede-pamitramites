@@ -117,7 +117,7 @@ service cloud.firestore {
     function isValidPractica(data) {
       return data.codigo is string && data.codigo.size() > 0 && data.codigo.size() < 50 &&
              data.descripcion is string && data.descripcion.size() > 0 && data.descripcion.size() < 1000 &&
-             data.modulo is string && data.modulo.size() > 0 &&
+             (!('modulo' in data) || (data.modulo is string && data.modulo.size() <= 200)) &&
              data.responsable in ['Médico de Cabecera', 'Médico Auditor'] &&
              (!('sinonimo' in data) || (data.sinonimo is string && data.sinonimo.size() < 1000)) &&
              (!('descImpresa' in data) || (data.descImpresa is string && data.descImpresa.size() < 1000));

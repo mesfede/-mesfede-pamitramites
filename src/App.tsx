@@ -63,7 +63,8 @@ import {
   EyeOff,
   RotateCcw,
   Home,
-  Bell
+  Bell,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -117,9 +118,10 @@ import {
   resetAllTopes,
   unifyTerms,
   purgeSpecialtyFromDatabase,
-  getExportableData,
-  deletePractica
+  getCompleteBackup,
+  importPracticasBatch
 } from './services/firestore';
+import Papa from 'papaparse';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
 import { PRACTICAS_OME } from './data/practicasOME';
@@ -466,7 +468,7 @@ const AutocompleteSingleSelect = ({
   const optionsToDisplay = [
     ...(inputValue.trim() === '' ? [] : options.filter(s => normalize(s) === normalize(inputValue))),
     ...filteredOptions.filter(s => normalize(s) !== normalize(inputValue))
-  ].slice(0, 50); // Limit to 50 results
+  ];
 
   return (
     <div className={cn("relative", className)} ref={containerRef}>
@@ -1333,16 +1335,8 @@ export default function App() {
         if (s && s.trim()) specs.add(s.trim());
       });
     });
-    practicas.forEach(p => {
-      if (p.descripcion && p.descripcion.trim()) {
-        specs.add(p.descripcion.trim());
-      }
-      if (p.sinonimo && p.sinonimo.trim()) {
-        specs.add(p.sinonimo.trim());
-      }
-    });
     return Array.from(specs).sort((a, b) => a.localeCompare(b));
-  }, [prestadores, practicas]);
+  }, [prestadores]);
 
   const filteredPrestadores = useMemo(() => {
     const normalize = (str: string) => 
@@ -1746,11 +1740,7 @@ export default function App() {
         </head>
         <body>
           <div class="header">
-            <div class="cartilla-title">Mi Cartilla PAMI</div>
-            <div class="pami-info">
-              <div class="agency">PAMI</div>
-              <div>Instituto Nacional de Servicios Sociales<br>para Jubilados y Pensionados</div>
-            </div>
+            <div class="cartilla-title">MI CARTILLA</div>
           </div>
           
           <div class="cartilla-grid">
@@ -1759,7 +1749,7 @@ export default function App() {
           
           <div style="margin-top: 30px; font-size: 11px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 15px;">
             Documento generado el ${new Date().toLocaleDateString('es-AR')} a las ${new Date().toLocaleTimeString('es-AR')}<br>
-            La información contenida en esta cartilla puede estar sujeta a cambios. Ante la duda, comuníquese telefónicamente con el prestador.
+            La información contenida en esta cartilla puede estar sujeta a cambios. Ante la duda, comuníquese a su agencia mas cercana.
           </div>
         </body>
       </html>
@@ -2431,8 +2421,6 @@ export default function App() {
   };
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportedCode, setExportedCode] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
   const [confirmMessage, setConfirmMessage] = useState("");
   const [adminMessage, setAdminMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
@@ -2442,25 +2430,15 @@ export default function App() {
     setAdminMessage(null);
     try {
       const result = await seedDatabase(INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS, PRACTICAS_OME, INITIAL_CENTROS_COORDINADORES, INITIAL_TELEFONOS);
-      const migrated = await migrateData();
-      
-      const cleanedTramites = await cleanupTramites();
-      const cleanedPrestadores = await cleanupPrestadores();
-      const cleanedPracticas = await cleanupPracticas();
-      const cleanedFolletos = await cleanupFolletos();
-      const cleanedTelefonos = await cleanupTelefonos();
-      const cleanedCentros = await cleanupCentrosCoordinadores();
-      
-      const totalCleaned = cleanedTramites + cleanedPrestadores + cleanedPracticas + cleanedFolletos + cleanedTelefonos + cleanedCentros;
       
       setAdminMessage({ 
-        text: `Sincronización completada. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas, ${result.addedCentros} centros y ${result.addedTelefonos} teléfonos nuevos. Se unificaron ${migrated} registros y se eliminaron ${totalCleaned} duplicados.`,
+        text: `Catálogo actualizado con éxito. Se agregaron ${result.addedTramites} trámites, ${result.addedPrestadores} prestadores, ${result.addedFolletos} folletos, ${result.addedPracticas} prácticas, ${result.addedCentros} centros y ${result.addedTelefonos} teléfonos nuevos.`,
         type: 'success'
       });
     } catch (err: any) {
       console.error("Error seeding database:", err);
       setAdminMessage({ 
-        text: `Error al sincronizar datos: ${err.message || "Error desconocido"}. Por favor, revisa la consola para más detalles.`, 
+        text: `Error al actualizar datos: ${err.message || "Error desconocido"}. Por favor, revisa la consola para más detalles.`, 
         type: 'error' 
       });
     } finally {
@@ -2468,92 +2446,89 @@ export default function App() {
     }
   };
 
-  const handleCleanup = async () => {
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportPracticasCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsSaving(true);
+    setAdminMessage(null);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const practicas: Omit<PracticaOME, 'id'>[] = [];
+          for (const row of results.data as any[]) {
+            const codigo = row.COD_PRACTICA?.toString().trim();
+            const descripcion = row.DESC_PRACTICA?.toString().trim();
+            if (!codigo || !descripcion) continue;
+
+            let responsable: 'Médico de Cabecera' | 'Médico Auditor' = 'Médico de Cabecera';
+            if (row.RESPONSABLE && row.RESPONSABLE.toString().toUpperCase().includes('AUDITOR')) {
+              responsable = 'Médico Auditor';
+            }
+
+            practicas.push({
+              codigo,
+              descripcion,
+              modulo: row.DESC_MODULO?.toString().trim() || '',
+              descImpresa: row.DESC_IMPRESA?.toString().trim() || '',
+              responsable
+            });
+          }
+
+          if (practicas.length === 0) {
+            setAdminMessage({ text: "No se encontraron prácticas válidas en el archivo CSV (revisa que las columnas coincidan con RESPONSABLE, DESC_MODULO, COD_PRACTICA, DESC_PRACTICA, DESC_IMPRESA).", type: 'error' });
+            setIsSaving(false);
+            return;
+          }
+
+          const result = await importPracticasBatch(practicas);
+          setAdminMessage({ text: `Se han procesado las prácticas desde el CSV. Se agregaron ${result.addedCount} nuevas y se actualizaron ${result.updatedCount} existentes.`, type: 'success' });
+        } catch (err: any) {
+          console.error("Error importing CSV:", err);
+          setAdminMessage({ text: `Error al importar CSV: ${err.message}`, type: 'error' });
+        } finally {
+          if (csvInputRef.current) csvInputRef.current.value = "";
+          setIsSaving(false);
+        }
+      },
+      error: (error) => {
+        console.error("Papa parse error:", error);
+        setAdminMessage({ text: `Error al leer el archivo CSV: ${error.message}`, type: 'error' });
+        setIsSaving(false);
+        if (csvInputRef.current) csvInputRef.current.value = "";
+      }
+    });
+  };
+
+  const handleDownloadBackup = async () => {
     setIsSaving(true);
     setAdminMessage(null);
     try {
-      const deleted = await cleanupPrestadores();
-      setAdminMessage({ text: `Se eliminaron ${deleted} prestadores duplicados.`, type: 'success' });
+      const data = await getCompleteBackup();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_pami_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setAdminMessage({ text: "¡Backup descargado exitosamente! Revise su carpeta de descargas.", type: 'success' });
     } catch (err) {
-      console.error("Error cleaning up duplicates:", err);
-      setAdminMessage({ text: "Error al limpiar duplicados.", type: 'error' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCleanupTramites = async () => {
-    setIsSaving(true);
-    setAdminMessage(null);
-    try {
-      const deletedTramites = await cleanupTramites();
-      const deletedPracticas = await cleanupPracticas();
-      setAdminMessage({ 
-        text: `Se eliminaron ${deletedTramites} trámites y ${deletedPracticas} prácticas duplicadas.`, 
-        type: 'success' 
-      });
-    } catch (err) {
-      console.error("Error cleaning up duplicates:", err);
-      setAdminMessage({ text: "Error al limpiar duplicados.", type: 'error' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleMigrate = async () => {
-    setIsSaving(true);
-    setAdminMessage(null);
-    try {
-      const migrated = await migrateData();
-      const deletedCentros = await cleanupCentrosCoordinadores();
-      setAdminMessage({ 
-        text: `Se unificaron y corrigieron ${migrated + deletedCentros} registros (Hospitales, Especialidades y Vínculos).`, 
-        type: 'success' 
-      });
-    } catch (err) {
-      console.error("Error migrating data:", err);
-      setAdminMessage({ text: "Error al unificar registros.", type: 'error' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleExportData = async () => {
-    setIsSaving(true);
-    try {
-      const data = await getExportableData();
-      const code = `
-// REEMPLAZAR EL CONTENIDO DE src/initialData.ts CON ESTO PARA HACER LOS CAMBIOS PERMANENTES
-export const INITIAL_TRAMITES = ${JSON.stringify(data.tramites, null, 2)};
-
-export const INITIAL_PRESTADORES = ${JSON.stringify(data.prestadores, null, 2)};
-
-export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
-      `;
-      setExportedCode(code);
-      setIsExportModalOpen(true);
-    } catch (err) {
-      console.error("Error exporting data:", err);
+      console.error("Error downloading backup:", err);
       setAdminMessage({ text: "Error al generar el backup de datos.", type: 'error' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleResetDeletions = async () => {
-    if (!window.confirm("¿Estás seguro de que quieres limpiar el historial de elementos eliminados? Esto permitirá que los elementos originales vuelvan a aparecer en la próxima sincronización.")) return;
-    setIsSaving(true);
-    setAdminMessage(null);
-    try {
-      const count = await resetDeletedLog();
-      setAdminMessage({ text: `Historial de eliminados limpiado (${count} registros).`, type: 'success' });
-    } catch (err) {
-      console.error("Error resetting deletions:", err);
-      setAdminMessage({ text: "Error al limpiar historial.", type: 'error' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+
 
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
@@ -3812,16 +3787,34 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
                 <p className="text-sm text-pami-muted">Identifica quién debe generar la Orden Médica Electrónica</p>
               </div>
               {user && (
-                <Button 
-                  onClick={() => {
-                    setEditingPractica(null);
-                    setIsPracticaModalOpen(true);
-                  }}
-                  className="shrink-0"
-                >
-                  <Plus size={20} />
-                  Nueva Práctica
-                </Button>
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    ref={csvInputRef}
+                    onChange={handleImportPracticasCSV}
+                  />
+                  <Button 
+                    variant="outline"
+                    className="shrink-0 text-[#009EE3] border-[#009EE3]/20 hover:bg-[#009EE3]/5"
+                    onClick={() => csvInputRef.current?.click()}
+                    isLoading={isSaving}
+                  >
+                    <Download size={20} className="mr-2" />
+                    Importar Excel (CSV)
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setEditingPractica(null);
+                      setIsPracticaModalOpen(true);
+                    }}
+                    className="shrink-0"
+                  >
+                    <Plus size={20} />
+                    Nueva Práctica
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -4337,29 +4330,15 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
             </div>
 
             {adminSubTab !== 'usuarios' && (
-              <div className="flex flex-wrap gap-2 items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                <div className="flex gap-2 p-1 bg-gray-50 rounded-lg border border-gray-100">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-pami-muted px-2 py-1 flex items-center">Limpieza:</span>
-                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanup} isLoading={isSaving}>
-                    Prestadores
-                  </Button>
-                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3" onClick={handleCleanupTramites} isLoading={isSaving}>
-                    Trámites y Prácticas
-                  </Button>
-                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3 bg-pami-blue/5 border-pami-blue/20 text-pami-blue" onClick={handleMigrate} isLoading={isSaving} title="Unifica nombres de hospitales (Gutierrez, San Roque, etc)">
-                    Unificar Nombres
-                  </Button>
-                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3 text-pami-blue border-pami-blue/20 hover:bg-pami-blue/5" onClick={handleExportData} isLoading={isSaving} title="Genera el código para respaldar tus cambios manuales en el archivo del sistema">
-                    Protección de Datos (Exportar a Código)
-                  </Button>
-                  <Button variant="outline" className="text-[10px] py-1 h-auto px-3 text-red-600 border-red-200 hover:bg-red-50" onClick={handleResetDeletions} isLoading={isSaving} title="Permite que los items borrados vuelvan a aparecer al sincronizar">
-                    Limpiar Historial Borrados
-                  </Button>
-                </div>
-                
-                <Button variant="outline" className="text-[10px] py-1 h-auto px-3 ml-auto" onClick={handleSeed} isLoading={isSaving}>
-                  <Activity size={12} className="mr-1" />
-                  Sincronizar Datos Iniciales
+              <div className="flex flex-wrap gap-2 items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm justify-between">
+                <Button variant="outline" className="text-sm py-2 px-4 shadow-sm" onClick={handleSeed} isLoading={isSaving} title="Agrega datos nuevos de la plantilla sin borrar ni duplicar lo existente">
+                  <Activity size={16} className="mr-2" />
+                  Actualizar Catálogo (Seguro)
+                </Button>
+
+                <Button variant="outline" className="text-sm py-2 px-4 border-[#009EE3] text-[#009EE3] hover:bg-[#009EE3]/5" onClick={handleDownloadBackup} isLoading={isSaving} title="Descarga un archivo con toda la información de PAMI en tu computadora">
+                  <Download size={16} className="mr-2" />
+                  Descargar Backup Completo
                 </Button>
               </div>
             )}
@@ -5110,52 +5089,7 @@ export const INITIAL_FOLLETOS = ${JSON.stringify(data.folletos, null, 2)};
         </form>
       </Modal>
 
-      {/* Export Modal */}
-      {isExportModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-pami-blue/40 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col p-8"
-          >
-            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-              <div>
-                <h3 className="text-xl font-bold text-pami-text flex items-center gap-2">
-                  <ShieldCheck className="text-pami-blue" />
-                  Protección Total de Datos
-                </h3>
-                <p className="text-sm text-pami-muted mt-1">Este código contiene TODO lo que hay en la base de datos hoy. Copia esto y pégalo en el chat para que yo lo actualice en el sistema para siempre.</p>
-              </div>
-              <button 
-                onClick={() => setIsExportModalOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-auto bg-gray-900 rounded-xl p-6 font-mono text-[10px] leading-relaxed text-blue-300">
-              <pre>{exportedCode}</pre>
-            </div>
-            
-            <div className="mt-6 flex justify-end gap-4">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  navigator.clipboard.writeText(exportedCode);
-                  setAdminMessage({ text: "¡Código copiado! Pégalo en el chat para que yo lo guarde permanentemente.", type: 'success' });
-                }}
-              >
-                <Copy size={16} className="mr-2" />
-                Copiar Código Completo
-              </Button>
-              <Button onClick={() => setIsExportModalOpen(false)}>
-                Cerrar
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+
 
       {/* Modal for Delete Confirmation */}
       <Modal 
