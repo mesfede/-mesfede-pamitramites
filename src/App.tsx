@@ -1505,11 +1505,12 @@ export default function App() {
             .info-item { display: block; }
             .horarios-grid { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; background: #f8fafc; padding: 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
             .horarios-title-mini { font-size: 9px; font-weight: 700; color: #0b2344; margin-bottom: 2px; text-transform: uppercase; }
-            .horario-item { display: flex; justify-content: space-between; font-size: 9px; border-bottom: 1px solid #f1f5f9; padding-bottom: 1px; }
-            .horario-item:last-child { border-bottom: none; padding-bottom: 0; }
+            .horario-item { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; font-size: 9px; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px; gap: 2px; }
+            .horario-item:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
             .horario-item .dia { font-weight: 700; color: #64748b; text-transform: uppercase; }
-            .horario-item .hora { color: #0369a1; font-weight: 600; text-align: right; }
+            .horario-item .hora { color: #0369a1; font-weight: 600; white-space: pre-wrap; line-height: 1.2; }
             .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 9px; color: #a0aec0; text-align: center; }
+            .info-item { display: flex; align-items: center; gap: 4px; }
             @media print {
               @page { margin: 1cm; }
               body { padding: 0; margin: 0; }
@@ -1549,20 +1550,21 @@ export default function App() {
                         ${p.nombre}
                       </div>
                       <div class="prestador-info">
-                        ${p.direccion ? `<div class="info-item"><strong>Dir:</strong> ${p.direccion}</div>` : ''}
-                        ${p.telefono ? `<div class="info-item"><strong>Tel:</strong> ${p.telefono}</div>` : ''}
-                        ${p.whatsapp ? `<div class="info-item"><strong>WA:</strong> ${p.whatsapp}</div>` : ''}
+                        ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span><strong>Dir:</strong> ${p.direccion}</span></div>` : ''}
+                        ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <span><strong>Tel:</strong> ${p.telefono}</span></div>` : ''}
+                        ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366; flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <span><strong>WA:</strong> ${p.whatsapp}</span></div>` : ''}
                         ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
                           <div class="horarios-grid">
                             <div class="horarios-title-mini">Horarios de Atención</div>
                             ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
                               const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
                               if (!hValue) return '';
+                              const hValueFormatted = hValue.replace(/\s*-\s*/g, '<br/>');
                               const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
                               return `
                                 <div class="horario-item">
                                   <span class="dia">${diaName}</span>
-                                  <span class="hora">${hValue}</span>
+                                  <span class="hora">${hValueFormatted}</span>
                                 </div>
                               `;
                             }).join('')}
@@ -1605,11 +1607,11 @@ export default function App() {
           <div class="module-title">${title}</div>
           <div class="prestador-name">${p.nombre}</div>
           <div class="prestador-info">
-            ${p.localidad ? `<div class="info-item"><strong>Localidad:</strong> ${p.localidad}</div>` : ''}
-            ${p.direccion ? `<div class="info-item"><strong>Dirección:</strong> ${p.direccion}</div>` : ''}
-            ${p.telefono ? `<div class="info-item"><strong>Teléfono:</strong> ${p.telefono}</div>` : ''}
-            ${p.whatsapp ? `<div class="info-item"><strong>WhatsApp:</strong> ${p.whatsapp}</div>` : ''}
-            ${p.email ? `<div class="info-item"><strong>Email:</strong> ${p.email}</div>` : ''}
+            ${p.localidad ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.2-4.7-8-8.9-8-11.5a8 8 0 1 1 16 0c0 2.6-3.8 6.8-8 11.5z"/></svg> <span><strong>Localidad:</strong> ${p.localidad}</span></div>` : ''}
+            ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span><strong>Dirección:</strong> ${p.direccion}</span></div>` : ''}
+            ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <span><strong>Teléfono:</strong> ${p.telefono}</span></div>` : ''}
+            ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366; flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <span><strong>WhatsApp:</strong> ${p.whatsapp}</span></div>` : ''}
+            ${p.email ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span><strong>Email:</strong> ${p.email}</span></div>` : ''}
           </div>
           ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
             <div class="horarios-grid">
@@ -1617,9 +1619,10 @@ export default function App() {
               ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
                 const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
                 if (!hValue) return '';
+                const hValueFormatted = hValue.replace(/\s*-\s*/g, '<br/>');
                 return `<div class="horario-item">
                   <span class="dia">${dia.substring(0, 3)}.</span>
-                  <span class="horas">${hValue}</span>
+                  <span class="horas">${hValueFormatted}</span>
                 </div>`;
               }).join('')}
             </div>
@@ -1709,16 +1712,22 @@ export default function App() {
             }
             .horario-item { 
               display: flex; 
-              justify-content: space-between; 
-              font-size: 12px;
-              padding: 2px 0;
+              flex-direction: column;
+              justify-content: center; 
+              align-items: flex-start;
+              font-size: 11px;
+              padding-bottom: 4px;
+              margin-bottom: 4px;
               border-bottom: 1px solid #f1f5f9;
+              gap: 2px;
             }
             .horario-item:last-child {
               border-bottom: none;
+              padding-bottom: 0;
+              margin-bottom: 0;
             }
             .horario-item .dia { font-weight: 600; color: #4a5568; text-transform: uppercase; }
-            .horario-item .horas { color: #2d3748; }
+            .horario-item .horas { color: #2d3748; white-space: pre-wrap; line-height: 1.2; font-weight: 600; }
             .notas-box {
               margin-top: 10px;
               padding: 10px;
@@ -1789,17 +1798,18 @@ export default function App() {
             .pami-info { text-align: right; color: #718096; line-height: 1.1; }
             .pami-info .agency { font-size: 24px; font-weight: 700; color: #0b2344; font-family: 'Varela Round', sans-serif; }
             .prestador-card { padding: 15px; border: 1px solid #edf2f7; border-radius: 6px; background-color: #fff; }
-            .prestador-name { font-size: 18px; font-weight: 700; color: #1a202c; margin-bottom: 5px; text-transform: uppercase; }
-            .prestador-info { font-size: 14px; color: #4a5568; display: flex; flex-direction: column; gap: 5px; }
+            .prestador-name { font-size: 22px; font-weight: 700; color: #1a202c; margin-bottom: 8px; text-transform: uppercase; }
+            .prestador-info { font-size: 17px; color: #4a5568; display: flex; flex-direction: column; gap: 8px; }
             .info-item { display: block; }
-            .specs-list { margin-top: 15px; font-size: 12px; }
-            .specs-title { font-weight: 700; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
-            .horarios-grid { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
-            .horarios-title { font-weight: 700; font-size: 13px; text-transform: uppercase; margin-bottom: 10px; color: #0b2344; grid-column: 1 / -1; }
-            .horario-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 8px 12px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 13px; }
+            .specs-list { margin-top: 15px; font-size: 15px; }
+            .specs-title { font-weight: 700; font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+            .horarios-grid { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
+            .horarios-title { font-weight: 700; font-size: 15px; text-transform: uppercase; margin-bottom: 12px; color: #0b2344; grid-column: 1 / -1; }
+            .horario-item { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; background: #fff; padding: 10px 14px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 15px; gap: 4px; }
             .horario-item .dia { font-weight: 700; color: #64748b; text-transform: uppercase; }
-            .horario-item .hora { color: #0369a1; font-weight: 600; }
+            .horario-item .hora { color: #0369a1; font-weight: 600; white-space: pre-wrap; }
             .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 9px; color: #a0aec0; text-align: center; }
+            .info-item { display: flex; align-items: center; gap: 6px; }
             @media print {
               @page { margin: 1cm; }
               body { padding: 0; margin: 0; }
@@ -1824,12 +1834,12 @@ export default function App() {
           <div class="prestador-card">
             <div class="prestador-name">${p.nombre}</div>
             <div class="prestador-info">
-              ${p.localidad ? `<div class="info-item"><strong>Localidad:</strong> ${p.localidad}</div>` : ''}
-              ${p.direccion ? `<div class="info-item"><strong>Dirección:</strong> ${p.direccion}</div>` : ''}
-              ${p.telefono ? `<div class="info-item"><strong>Teléfono:</strong> ${p.telefono}</div>` : ''}
-              ${p.whatsapp ? `<div class="info-item"><strong>WhatsApp:</strong> ${p.whatsapp}</div>` : ''}
-              ${p.email ? `<div class="info-item"><strong>Email:</strong> ${p.email}</div>` : ''}
-              ${p.notas ? `<div class="info-item" style="margin-top: 10px;"><strong>Notas:</strong><br>${p.notas}</div>` : ''}
+              ${p.localidad ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096;"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.2-4.7-8-8.9-8-11.5a8 8 0 1 1 16 0c0 2.6-3.8 6.8-8 11.5z"/></svg> <strong>Localidad:</strong> ${p.localidad}</div>` : ''}
+              ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <strong>Dirección:</strong> ${p.direccion}</div>` : ''}
+              ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <strong>Teléfono:</strong> ${p.telefono}</div>` : ''}
+              ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <strong>WhatsApp:</strong> ${p.whatsapp}</div>` : ''}
+              ${p.email ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <strong>Email:</strong> ${p.email}</div>` : ''}
+              ${p.notas ? `<div class="info-item align-top" style="align-items:flex-start; margin-top: 10px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; margin-top:3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> <div style="display:flex; flex-direction:column;"><strong>Notas:</strong><span>${p.notas.replace(/\n/g, '<br>')}</span></div></div>` : ''}
             </div>
             
             ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
@@ -1838,11 +1848,12 @@ export default function App() {
                 ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
                   const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
                   if (!hValue) return '';
+                  const hValueFormatted = hValue.replace(/\s*-\s*/g, '<br/>');
                   const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
                   return `
                     <div class="horario-item">
                       <span class="dia">${diaName}</span>
-                      <span class="hora">${hValue}</span>
+                      <span class="hora">${hValueFormatted}</span>
                     </div>
                   `;
                 }).join('')}
