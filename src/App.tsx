@@ -2557,7 +2557,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-pami-bg">
+      <div className="min-h-screen flex items-center justify-center">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
@@ -2568,13 +2568,13 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F4F8] md:bg-pami-bg font-sans text-pami-text pb-20 md:pb-0">
+    <div className="min-h-screen font-sans text-pami-text pb-20 md:pb-0">
       {!user ? (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-pami-blue/5 to-pami-cyan/5">
           <Login />
         </div>
       ) : userIsDisabled ? (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-pami-bg">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4 border border-gray-100">
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={32} />
@@ -2588,7 +2588,7 @@ export default function App() {
           </div>
         </div>
       ) : !isViewer ? (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-pami-bg">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4 border border-gray-100">
             <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={32} />
@@ -2890,7 +2890,7 @@ export default function App() {
 
           <main className={cn("max-w-7xl mx-auto px-4 pb-8", isMobile && activeTab === 'home' ? "pt-0 px-0" : "pt-4")}>
             {isMobile && activeTab === 'home' && (
-              <div className="w-full bg-[#F0F4F8] min-h-[calc(100vh-80px)] pb-24">
+              <div className="w-full min-h-[calc(100vh-80px)] pb-24">
                 {/* Mobile Header Box */}
                 <div className="bg-[#009EE3] text-white rounded-b-[40px] px-6 pt-10 pb-6 relative shadow-md">
                   <div className="flex justify-between items-center mb-6">
@@ -3208,7 +3208,7 @@ export default function App() {
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                          {t.descripcion.split('\n').map((line, idx) => {
+                                          {t.descripcion.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/li>|<\/div>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').split('\n').map((line, idx) => {
                                             if (!line.trim()) return null;
                                             const parts = line.split('|').map(p => p.trim());
                                             return (
@@ -3236,7 +3236,7 @@ export default function App() {
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                          {t.descripcion.split('\n').map((line, idx) => {
+                                          {t.descripcion.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/li>|<\/div>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').split('\n').map((line, idx) => {
                                             if (!line.trim()) return null;
                                             if (line.includes('Área / \tContactos') || line.toLowerCase().startsWith('área /') && line.toLowerCase().includes('contacto')) return null;
                                             if (line.includes('Práctica') && line.includes('Dirección de mail')) return null;
