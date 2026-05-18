@@ -1602,32 +1602,39 @@ export default function App() {
       const p = prestadores.find((p) => p.nombre === name);
       if (!p) return '';
 
+      const tieneHorarios = p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v);
+
       return `
         <div class="cartilla-module">
-          <div class="module-title">${title}</div>
-          <div class="prestador-name">${p.nombre}</div>
-          <div class="prestador-info">
-            ${p.localidad ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.2-4.7-8-8.9-8-11.5a8 8 0 1 1 16 0c0 2.6-3.8 6.8-8 11.5z"/></svg> <span><strong>Localidad:</strong> ${p.localidad}</span></div>` : ''}
-            ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span><strong>Dirección:</strong> ${p.direccion}</span></div>` : ''}
-            ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <span><strong>Teléfono:</strong> ${p.telefono}</span></div>` : ''}
-            ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366; flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <span><strong>WhatsApp:</strong> ${p.whatsapp}</span></div>` : ''}
-            ${p.email ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span><strong>Email:</strong> ${p.email}</span></div>` : ''}
-          </div>
-          ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
-            <div class="horarios-grid">
-              <div class="horarios-title-mini">Horarios de Atención</div>
-              ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
-                const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
-                if (!hValue) return '';
-                const hValueFormatted = hValue.replace(/\s*-\s*/g, '<br/>');
-                return `<div class="horario-item">
-                  <span class="dia">${dia.substring(0, 3)}.</span>
-                  <span class="horas">${hValueFormatted}</span>
-                </div>`;
-              }).join('')}
+          <div class="module-title">${title} <span style="color:#0b2344;">- ${p.nombre}</span></div>
+          <div class="prestador-content">
+            <div class="prestador-info-col">
+              <div class="prestador-info">
+                ${p.localidad ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.2-4.7-8-8.9-8-11.5a8 8 0 1 1 16 0c0 2.6-3.8 6.8-8 11.5z"/></svg> <span><strong>Localidad:</strong> ${p.localidad}</span></div>` : ''}
+                ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span><strong>Dirección:</strong> ${p.direccion}</span></div>` : ''}
+                ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <span><strong>Teléfono:</strong> ${p.telefono}</span></div>` : ''}
+                ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366; flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <span><strong>WhatsApp:</strong> ${p.whatsapp}</span></div>` : ''}
+                ${p.email ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span><strong>Email:</strong> ${p.email}</span></div>` : ''}
+              </div>
+              ${p.notas ? `<div class="notas-box"><strong>Notas:</strong><br/>${p.notas}</div>` : ''}
             </div>
-          ` : ''}
-          ${p.notas ? `<div class="notas-box"><strong>Notas:</strong><br/>${p.notas}</div>` : ''}
+            ${tieneHorarios ? `
+            <div class="prestador-horario-col">
+              <div class="horarios-grid">
+                <div class="horarios-title-mini">Horarios de Atención</div>
+                ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                  const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
+                  if (!hValue) return '';
+                  const hValueFormatted = hValue.replace(/\s*-\s*/g, ' - ');
+                  return `<div class="horario-item">
+                    <span class="dia">${dia.substring(0, 3)}.</span>
+                    <span class="horas">${hValueFormatted}</span>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+            ` : ''}
+          </div>
         </div>
       `;
     };
@@ -1645,97 +1652,108 @@ export default function App() {
           <title>Cartilla de Prestadores</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Varela+Round&display=swap');
-            @page { margin: 1.5cm; }
-            body { font-family: 'Inter', sans-serif; color: #1a202c; line-height: 1.4; padding: 0; margin: 0; }
-            .header { border-bottom: 2px solid #0b2344; padding-bottom: 10px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .cartilla-title { color: #0b2344; font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; }
+            @page { margin: 1cm; }
+            body { font-family: 'Inter', sans-serif; color: #1a202c; line-height: 1.3; padding: 0; margin: 0; }
+            .header { border-bottom: 2px solid #0b2344; padding-bottom: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .cartilla-title { color: #0b2344; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; }
             .pami-info { text-align: right; color: #718096; line-height: 1.1; }
-            .pami-info .agency { font-size: 24px; font-weight: 700; color: #0b2344; font-family: 'Varela Round', sans-serif; }
+            .pami-info .agency { font-size: 20px; font-weight: 700; color: #0b2344; font-family: 'Varela Round', sans-serif; }
             
             .cartilla-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 20px;
+              display: flex;
+              flex-direction: column;
+              gap: 15px;
             }
             .cartilla-module {
-              border: 1px solid #e2e8f0;
+              border: 1px solid #cbd5e1;
               border-radius: 8px;
-              padding: 18px;
+              padding: 15px 20px;
               background-color: #f8fafc;
               break-inside: avoid;
             }
             .module-title {
-              font-size: 13px;
+              font-size: 16px;
               font-weight: 800;
               text-transform: uppercase;
               color: #009EE3;
-              margin-bottom: 8px;
-              border-bottom: 1px solid #cbd5e1;
-              padding-bottom: 4px;
+              margin-bottom: 10px;
+              border-bottom: 2px solid #cbd5e1;
+              padding-bottom: 5px;
               letter-spacing: 0.05em;
             }
+            .prestador-content {
+              display: flex;
+              gap: 20px;
+            }
+            .prestador-info-col {
+              flex: 1;
+            }
+            .prestador-horario-col {
+              width: 300px;
+            }
             .prestador-name {
-              font-size: 18px;
-              font-weight: 700;
-              color: #0b2344;
-              margin-bottom: 10px;
-              text-transform: uppercase;
-              line-height: 1.2;
+              display: none; /* incorporated in module-title */
             }
             .prestador-info {
-              display: grid;
-              grid-template-columns: 1fr;
-              gap: 6px;
-              margin-bottom: 12px;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+              margin-bottom: 5px;
             }
             .info-item {
-              font-size: 13px;
-              color: #4a5568;
+              font-size: 14px;
+              color: #1a202c;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .info-item svg {
+              width: 16px; height: 16px;
             }
             .info-item strong {
-              color: #2d3748;
-              font-weight: 600;
+              color: #0b2344;
+              font-weight: 700;
             }
             .horarios-grid {
               background: #fff;
-              padding: 10px;
+              padding: 10px 15px;
               border-radius: 6px;
               border: 1px dashed #cbd5e1;
-              margin-top: 10px;
+              margin-top: 0;
             }
             .horarios-title-mini { 
-              font-size: 11px; 
-              font-weight: 700; 
-              color: #718096; 
-              margin-bottom: 6px; 
+              font-size: 13px; 
+              font-weight: 800; 
+              color: #4a5568; 
+              margin-bottom: 8px; 
               text-transform: uppercase; 
             }
             .horario-item { 
               display: flex; 
-              flex-direction: column;
-              justify-content: center; 
-              align-items: flex-start;
-              font-size: 11px;
+              flex-direction: row;
+              justify-content: space-between; 
+              align-items: center;
+              font-size: 13px;
               padding-bottom: 4px;
               margin-bottom: 4px;
               border-bottom: 1px solid #f1f5f9;
-              gap: 2px;
+              gap: 5px;
             }
             .horario-item:last-child {
               border-bottom: none;
               padding-bottom: 0;
               margin-bottom: 0;
             }
-            .horario-item .dia { font-weight: 600; color: #4a5568; text-transform: uppercase; }
-            .horario-item .horas { color: #2d3748; white-space: pre-wrap; line-height: 1.2; font-weight: 600; }
+            .horario-item .dia { font-weight: 700; color: #4a5568; text-transform: uppercase; }
+            .horario-item .horas { color: #0b2344; white-space: pre-wrap; line-height: 1.1; font-weight: 700; text-align: right; }
             .notas-box {
               margin-top: 10px;
-              padding: 10px;
+              padding: 10px 15px;
               background-color: #fff;
-              border-left: 3px solid #cbd5e1;
-              font-size: 12px;
-              color: #4a5568;
-              border-radius: 0 4px 4px 0;
+              border-left: 4px solid #009EE3;
+              font-size: 14px;
+              color: #1a202c;
+              border-radius: 0 8px 8px 0;
             }
             @media print {
               .cartilla-module {
@@ -1753,10 +1771,10 @@ export default function App() {
           </div>
           
           <div class="cartilla-grid">
-            ${modulesHtml || '<div style="grid-column: span 2; text-align: center; color: #718096; padding: 40px;">No se han seleccionado prestadores para esta cartilla.</div>'}
+            ${modulesHtml || '<div style="text-align: center; color: #718096; padding: 40px; font-size: 18px;">No se han seleccionado prestadores para esta cartilla.</div>'}
           </div>
           
-          <div style="margin-top: 30px; font-size: 11px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+          <div style="margin-top: 40px; font-size: 14px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
             Documento generado el ${new Date().toLocaleDateString('es-AR')} a las ${new Date().toLocaleTimeString('es-AR')}<br>
             La información contenida en esta cartilla puede estar sujeta a cambios. Ante la duda, comuníquese a su agencia mas cercana.
           </div>

@@ -2051,9 +2051,9 @@ export async function unifySudamericanoHospitals() {
     const hSudaPlural = prestadoresDocs.find(p => p.nombre.toUpperCase().trim() === 'HOSPITAL SUDAMERICANOS');
 
     // If already unified into one, do nothing unless we have duplicates
-    if (!hSuda && !hPrivSuda && hSudaPlural) return 0;
+    if (hSuda && !hPrivSuda && !hSudaPlural) return 0;
     
-    let targetDocId = hSudaPlural?.id || hSuda?.id || hPrivSuda?.id;
+    let targetDocId = hSuda?.id || hSudaPlural?.id || hPrivSuda?.id;
     if (!targetDocId) return 0; // Not found
 
     const allSpecs = new Set<string>();
@@ -2071,7 +2071,7 @@ export async function unifySudamericanoHospitals() {
 
     // Update target doc
     batch.update(doc(db, PRESTADORES_COLLECTION, targetDocId), {
-      nombre: 'HOSPITAL SUDAMERICANOS',
+      nombre: 'HOSPITAL SUDAMERICANO',
       especialidades: Array.from(allSpecs),
       especialidadesTopeadas: Array.from(allTopeadas),
       updatedAt: serverTimestamp()
