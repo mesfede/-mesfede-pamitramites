@@ -80,14 +80,14 @@ for (let i = -1; i <= itemsPerRow; i++) {
   }
 }
 
-const svg = '<svg width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" fill="none" stroke="#0b2344" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">\n  ' + svgElements.join('\n  ') + '\n</svg>';
+const svg = '<svg width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" fill="none" stroke="#0b2344" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">\n  ' + svgElements.join('\n  ') + '\n</svg>';
 
 const encoded = encodeURIComponent(svg).replace(/'/g, "%27");
 const cssPattern = "data:image/svg+xml," + encoded;
 
 let css = fs.readFileSync('src/index.css', 'utf-8');
 css = css.replace(/background-image: url\("data:image\/svg\+xml,[^"]+"\);/, 'background-image: url("' + cssPattern + '");');
-css = css.replace(/opacity: 0\.[0-9]+;/, 'opacity: 0.05;');
+css = css.replace(/opacity: 0\.[0-9]+;/, 'opacity: 0.03;');
 
 fs.writeFileSync('src/index.css', css);
 console.log('Done SVG update');
