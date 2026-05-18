@@ -2557,12 +2557,20 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="w-12 h-12 border-4 border-pami-blue border-t-transparent rounded-full"
-        />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center justify-center relative z-10">
+          <div className="text-5xl md:text-7xl font-black tracking-tighter relative overflow-hidden pb-2 select-none">
+            <span className="text-gray-100">GuíaP!</span>
+            <motion.div 
+              initial={{ clipPath: "inset(100% 0 0 0)" }}
+              animate={{ clipPath: ["inset(100% 0 0 0)", "inset(0% 0 0 0)", "inset(0% 0 0 0)"] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut", times: [0, 0.8, 1] }}
+              className="absolute top-0 left-0 flex whitespace-nowrap"
+            >
+              <span className="text-[#0b2344]">GuíaP!</span>
+            </motion.div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -3208,7 +3216,7 @@ export default function App() {
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                          {t.descripcion.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/li>|<\/div>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').split('\n').map((line, idx) => {
+                                          {(t.descripcion || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/li>|<\/div>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').split('\n').map((line, idx) => {
                                             if (!line.trim()) return null;
                                             const parts = line.split('|').map(p => p.trim());
                                             return (
@@ -3236,7 +3244,7 @@ export default function App() {
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                          {t.descripcion.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/li>|<\/div>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').split('\n').map((line, idx) => {
+                                          {(t.descripcion || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/li>|<\/div>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').split('\n').map((line, idx) => {
                                             if (!line.trim()) return null;
                                             if (line.includes('Área / \tContactos') || line.toLowerCase().startsWith('área /') && line.toLowerCase().includes('contacto')) return null;
                                             if (line.includes('Práctica') && line.includes('Dirección de mail')) return null;
