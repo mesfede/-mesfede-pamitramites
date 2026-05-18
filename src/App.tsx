@@ -1495,22 +1495,22 @@ export default function App() {
             .pami-info { text-align: right; color: #718096; line-height: 1.1; }
             .pami-info .agency { font-size: 12px; font-weight: 700; color: #0b2344; }
             .pami-info .ugl { font-size: 10px; }
-            .locality-section { margin-bottom: 20px; }
-            .locality-title { font-size: 14px; font-weight: 700; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; break-after: avoid; }
-            .locality-title::before { content: ""; display: inline-block; width: 3px; height: 14px; background: #0b2344; border-radius: 1px; }
-            .prestador-card { margin-bottom: 8px; padding: 8px; border: 1px solid #edf2f7; border-radius: 6px; break-inside: avoid; background-color: #fff; }
-            .prestador-name { font-size: 12px; font-weight: 700; color: #1a202c; margin-bottom: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 4px; }
-            .prestador-name svg { color: #0b2344; flex-shrink: 0; }
-            .prestador-info { font-size: 11px; color: #4a5568; display: flex; flex-direction: column; gap: 2px; }
-            .info-item { display: block; }
-            .horarios-grid { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; background: #f8fafc; padding: 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
-            .horarios-title-mini { font-size: 9px; font-weight: 700; color: #0b2344; margin-bottom: 2px; text-transform: uppercase; }
-            .horario-item { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; font-size: 9px; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px; gap: 2px; }
+            .locality-section { margin-bottom: 25px; }
+            .locality-title { font-size: 16px; font-weight: 800; color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 15px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; break-after: avoid; }
+            .locality-title::before { content: ""; display: inline-block; width: 4px; height: 16px; background: #0b2344; border-radius: 2px; }
+            .prestador-card { padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 6px; break-inside: avoid; background-color: #f8fafc; display: flex; flex-direction: column; gap: 10px; }
+            .prestador-name { font-size: 15px; font-weight: 800; color: #0b2344; margin-bottom: 4px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+            .prestador-name svg { color: #009EE3; flex-shrink: 0; width: 16px; height: 16px; }
+            .prestador-info { font-size: 13px; color: #1a202c; display: flex; flex-direction: column; gap: 4px; }
+            .info-item { display: flex; align-items: center; gap: 6px; }
+            .info-item svg { width: 12px; height: 12px; color: #718096; flex-shrink: 0; }
+            .horarios-grid { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; background: #fff; padding: 8px 12px; border-radius: 6px; border: 1px dashed #cbd5e1; }
+            .horarios-title-mini { font-size: 11px; font-weight: 800; color: #4a5568; margin-bottom: 4px; text-transform: uppercase; }
+            .horario-item { display: flex; flex-direction: row; justify-content: space-between; align-items: center; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px; margin-bottom: 3px; gap: 4px; }
             .horario-item:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-            .horario-item .dia { font-weight: 700; color: #64748b; text-transform: uppercase; }
-            .horario-item .hora { color: #0369a1; font-weight: 600; white-space: pre-wrap; line-height: 1.2; }
-            .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 9px; color: #a0aec0; text-align: center; }
-            .info-item { display: flex; align-items: center; gap: 4px; }
+            .horario-item .dia { font-weight: 700; color: #4a5568; text-transform: uppercase; }
+            .horario-item .hora { color: #0b2344; font-weight: 700; white-space: pre-wrap; line-height: 1.2; text-align: right; }
+            .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 11px; color: #a0aec0; text-align: center; }
             @media print {
               @page { margin: 1cm; }
               body { padding: 0; margin: 0; }
@@ -1536,7 +1536,7 @@ export default function App() {
           ${localities.map(loc => `
             <div class="locality-section">
               <div class="locality-title">${loc}</div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                 ${grouped[loc].map(p => {
                   const unified = unifyTerms(p.especialidades || []);
                   const isPMedico = unified.some(s => s.toUpperCase().includes('MEDICO DE CABECERA') || s.toUpperCase().includes('MÉDICO DE CABECERA'));
@@ -1544,33 +1544,33 @@ export default function App() {
                     <div class="prestador-card">
                       <div class="prestador-name">
                         ${isPMedico 
-                          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
-                          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v14"/><path d="M19 21V7"/><path d="M14 7v14"/><path d="M9 7v14"/><path d="M11 2h2v5h-2z"/></svg>`
+                          ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+                          : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v14"/><path d="M19 21V7"/><path d="M14 7v14"/><path d="M9 7v14"/><path d="M11 2h2v5h-2z"/></svg>`
                         }
                         ${p.nombre}
                       </div>
                       <div class="prestador-info">
-                        ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span><strong>Dir:</strong> ${p.direccion}</span></div>` : ''}
-                        ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <span><strong>Tel:</strong> ${p.telefono}</span></div>` : ''}
-                        ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366; flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <span><strong>WA:</strong> ${p.whatsapp}</span></div>` : ''}
-                        ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
-                          <div class="horarios-grid">
-                            <div class="horarios-title-mini">Horarios de Atención</div>
-                            ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
-                              const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
-                              if (!hValue) return '';
-                              const hValueFormatted = hValue.replace(/\s*-\s*/g, '<br/>');
-                              const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
-                              return `
-                                <div class="horario-item">
-                                  <span class="dia">${diaName}</span>
-                                  <span class="hora">${hValueFormatted}</span>
-                                </div>
-                              `;
-                            }).join('')}
-                          </div>
-                        ` : ''}
+                        ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span><strong>Dir:</strong> ${p.direccion}</span></div>` : ''}
+                        ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <span><strong>Tel:</strong> ${p.telefono}</span></div>` : ''}
+                        ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <span><strong>WA:</strong> ${p.whatsapp}</span></div>` : ''}
                       </div>
+                      ${p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v) ? `
+                        <div class="horarios-grid">
+                          <div class="horarios-title-mini">Horarios de Atención</div>
+                          ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                            const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
+                            if (!hValue) return '';
+                            const hValueFormatted = hValue.replace(/\s*-\s*/g, ' - ');
+                            const diaName = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado' }[dia] || dia;
+                            return `
+                              <div class="horario-item">
+                                <span class="dia">${diaName}</span>
+                                <span class="hora">${hValueFormatted}</span>
+                              </div>
+                            `;
+                          }).join('')}
+                        </div>
+                      ` : ''}
                     </div>
                   `;
                 }).join('')}
