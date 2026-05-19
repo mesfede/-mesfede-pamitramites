@@ -121,7 +121,8 @@ import {
   unifyTerms,
   purgeSpecialtyFromDatabase,
   getCompleteBackup,
-  importPracticasBatch
+  importPracticasBatch,
+  updateUserLastSeen
 } from './services/firestore';
 import Papa from 'papaparse';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
@@ -1068,6 +1069,21 @@ export default function App() {
 
     return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (user && !userIsDisabled) {
+      // Update immediately
+      updateUserLastSeen(user.uid);
+      // Update every 2 minutes
+      interval = setInterval(() => {
+        updateUserLastSeen(user.uid);
+      }, 2 * 60 * 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user, userIsDisabled]);
 
   useEffect(() => {
     // Wait until auth state is determined

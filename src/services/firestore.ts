@@ -1165,6 +1165,17 @@ export async function deleteAllTelefonos() {
   }
 }
 
+export async function updateUserLastSeen(uid: string) {
+  try {
+    const docRef = doc(db, 'users', uid);
+    await setDoc(docRef, {
+      lastSeen: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.error("Error updating user last seen:", error);
+  }
+}
+
 export function subscribeToUsers(callback: (users: any[]) => void) {
   const q = query(collection(db, 'users'), orderBy('email', 'asc'));
   return onSnapshot(q, (snapshot) => {

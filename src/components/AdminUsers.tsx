@@ -209,6 +209,7 @@ export const AdminUsers: React.FC = () => {
               <tr className="text-sm font-semibold text-gray-500 border-b border-gray-100">
                 <th className="px-6 py-4">Usuario</th>
                 <th className="px-6 py-4">Rol</th>
+                <th className="px-6 py-4">Conexión</th>
                 <th className="px-6 py-4">Password</th>
                 <th className="px-6 py-4">Estado</th>
                 <th className="px-6 py-4">Acciones</th>
@@ -234,6 +235,25 @@ export const AdminUsers: React.FC = () => {
                       <Shield size={12} />
                       {u.role === 'admin' ? 'Administrador' : 'Solo Lectura'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      if (!u.lastSeen) return <span className="text-gray-400 italic text-xs">Nunca</span>;
+                      const date = u.lastSeen.toDate ? u.lastSeen.toDate() : new Date(u.lastSeen);
+                      const now = new Date();
+                      const diffMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
+                      if (diffMinutes < 5) {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            En línea
+                          </span>
+                        );
+                      }
+                      if (diffMinutes < 60) return <span className="text-gray-500 text-xs">Hace {diffMinutes} min</span>;
+                      if (diffMinutes < 1440) return <span className="text-gray-500 text-xs">Hace {Math.floor(diffMinutes / 60)} hs</span>;
+                      return <span className="text-gray-500 text-xs">{date.toLocaleDateString()}</span>;
+                    })()}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
