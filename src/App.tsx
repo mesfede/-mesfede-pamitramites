@@ -97,6 +97,7 @@ import {
   seedDatabase,
   uploadFile,
   unifySudamericanoHospitals,
+  renameSanRoque,
   unifyIpensa,
   seedDialisis,
   testConnection,
@@ -1191,6 +1192,12 @@ export default function App() {
           await unifySudamericanoHospitals();
         } catch(e) {
           console.error("SUDAMERICANO UNIFY ERR:", e);
+        }
+
+        try {
+          await renameSanRoque();
+        } catch(e) {
+          console.error("SAN ROQUE RENAME ERR:", e);
         }
 
         try {

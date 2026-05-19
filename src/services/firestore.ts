@@ -43,7 +43,7 @@ const HOSPITAL_CANONICAL_GROUPS = [
   { canonical: "HOSPITAL SAN MARTIN", variants: ["HTAL. SAN MARTIN", "HOSPITAL INTERZONAL GENERAL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL INTERZONAL GENER AL DE AGUDOS GENERAL SAN MARTÍN", "HOSPITAL SAN MARTIN", "HOSPITAL DE AGUDOS GENERAL SAN MARTÍN", "Hospital San Martin"] },
   { canonical: "ALTHEA (EX VACCARINI)", variants: ["ALTHEA CLINICA PRIVADA", "CL PR VACCARINI SA", "ALTHEA", "CLINICA VACCARINI", "VACCARINI", "VACARINI"] },
   { canonical: "HOSPITAL GUTIERREZ", variants: ["HTAL. GUTIERREZ", "Htal Zonal Ricardo Gutierrez", "HOSPITAL RICARDO GUTIERREZ", "HOSPITAL GUTIERREZ", "GUTIERREZ", "RICARDO GUTIERREZ"] },
-  { canonical: "HOSPITAL SAN ROQUE", variants: ["HTAL. SAN ROQUE", "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE", "HOSPITAL SAN ROQUE", "SAN ROQUE", "Hospital San Roque", "HOSPITAL ZONAL GRI GENERAL DE AGUDOS SAN ROQUE"] },
+  { canonical: "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE - GONNET", variants: ["HTAL. SAN ROQUE", "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE", "HOSPITAL SAN ROQUE", "SAN ROQUE", "Hospital San Roque", "HOSPITAL ZONAL GRI GENERAL DE AGUDOS SAN ROQUE"] },
   { canonical: "SANATORIO MEDICO LOS TILOS", variants: ["SANATORIO MÉDICO LOS TILOS SA", "SANATORIO MEDICO LOS TILOS", "SANATORIO MEDICO LOS TILOS SA", "LOS TILOS"] },
   { canonical: "HOSPITAL ROSSI", variants: ["HTAL. ROSSI", "HOSPITAL INTERZONAL GRAL AGUDOS PROF DR R. ROSSI", "HOSPITAL INTERZONAL ROSSI", "HTAL. ROSSI", "HOSPITAL ROSSI", "Hospital Rossi"] },
   { canonical: "GUSTAVO DILORETTO", variants: ["DI LORETO GUSTAVO", "GUSTAVO DI LORETTO"] },
@@ -2117,4 +2117,43 @@ export async function unifySudamericanoHospitals() {
     return 0;
   }
 }
+
+export async function renameSanRoque() {
+  try {
+    const q1 = query(collection(db, PRESTADORES_COLLECTION), where("nombre", "in", ["HTAL. SAN ROQUE", "HOSPITAL SAN ROQUE", "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE"]));
+    const snap1 = await getDocs(q1);
+    
+    const batch = writeBatch(db);
+    let updated = 0;
+    
+    snap1.docs.forEach(d => {
+      batch.update(d.ref, { 
+        nombre: "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE - GONNET",
+        updatedAt: serverTimestamp() 
+      });
+      updated++;
+    });
+
+    const q2 = query(collection(db, CENTROS_COORDINADORES_COLLECTION), where("hospital", "in", ["HTAL. SAN ROQUE", "HOSPITAL SAN ROQUE", "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE"]));
+    const snap2 = await getDocs(q2);
+    
+    snap2.docs.forEach(d => {
+      batch.update(d.ref, {
+        hospital: "HOSPITAL ZONAL GENERAL DE AGUDOS SAN ROQUE - GONNET",
+        updatedAt: serverTimestamp()
+      });
+      updated++;
+    });
+
+    if (updated > 0) {
+      await batch.commit();
+      console.log(`Renamed SAN ROQUE in ${updated} documents.`);
+    }
+    return updated;
+  } catch (error) {
+    console.error("Error renaming SAN ROQUE:", error);
+    return 0;
+  }
+}
+
 
