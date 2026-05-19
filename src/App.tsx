@@ -3061,10 +3061,10 @@ export default function App() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Sidebar Filters */}
-              <aside className="lg:col-span-4 space-y-6">
+              <aside className="lg:col-span-4 space-y-4">
                 
                 {/* Nuevos botones circulares para cartillas */}
-                <div className="flex justify-between items-start pt-2 px-2">
+                <div className="flex justify-between items-start pt-2 px-2 gap-2">
                   <button 
                     onClick={() => {
                       setActiveTab('prestadores');
@@ -3073,11 +3073,11 @@ export default function App() {
                     }}
                     className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
                   >
-                    <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-blue group-hover:scale-110 transition-transform group-hover:border-pami-blue/30 relative">
+                    <div className="w-16 h-16 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-blue group-hover:scale-110 transition-transform group-hover:border-pami-blue/30 relative">
                       <div className="absolute inset-0 rounded-full bg-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <BookOpen size={24} className="relative z-10" />
+                      <BookOpen size={28} className="relative z-10" />
                     </div>
-                    <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Armar<br/>Cartilla</span>
+                    <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Cápita</span>
                   </button>
                   
                   {(() => {
@@ -3090,11 +3090,11 @@ export default function App() {
                         rel="noopener noreferrer"
                         className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
                       >
-                        <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-cyan group-hover:scale-110 transition-transform group-hover:border-pami-cyan/30 relative">
+                        <div className="w-16 h-16 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-cyan group-hover:scale-110 transition-transform group-hover:border-pami-cyan/30 relative">
                           <div className="absolute inset-0 rounded-full bg-cyan-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                          <Printer size={24} className="relative z-10" />
+                          <Printer size={28} className="relative z-10" />
                         </div>
-                        <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Imprimir<br/>Cartilla 2026</span>
+                        <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Cartilla</span>
                       </a>
                     );
                   })()}
@@ -3105,18 +3105,18 @@ export default function App() {
                     rel="noopener noreferrer"
                     className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
                   >
-                    <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform group-hover:border-emerald-600/30 relative">
+                    <div className="w-16 h-16 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform group-hover:border-emerald-600/30 relative">
                       <div className="absolute inset-0 rounded-full bg-emerald-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <CreditCard size={24} className="relative z-10" />
+                      <CreditCard size={28} className="relative z-10" />
                     </div>
-                    <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Imprimir<br/>Credencial</span>
+                    <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Credencial</span>
                   </a>
 
-                  <button className="flex flex-col items-center justify-start gap-2 group cursor-not-allowed opacity-50 flex-1" title="Próximante">
-                    <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400">
-                      <Plus size={24} />
+                  <button className="flex flex-col items-center justify-start gap-2 group cursor-not-allowed opacity-50 flex-1" title="Próximamente">
+                    <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400">
+                      <Plus size={28} />
                     </div>
-                    <span className="text-[13px] font-bold text-gray-400 text-center leading-tight">Próx.<br/>Acceso</span>
+                    <span className="text-[13px] font-bold text-gray-400 text-center leading-tight">Próximo</span>
                   </button>
                 </div>
 
