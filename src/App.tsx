@@ -3061,6 +3061,71 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Sidebar Filters */}
               <aside className="lg:col-span-4 space-y-6">
+                
+                {/* Nuevos botones circulares para cartillas */}
+                <div className="flex justify-between items-start pt-2 px-2">
+                  <button 
+                    onClick={() => {
+                      setActiveTab('prestadores');
+                      setCartillaSelections({ medicoCabecera: "", odontologo: "", kinesiologia: "", guardia: "" });
+                      setIsCartillaModalOpen(true);
+                    }}
+                    className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
+                  >
+                    <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-blue group-hover:scale-110 transition-transform group-hover:border-pami-blue/30 relative">
+                      <div className="absolute inset-0 rounded-full bg-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <BookOpen size={24} className="relative z-10" />
+                    </div>
+                    <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Armar<br/>Cartilla</span>
+                  </button>
+                  
+                  {(() => {
+                    const folletoCartilla = folletos.find(f => f.nombre.toLowerCase().includes('cartilla prestadores') || f.nombre.toLowerCase().includes('cartilla 2026'));
+                    if (folletoCartilla) {
+                      return (
+                        <a
+                          href={folletoCartilla.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
+                        >
+                          <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-cyan group-hover:scale-110 transition-transform group-hover:border-pami-cyan/30 relative">
+                            <div className="absolute inset-0 rounded-full bg-cyan-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <Printer size={24} className="relative z-10" />
+                          </div>
+                          <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Imprimir<br/>Cartilla 2026</span>
+                        </a>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => alert('Cartilla de prestadores 2026 no encontrada.')}
+                        className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-cyan group-hover:scale-110 transition-transform group-hover:border-pami-cyan/30 relative">
+                          <div className="absolute inset-0 rounded-full bg-cyan-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                          <Printer size={24} className="relative z-10" />
+                        </div>
+                        <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Imprimir<br/>Cartilla 2026</span>
+                      </button>
+                    );
+                  })()}
+
+                  <button className="flex flex-col items-center justify-start gap-2 group cursor-not-allowed opacity-50 flex-1" title="Próximante">
+                    <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400">
+                      <Plus size={24} />
+                    </div>
+                    <span className="text-[13px] font-bold text-gray-400 text-center leading-tight">Próx.<br/>Acceso</span>
+                  </button>
+
+                  <button className="flex flex-col items-center justify-start gap-2 group cursor-not-allowed opacity-50 flex-1" title="Próximante">
+                    <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400">
+                      <Plus size={24} />
+                    </div>
+                    <span className="text-[13px] font-bold text-gray-400 text-center leading-tight">Próx.<br/>Acceso</span>
+                  </button>
+                </div>
+
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-4 py-4 bg-white border-b border-gray-200">
                   <h2 className="text-2xl font-semibold text-pami-text">Categorías</h2>

@@ -14,7 +14,8 @@ import {
   getDocFromServer,
   setDoc,
   limit,
-  Timestamp
+  Timestamp,
+  where
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
