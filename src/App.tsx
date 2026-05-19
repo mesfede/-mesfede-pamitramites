@@ -3081,25 +3081,12 @@ export default function App() {
                   
                   {(() => {
                     const folletoCartilla = folletos.find(f => f.nombre.toLowerCase().includes('cartilla prestadores') || f.nombre.toLowerCase().includes('cartilla 2026'));
-                    if (folletoCartilla) {
-                      return (
-                        <a
-                          href={folletoCartilla.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
-                        >
-                          <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-cyan group-hover:scale-110 transition-transform group-hover:border-pami-cyan/30 relative">
-                            <div className="absolute inset-0 rounded-full bg-cyan-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <Printer size={24} className="relative z-10" />
-                          </div>
-                          <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Imprimir<br/>Cartilla 2026</span>
-                        </a>
-                      );
-                    }
+                    const url = folletoCartilla ? folletoCartilla.url : 'https://drive.google.com/file/d/1XbpUIsXnMYNNxaqbHnlUIPBrViZMuuK1/view';
                     return (
-                      <button
-                        onClick={() => alert('Cartilla de prestadores 2026 no encontrada.')}
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
                       >
                         <div className="w-14 h-14 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-cyan group-hover:scale-110 transition-transform group-hover:border-pami-cyan/30 relative">
@@ -3107,7 +3094,7 @@ export default function App() {
                           <Printer size={24} className="relative z-10" />
                         </div>
                         <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Imprimir<br/>Cartilla 2026</span>
-                      </button>
+                      </a>
                     );
                   })()}
 
