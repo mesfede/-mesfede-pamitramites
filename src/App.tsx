@@ -82,6 +82,7 @@ import {
   subscribeToPrestadores, 
   subscribeToFolletos,
   subscribeToPracticas,
+  subscribeToSolicitudes,
   addTramite, 
   updateTramite, 
   deleteTramite,
@@ -860,6 +861,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'viewer' | null>(null);
   const [userIsDisabled, setUserIsDisabled] = useState<boolean>(false);
+  const [pendingSolicitudesCount, setPendingSolicitudesCount] = useState<number>(0);
   const [tramites, setTramites] = useState<Tramite[]>([]);
   const [prestadores, setPrestadores] = useState<Prestador[]>([]);
   const [folletos, setFolletos] = useState<Folleto[]>([]);
@@ -956,15 +958,6 @@ export default function App() {
       setPrestadorTags(editingPrestador?.especialidades || []);
     }
   }, [isPrestadorModalOpen, editingPrestador]);
-
-  useEffect(() => {
-    return subscribeToLatestUpdate((update) => {
-      if (update) {
-        setLatestUpdate(update);
-        setShowUpdateBanner(true);
-      }
-    });
-  }, []);
 
   const handleAddressSelect = (address: string, locality: string) => {
     setFormAddress(address);
@@ -1092,8 +1085,8 @@ export default function App() {
     // Wait until auth state is determined
     if (!isAuthReady) return;
 
-    // Only subscribe if we have a user
-    if (!user) {
+    // Only subscribe if we have a valid, authorized user
+    if (!user || userIsDisabled || !isViewer) {
       setTramites([]);
       setPrestadores([]);
       setFolletos([]);
@@ -1108,6 +1101,22 @@ export default function App() {
     const unsubscribePracticas = subscribeToPracticas(setPracticas);
     const unsubscribeCentros = subscribeToCentrosCoordinadores(setCentrosCoordinadores);
     const unsubscribeTelefonos = subscribeToTelefonos(setTelefonos);
+    
+    let unsubscribeSolicitudes = () => {};
+    if (isAdmin) {
+      unsubscribeSolicitudes = subscribeToSolicitudes((data) => {
+        const pendingCount = data.filter(s => s.status === 'pending').length;
+        setPendingSolicitudesCount(pendingCount);
+      });
+    }
+
+    // Subscribe to latest update separately
+    const unsubscribeUpdates = subscribeToLatestUpdate((update) => {
+      if (update) {
+        setLatestUpdate(update);
+        setShowUpdateBanner(true);
+      }
+    });
 
     testConnection();
 
@@ -1118,8 +1127,10 @@ export default function App() {
       unsubscribePracticas();
       unsubscribeCentros();
       unsubscribeTelefonos();
+      unsubscribeUpdates();
+      unsubscribeSolicitudes();
     };
-  }, [isAuthReady, user]);
+  }, [isAuthReady, user, userIsDisabled, isViewer, isAdmin]);
 
   // Auto-migrate Expedientes and Reintegros if they are still in the old category
   const migrationRan = useRef(false);
@@ -2648,6 +2659,11 @@ export default function App() {
             </div>
             <h2 className="text-2xl font-bold text-pami-text">Acceso Restringido</h2>
             <p className="text-pami-muted">Tu cuenta ({user.email}) no tiene permisos para acceder a esta aplicación.</p>
+            <div className="text-xs text-left bg-gray-50 p-2 rounded text-gray-500 overflow-auto">
+              uid: {user.uid}<br/>
+              role actual: {userRole || 'null'}<br/>
+              isDisabled: {userIsDisabled ? 'true' : 'false'}<br/>
+            </div>
             <p className="text-sm text-pami-muted">Por favor, contacta al administrador para solicitar acceso.</p>
             <Button variant="outline" className="w-full mt-4" onClick={logout}>
               Cerrar Sesión
@@ -3133,9 +3149,14 @@ export default function App() {
 
                   <button 
                     onClick={() => setIsSolicitudesModalOpen(true)}
-                    className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
+                    className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1 relative"
                   >
                     <div className="w-16 h-16 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-blue group-hover:scale-110 transition-transform group-hover:border-pami-blue/30 relative">
+                      {isAdmin && pendingSolicitudesCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[11px] font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm z-20">
+                          {pendingSolicitudesCount}
+                        </div>
+                      )}
                       <div className="absolute inset-0 rounded-full bg-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       <ClipboardList size={28} className="relative z-10" />
                     </div>
@@ -5000,7 +5021,7 @@ export default function App() {
             isOpen={isSolicitudesModalOpen}
             onClose={() => setIsSolicitudesModalOpen(false)}
             user={user}
-            isAdmin={userRole === 'admin'}
+            isAdmin={isAdmin}
           />
         )}
       </AnimatePresence>
