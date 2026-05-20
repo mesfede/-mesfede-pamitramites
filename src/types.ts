@@ -74,6 +74,20 @@ export interface Prestador {
   updatedAt?: any;
 }
 
+export interface Solicitud {
+  id?: string;
+  uid: string;
+  userEmail: string;
+  type: 'tramite' | 'prestador' | 'practica' | 'telefono' | 'otro';
+  action: 'add' | 'edit' | 'delete' | 'other';
+  title: string;
+  description: string;
+  status: 'pending' | 'completed' | 'rejected';
+  adminReturnMessage?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
 export type Category = 
   | "Afiliaciones"
   | "Audífonos e implantes auditivos"

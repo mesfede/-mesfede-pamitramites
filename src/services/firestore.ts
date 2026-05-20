@@ -19,7 +19,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import { Tramite, Prestador, Folleto, PracticaOME, CentroCoordinador, TelefonoInterno } from '../types';
+import { Tramite, Prestador, Folleto, PracticaOME, CentroCoordinador, TelefonoInterno, Solicitud } from '../types';
 
 export async function testConnection() {
   try {
@@ -1187,6 +1187,65 @@ export function subscribeToUsers(callback: (users: any[]) => void) {
   }, (error) => {
     console.error("Error subscribing to users:", error);
   });
+}
+
+// ============================
+// SOLICITUDES
+// ============================
+export const SOLICITUDES_COLLECTION = 'solicitudes';
+
+export function subscribeToSolicitudes(callback: (solicitudes: Solicitud[]) => void) {
+  const q = query(collection(db, SOLICITUDES_COLLECTION), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const solicitudes = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date()
+    })) as Solicitud[];
+    callback(solicitudes);
+  }, error => {
+    handleFirestoreError(error, OperationType.READ, SOLICITUDES_COLLECTION);
+    callback([]);
+  });
+}
+
+export async function addSolicitud(data: Omit<Solicitud, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, SOLICITUDES_COLLECTION), {
+      ...data,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, SOLICITUDES_COLLECTION);
+    throw error;
+  }
+}
+
+export async function updateSolicitudStatus(id: string, status: 'completed' | 'rejected', adminReturnMessage: string = '') {
+  try {
+    const docRef = doc(db, SOLICITUDES_COLLECTION, id);
+    await updateDoc(docRef, {
+      status,
+      adminReturnMessage,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, SOLICITUDES_COLLECTION);
+    throw error;
+  }
+}
+
+export async function deleteSolicitud(id: string) {
+  try {
+    await deleteDoc(doc(db, SOLICITUDES_COLLECTION, id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, SOLICITUDES_COLLECTION);
+    throw error;
+  }
 }
 
 export async function setUserRole(uid: string, email: string, role: 'admin' | 'viewer', password?: string) {

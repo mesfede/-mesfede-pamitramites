@@ -65,7 +65,8 @@ import {
   Home,
   Bell,
   Download,
-  CreditCard
+  CreditCard,
+  ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -74,6 +75,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Login } from './components/Login';
 import { AdminUsers } from './components/AdminUsers';
+import { SolicitudesModal } from './components/SolicitudesModal';
 import { generateFullTramitePdf } from './lib/pdfUtils';
 import { 
   subscribeToTramites, 
@@ -894,6 +896,7 @@ export default function App() {
   const [isDeleteFolletoModalOpen, setIsDeleteFolletoModalOpen] = useState(false);
   const [isPrestadorModalOpen, setIsPrestadorModalOpen] = useState(false);
   const [isFolletoModalOpen, setIsFolletoModalOpen] = useState(false);
+  const [isSolicitudesModalOpen, setIsSolicitudesModalOpen] = useState(false);
   const [isCartillaModalOpen, setIsCartillaModalOpen] = useState(false);
   const [cartillaSelections, setCartillaSelections] = useState({
     medicoCabecera: "",
@@ -3128,11 +3131,15 @@ export default function App() {
                     <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Credencial</span>
                   </a>
 
-                  <button className="flex flex-col items-center justify-start gap-2 group cursor-not-allowed opacity-50 flex-1" title="Próximamente">
-                    <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400">
-                      <Plus size={28} />
+                  <button 
+                    onClick={() => setIsSolicitudesModalOpen(true)}
+                    className="flex flex-col items-center justify-start gap-2 group cursor-pointer flex-1"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-pami-blue group-hover:scale-110 transition-transform group-hover:border-pami-blue/30 relative">
+                      <div className="absolute inset-0 rounded-full bg-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <ClipboardList size={28} className="relative z-10" />
                     </div>
-                    <span className="text-[13px] font-bold text-gray-400 text-center leading-tight">Próximo</span>
+                    <span className="text-[13px] font-bold text-pami-text text-center leading-tight">Solicitud</span>
                   </button>
                 </div>
 
@@ -4986,6 +4993,17 @@ export default function App() {
           </div>
         </div>
       </Modal>
+
+      <AnimatePresence>
+        {isSolicitudesModalOpen && (
+          <SolicitudesModal
+            isOpen={isSolicitudesModalOpen}
+            onClose={() => setIsSolicitudesModalOpen(false)}
+            user={user}
+            isAdmin={userRole === 'admin'}
+          />
+        )}
+      </AnimatePresence>
 
       <Modal 
         isOpen={isCartillaModalOpen} 
