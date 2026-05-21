@@ -29,8 +29,14 @@ export function SolicitudesModal({ isOpen, onClose, user, isAdmin }: Props) {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionMessage, setResolutionMessage] = useState('');
 
+  const isAuthorized = isAdmin || (user?.email && ['barby@guiap.com', 'fedeymajo@guiap.com'].includes(user.email.toLowerCase()));
+
   useEffect(() => {
     if (!isOpen) return;
+    if (!isAuthorized) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     const unsubscribe = subscribeToSolicitudes((data) => {
@@ -39,9 +45,40 @@ export function SolicitudesModal({ isOpen, onClose, user, isAdmin }: Props) {
     });
 
     return () => unsubscribe();
-  }, [isOpen]);
+  }, [isOpen, isAuthorized]);
 
   if (!isOpen) return null;
+
+  if (!isAuthorized) {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center space-y-4 border border-red-100"
+        >
+          <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-pami-text">Acceso Restringido</h2>
+          <p className="text-pami-muted text-sm leading-relaxed">
+            Tu cuenta (<span className="font-semibold text-pami-text">{user?.email || 'sin correo'}</span>) no tiene permisos para acceder o iniciar solicitudes en esta aplicación.
+          </p>
+          <p className="text-xs text-pami-muted bg-gray-50 p-2.5 rounded-lg border border-gray-100 leading-normal">
+            Esta sección está reservada únicamente para administradores y personal de carga autorizado.
+          </p>
+          <button 
+            type="button"
+            onClick={onClose}
+            className="w-full bg-pami-blue text-white py-2 rounded-xl font-semibold hover:bg-pami-blue/90 transition-all shadow-sm text-sm"
+          >
+            Entendido
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   // Filter for non-admins (only their own requests)
   const displaySolicitudes = isAdmin ? solicitudes : solicitudes.filter(s => s.uid === user?.uid);

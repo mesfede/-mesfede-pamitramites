@@ -24,7 +24,18 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       onSuccess?.();
     } catch (err: any) {
       console.error("Login error:", err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      const isInvalidCred = 
+        err.code === 'auth/user-not-found' || 
+        err.code === 'auth/wrong-password' || 
+        err.code === 'auth/invalid-credential' ||
+        (err.message && (
+          err.message.includes('invalid-credential') || 
+          err.message.includes('auth/invalid-credential') ||
+          err.message.includes('wrong-password') ||
+          err.message.includes('user-not-found')
+        ));
+
+      if (isInvalidCred) {
         setError('Usuario o contraseña incorrectos.');
       } else if (err.code === 'auth/invalid-email') {
         setError('El formato del correo electrónico no es válido.');

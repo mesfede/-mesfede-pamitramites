@@ -1,5 +1,5 @@
 import { motion, useAnimation } from 'motion/react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '../lib/utils';
 
 interface AnimatedLogoProps {
@@ -11,46 +11,70 @@ interface AnimatedLogoProps {
 export function AnimatedLogo({ className, onClick, variant = 'blue' }: AnimatedLogoProps) {
   const controls = useAnimation();
   const exclamationControls = useAnimation();
+  const isMountedRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const triggerSlamAnimation = async () => {
+    if (!isMountedRef.current) return;
+
     // 1. Exclamation mark jumps up
-    await exclamationControls.start({
-      y: -30,
-      rotate: 10,
-      scale: 1,
-      scaleX: 1,
-      scaleY: 1,
-      transition: { duration: 0.25, ease: "easeOut" }
-    });
+    try {
+      await exclamationControls.start({
+        y: -30,
+        rotate: 10,
+        scale: 1,
+        scaleX: 1,
+        scaleY: 1,
+        transition: { duration: 0.25, ease: "easeOut" }
+      });
+    } catch (e) {
+      // Catch animation cancellation
+    }
+
+    if (!isMountedRef.current) return;
 
     // 2. Exclamation mark smashes down
-    exclamationControls.start({
-      y: 0,
-      rotate: 0,
-      scale: 1,
-      scaleY: [1, 0.5, 1.2, 1],
-      scaleX: [1, 1.4, 0.9, 1],
-      transition: { duration: 0.4, times: [0, 0.3, 0.6, 1] }
-    });
+    try {
+      exclamationControls.start({
+        y: 0,
+        rotate: 0,
+        scale: 1,
+        scaleY: [1, 0.5, 1.2, 1],
+        scaleX: [1, 1.4, 0.9, 1],
+        transition: { duration: 0.4, times: [0, 0.3, 0.6, 1] }
+      });
+    } catch (e) {}
 
     // 3. Word reacts to the impact shortly after the drop starts
-    setTimeout(() => {
-      controls.start({
-        y: [0, -8, 2, 0],
-        x: [0, -2, 1, 0],
-        rotate: [0, -3, 1, 0],
-        transition: { duration: 0.5, times: [0, 0.2, 0.5, 1] }
-      });
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      try {
+        controls.start({
+          y: [0, -8, 2, 0],
+          x: [0, -2, 1, 0],
+          rotate: [0, -3, 1, 0],
+          transition: { duration: 0.5, times: [0, 0.2, 0.5, 1] }
+        });
+      } catch (e) {}
     }, 100);
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     // 30 seconds loop
     const interval = setInterval(() => {
       triggerSlamAnimation();
     }, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   const handleClick = (e: React.MouseEvent) => {

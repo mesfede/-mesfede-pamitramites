@@ -1039,7 +1039,7 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
+      setLoading(true);
       if (u) {
         try {
           const userDoc = await getDoc(doc(db, 'users', u.uid));
@@ -1055,7 +1055,9 @@ export default function App() {
           setUserRole(null);
           setUserIsDisabled(false);
         }
+        setUser(u);
       } else {
+        setUser(null);
         setUserRole(null);
         setUserIsDisabled(false);
       }
