@@ -102,6 +102,7 @@ import {
   uploadFile,
   unifySudamericanoHospitals,
   renameSanRoque,
+  renameInstMedicoPlatense,
   unifyIpensa,
   seedDialisis,
   testConnection,
@@ -1231,6 +1232,12 @@ export default function App() {
           await renameSanRoque();
         } catch(e) {
           console.error("SAN ROQUE RENAME ERR:", e);
+        }
+
+        try {
+          await renameInstMedicoPlatense();
+        } catch(e) {
+          console.error("INST MEDICO PLATENSE RENAME ERR:", e);
         }
 
         try {

@@ -51,7 +51,7 @@ const HOSPITAL_CANONICAL_GROUPS = [
   { canonical: "HOSPITAL PRIVADO SUDAMERICANO", variants: ["HTAL. PRIVADO SUSAMERICANO", "Hospital Privado Sudamericano", "HTAL. PRIVADO SUDAMERICANO", "HOSPITAL PRIVADO SUDAMERICANO", "Hospital Privado Susamericano"] },
   { canonical: "HOSPITAL SAN JUAN DE DIOS", variants: ["HTAL. SAN JUAN DE DIOS", "HOSPITAL INTERZONAL DE AGUDOS Y CRÓNICOS SAN JUAN DE DIOS", "HOSPITAL ZONAL DE AGUDOS Y CRONICOS SAN JUAN DE DIOS", "HOSPITAL SAN JUAN DE DIOS", "HTAL. SAN JUAN DE DIOS"] },
   { canonical: "SANATORIO ARGENTINO (NARDO)", variants: ["SANATORIO ARGENTINO"] },
-  { canonical: "INST. MEDICO PLATENSE", variants: ["Instituto Medico platense", "INSTITUTO MEDICO PLATENSE"] },
+  { canonical: "INSTITUTO MEDICO PLATENSE", variants: ["INST. MEDICO PLATENSE", "Instituto Medico platense", "INSTITUTO MEDICO PLATENSE"] },
   { canonical: "INSTITUTO DEL DIAGNÓSTICO DE LA PLATA", variants: ["INST. DEL DIAGNOSTICO", "Instituto Del Diagnostico", "INSTITUTO DEL DIAGNOSTICO", "INSTITUTO DEL DIAGNÓSTICO DE LA PLATA SA", "INSTITUTO DEL DIAGNOSTICO DE LA PLATA SA", "INSTITUTO DEL DIAGNOSTICO DE LA PLATA", "INSTITUTO DEL DIAGNÓSTICO DE LA PLATA"] },
   { canonical: "INSTITUTO DEL DIAGONISTICO CARDIOVASCULAR", variants: ["INST. DIAG. CARDIOVASCULAR", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR LA PLATA S.R.L.", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR LA PLATA", "INSTITUTO DEL DIAGONISTICO CARDIOVASCULAR", "INSTITUTO DEL DIAGNOSTICO CARDIOVASCULAR LA PLATA SRL"] },
   { canonical: "CL PR DE EXCELENCIA MÉDICA SA (C.BELGRANO)", variants: ["CLINICA DE EXCELENCIA MEDICA", "CLINICA DE EX. MEDICA", "CL PR DE EXCELENCIA MÉDICA SA (C.Belgrano)", "CL PR DE EXCELENCIA MÉDICA SA", "Clinica Belgrano", "EXCELENCIA MEDICA", "EXCELENCIA MÉDICA SA", "CLINICA BELGRANO", "CLINICA DE EXCELENCIA MÉDICA"] }
@@ -2223,6 +2223,48 @@ export async function renameSanRoque() {
     return updated;
   } catch (error) {
     console.error("Error renaming SAN ROQUE:", error);
+    return 0;
+  }
+}
+
+export async function renameInstMedicoPlatense() {
+  try {
+    const q1 = query(collection(db, PRESTADORES_COLLECTION), where("nombre", "in", ["INST. MEDICO PLATENSE", "Instituto Medico platense"]));
+    const snap1 = await getDocs(q1);
+    
+    const batch = writeBatch(db);
+    let updated = 0;
+    
+    snap1.docs.forEach(d => {
+      if (d.data().nombre !== "INSTITUTO MEDICO PLATENSE") {
+        batch.update(d.ref, { 
+          nombre: "INSTITUTO MEDICO PLATENSE",
+          updatedAt: serverTimestamp() 
+        });
+        updated++;
+      }
+    });
+
+    const q2 = query(collection(db, CENTROS_COORDINADORES_COLLECTION), where("hospital", "in", ["INST. MEDICO PLATENSE", "Instituto Medico platense"]));
+    const snap2 = await getDocs(q2);
+    
+    snap2.docs.forEach(d => {
+      if (d.data().hospital !== "INSTITUTO MEDICO PLATENSE") {
+        batch.update(d.ref, {
+          hospital: "INSTITUTO MEDICO PLATENSE",
+          updatedAt: serverTimestamp()
+        });
+        updated++;
+      }
+    });
+
+    if (updated > 0) {
+      await batch.commit();
+      console.log(`Renamed INST. MEDICO PLATENSE to INSTITUTO MEDICO PLATENSE in ${updated} documents.`);
+    }
+    return updated;
+  } catch (error) {
+    console.error("Error renaming INST. MEDICO PLATENSE:", error);
     return 0;
   }
 }

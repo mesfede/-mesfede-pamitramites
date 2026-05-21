@@ -730,7 +730,7 @@ export const INITIAL_PRESTADORES = [
     "telefono": "221 425-9700"
   },
   {
-    "nombre": "INST. MEDICO PLATENSE",
+    "nombre": "INSTITUTO MEDICO PLATENSE",
     "especialidades": [
       "ONCOLOGÍA - TRATAMIENTOS",
       "HEMATOLOGÍA",
