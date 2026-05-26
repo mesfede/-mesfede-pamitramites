@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Check, XCircle, Clock, AlertCircle, Plus, Send } from 'lucide-react';
+import { X, Check, XCircle, Clock, AlertCircle, Plus, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { Solicitud } from '../types';
 import { addSolicitud, subscribeToSolicitudes, updateSolicitudStatus } from '../services/firestore';
 import { User } from 'firebase/auth';
@@ -28,6 +28,13 @@ export function SolicitudesModal({ isOpen, onClose, user, isAdmin }: Props) {
   // Admin resolution state
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionMessage, setResolutionMessage] = useState('');
+  const [expandedHistorial, setExpandedHistorial] = useState<string[]>([]);
+
+  const toggleHistorial = (id: string) => {
+    setExpandedHistorial(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
   const isAuthorized = isAdmin || (user?.email && ['barby@guiap.com', 'fedeymajo@guiap.com'].includes(user.email.toLowerCase()));
 
@@ -394,6 +401,31 @@ export function SolicitudesModal({ isOpen, onClose, user, isAdmin }: Props) {
                             <span>{s.adminReturnMessage}</span>
                           </div>
                         )}
+
+                        <button 
+                          onClick={() => toggleHistorial(s.id)}
+                          className="mt-3 text-xs font-semibold text-gray-500 flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        >
+                          {expandedHistorial.includes(s.id) ? (
+                            <>Ver menos <ChevronUp size={14} /></>
+                          ) : (
+                            <>Mensaje original <ChevronDown size={14} /></>
+                          )}
+                        </button>
+                        <AnimatePresence>
+                          {expandedHistorial.includes(s.id) && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-2 bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-700 whitespace-pre-wrap">
+                                {s.description}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     ))}
                   </div>
