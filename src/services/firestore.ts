@@ -1168,8 +1168,39 @@ export async function deleteAllTelefonos() {
 export async function updateUserLastSeen(uid: string) {
   try {
     const docRef = doc(db, 'users', uid);
+    
+    // Generate or retrieve a simple device ID
+    let deviceId = localStorage.getItem('pami_device_id');
+    if (!deviceId) {
+      deviceId = Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('pami_device_id', deviceId);
+    }
+
+    // Basic user agent parsing
+    const ua = navigator.userAgent;
+    let browser = "Web";
+    if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
+    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
+    else if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("Edg")) browser = "Edge";
+
+    let os = "OS";
+    if (ua.includes("Win")) os = "Windows";
+    else if (ua.includes("Mac")) os = "MacOS";
+    else if (ua.includes("Linux")) os = "Linux";
+    else if (ua.includes("Android")) os = "Android";
+    else if (ua.includes("like Mac")) os = "iOS";
+
+    const deviceInfo = `${browser} en ${os}`;
+
     await setDoc(docRef, {
-      lastSeen: serverTimestamp()
+      lastSeen: serverTimestamp(),
+      devices: {
+        [deviceId]: {
+          info: deviceInfo,
+          lastSeen: serverTimestamp()
+        }
+      }
     }, { merge: true });
   } catch (error) {
     console.error("Error updating user last seen:", error);

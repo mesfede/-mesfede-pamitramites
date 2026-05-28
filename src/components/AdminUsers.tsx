@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { subscribeToUsers, setUserRole, deleteUser, toggleUserStatus } from '../services/firestore';
-import { UserPlus, Trash2, Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff, UserX, UserCheck } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff, UserX, UserCheck, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -237,23 +237,49 @@ export const AdminUsers: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {(() => {
-                      if (!u.lastSeen) return <span className="text-gray-400 italic text-xs">Nunca</span>;
-                      const date = u.lastSeen.toDate ? u.lastSeen.toDate() : new Date(u.lastSeen);
-                      const now = new Date();
-                      const diffMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
-                      if (diffMinutes < 5) {
-                        return (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            En línea
-                          </span>
-                        );
-                      }
-                      if (diffMinutes < 60) return <span className="text-gray-500 text-xs">Hace {diffMinutes} min</span>;
-                      if (diffMinutes < 1440) return <span className="text-gray-500 text-xs">Hace {Math.floor(diffMinutes / 60)} hs</span>;
-                      return <span className="text-gray-500 text-xs">{date.toLocaleDateString()}</span>;
-                    })()}
+                    <div className="flex flex-col gap-2">
+                      {(() => {
+                        if (!u.lastSeen) return <span className="text-gray-400 italic text-xs">Nunca</span>;
+                        const date = u.lastSeen.toDate ? u.lastSeen.toDate() : new Date(u.lastSeen);
+                        const now = new Date();
+                        const diffMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
+                        let statusElement = null;
+                        
+                        if (diffMinutes < 5) {
+                          statusElement = (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full w-fit">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                              En línea
+                            </span>
+                          );
+                        } else if (diffMinutes < 60) {
+                          statusElement = <span className="text-gray-500 text-xs">Hace {diffMinutes} min</span>;
+                        } else if (diffMinutes < 1440) {
+                          statusElement = <span className="text-gray-500 text-xs">Hace {Math.floor(diffMinutes / 60)} hs</span>;
+                        } else {
+                          statusElement = <span className="text-gray-500 text-xs">{date.toLocaleDateString()}</span>;
+                        }
+
+                        return statusElement;
+                      })()}
+                      
+                      {u.devices && Object.keys(u.devices).length > 0 && (
+                        <div className="flex flex-col gap-1 mt-1 border-t border-gray-100 pt-1.5">
+                          {Object.entries(u.devices).map(([deviceId, d]: [string, any]) => {
+                            const dDate = d.lastSeen?.toDate ? d.lastSeen.toDate() : new Date();
+                            const dDiff = Math.floor((new Date().getTime() - dDate.getTime()) / 60000);
+                            const isOnline = dDiff < 5;
+                            return (
+                              <div key={deviceId} className="flex items-center gap-1.5 text-[10px]" title={`ID: ${deviceId}`}>
+                                <Monitor size={10} className={isOnline ? "text-emerald-500" : "text-gray-400"} />
+                                <span className={isOnline ? "text-gray-700 font-medium" : "text-gray-500"}>{d.info || "Dispositivo"}</span>
+                                {isOnline && <span className="text-emerald-600 font-bold ml-auto">•</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
