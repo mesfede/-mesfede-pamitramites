@@ -853,6 +853,9 @@ const PrestadorCard = ({
 
 const LIBRARIES: ("places")[] = ["places"];
 
+import { WorldCupPollModal } from './components/WorldCupPollModal';
+import { AdminPolls } from './components/AdminPolls';
+
 export default function App() {
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || "",
@@ -892,7 +895,7 @@ export default function App() {
     }
   }, [isMobile, activeTab]);
 
-  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios' | 'especialidades'>('tramites');
+  const [adminSubTab, setAdminSubTab] = useState<'tramites' | 'prestadores' | 'folletos' | 'usuarios' | 'especialidades' | 'encuestas'>('tramites');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletePrestadorModalOpen, setIsDeletePrestadorModalOpen] = useState(false);
@@ -4482,6 +4485,15 @@ export default function App() {
                 >
                   Usuarios
                 </button>
+                <button 
+                  onClick={() => setAdminSubTab('encuestas')}
+                  className={cn(
+                    "px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                    adminSubTab === 'encuestas' ? "bg-white text-pami-blue shadow-sm" : "text-pami-muted hover:text-pami-text"
+                  )}
+                >
+                  Encuestas
+                </button>
               </div>
             </div>
 
@@ -4647,6 +4659,8 @@ export default function App() {
                 </div>
               ) : adminSubTab === 'usuarios' ? (
                 <AdminUsers />
+              ) : adminSubTab === 'encuestas' ? (
+                <AdminPolls />
               ) : adminSubTab === 'especialidades' ? (
                 <div className="p-6">
                   <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -5674,6 +5688,9 @@ export default function App() {
           </p>
         </div>
       </footer>
+      
+      <WorldCupPollModal user={user} />
+      
       </>
       )}
     </div>

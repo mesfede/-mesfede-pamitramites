@@ -204,6 +204,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /poll_responses/{voteId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
     match /deleted_items/{itemId} {
       allow read, write: if isAdmin();
     }

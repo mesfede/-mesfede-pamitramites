@@ -2300,4 +2300,47 @@ export async function renameInstMedicoPlatense() {
   }
 }
 
+export const POLL_RESPONSES_COLLECTION = 'poll_responses';
 
+export async function hasUserVotedInPoll(pollId: string, email: string) {
+  const docRef = doc(db, POLL_RESPONSES_COLLECTION, `${pollId}_${email}`);
+  const snap = await getDoc(docRef);
+  return snap.exists();
+}
+
+export async function submitPollVote(pollId: string, email: string, vote: string) {
+  const docRef = doc(db, POLL_RESPONSES_COLLECTION, `${pollId}_${email}`);
+  await setDoc(docRef, {
+    pollId,
+    userEmail: email,
+    vote,
+    createdAt: serverTimestamp()
+  });
+}
+
+export function subscribeToPollResults(pollId: string, callback: (results: Record<string, number>) => void) {
+  const q = query(collection(db, POLL_RESPONSES_COLLECTION), where('pollId', '==', pollId));
+  return onSnapshot(q, (snapshot) => {
+    const results: Record<string, number> = {};
+    snapshot.docs.forEach(d => {
+      const v = d.data().vote;
+      results[v] = (results[v] || 0) + 1;
+    });
+    callback(results);
+  });
+}
+
+export function subscribeToPollResponses(pollId: string, callback: (responses: any[]) => void) {
+  const q = query(collection(db, POLL_RESPONSES_COLLECTION), where('pollId', '==', pollId));
+  return onSnapshot(q, (snapshot) => {
+    const responses = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })).sort((a: any, b: any) => {
+      const timeA = a.createdAt?.toMillis() || 0;
+      const timeB = b.createdAt?.toMillis() || 0;
+      return timeB - timeA;
+    });
+    callback(responses);
+  });
+}
