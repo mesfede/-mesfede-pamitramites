@@ -1236,7 +1236,7 @@ export function subscribeToSolicitudes(callback: (solicitudes: Solicitud[]) => v
     })) as Solicitud[];
     callback(solicitudes);
   }, error => {
-    handleFirestoreError(error, OperationType.READ, SOLICITUDES_COLLECTION);
+    handleFirestoreError(error, OperationType.LIST, SOLICITUDES_COLLECTION);
     callback([]);
   });
 }
