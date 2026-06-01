@@ -66,7 +66,7 @@ import {
   Bell,
   Download,
   CreditCard,
-  ClipboardList
+  Trophy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -855,6 +855,7 @@ const LIBRARIES: ("places")[] = ["places"];
 
 import { WorldCupPollModal } from './components/WorldCupPollModal';
 import { AdminPolls } from './components/AdminPolls';
+import { WorldCupFixture } from './components/WorldCupFixture';
 
 export default function App() {
   const { isLoaded } = useLoadScript({
@@ -879,7 +880,7 @@ export default function App() {
   const [folletoSearch, setFolletoSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'home' | 'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin' | 'fixture'>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -934,6 +935,9 @@ export default function App() {
   const [uploadedFiles, setUploadedFiles] = useState<{ nombre: string; url: string }[]>([]);
   const [manualFileName, setManualFileName] = useState('');
   const [manualFileUrl, setManualFileUrl] = useState('');
+  const [uploadedNormativas, setUploadedNormativas] = useState<{ nombre: string; url: string }[]>([]);
+  const [manualNormativaName, setManualNormativaName] = useState('');
+  const [manualNormativaUrl, setManualNormativaUrl] = useState('');
   const [selectedPrestadoresIds, setSelectedPrestadoresIds] = useState<string[]>([]);
   const [practicaSearch, setPracticaSearch] = useState('');
   const [centroSearch, setCentroSearch] = useState('');
@@ -1256,9 +1260,11 @@ export default function App() {
   useEffect(() => {
     if (editingTramite) {
       setUploadedFiles(editingTramite.documentos || []);
+      setUploadedNormativas(editingTramite.normativas || []);
       setSelectedPrestadoresIds(editingTramite.prestadoresIds || []);
     } else {
       setUploadedFiles([]);
+      setUploadedNormativas([]);
       setSelectedPrestadoresIds([]);
     }
     setPrestadorSearchInForm('');
@@ -2193,6 +2199,7 @@ export default function App() {
       nota: formData.get('nota') as string,
       pasos: (formData.get('pasos') as string).split('\n').filter(p => p.trim() !== ''),
       documentos: uploadedFiles,
+      normativas: uploadedNormativas,
       prestadoresIds: selectedPrestadoresIds,
       oculto: formData.get('oculto') === 'on'
     };
@@ -2229,9 +2236,12 @@ export default function App() {
       setIsModalOpen(false);
       setEditingTramite(null);
       setUploadedFiles([]);
+      setUploadedNormativas([]);
       setSelectedPrestadoresIds([]);
       setManualFileName('');
       setManualFileUrl('');
+      setManualNormativaName('');
+      setManualNormativaUrl('');
     } catch (err) {
       console.error("Error saving tramite:", err);
       alert("Error al guardar el trámite. Verifique los permisos.");
@@ -2623,6 +2633,20 @@ export default function App() {
     setManualFileUrl('');
   };
 
+  const removeNormativa = (index: number) => {
+    setUploadedNormativas(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addManualNormativa = () => {
+    if (!manualNormativaName || !manualNormativaUrl) {
+      alert("Por favor, ingrese el nombre y el enlace de la resolución o normativa.");
+      return;
+    }
+    setUploadedNormativas(prev => [...prev, { nombre: manualNormativaName, url: manualNormativaUrl }]);
+    setManualNormativaName('');
+    setManualNormativaUrl('');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -2789,6 +2813,18 @@ export default function App() {
                 </button>
                 {isAdmin && (
                   <button 
+                    onClick={() => setActiveTab('fixture')}
+                    className={cn(
+                      "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
+                      activeTab === 'fixture' ? "border-white text-emerald-400 bg-white/5" : "border-transparent text-emerald-300/80 hover:text-emerald-400 hover:bg-white/5"
+                    )}
+                  >
+                    <Trophy size={16} className="shrink-0" />
+                    Fixture
+                  </button>
+                )}
+                {isAdmin && (
+                  <button 
                     onClick={() => setActiveTab('admin')}
                     className={cn(
                       "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
@@ -2877,6 +2913,18 @@ export default function App() {
                       <Phone size={18} className={activeTab === 'telefonos' ? "text-white" : "text-white/50"} />
                       Tel
                     </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={() => { setActiveTab('fixture'); setIsMobileMenuOpen(false); }}
+                        className={cn(
+                          "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
+                          activeTab === 'fixture' ? "text-emerald-400 bg-white/10" : "text-emerald-300/70 hover:text-emerald-400 hover:bg-white/5"
+                        )}
+                      >
+                        <Trophy size={18} className={activeTab === 'fixture' ? "text-emerald-400" : "text-emerald-300/50"} />
+                        Fixture Mundial
+                      </button>
+                    )}
                     {isAdmin && (
                       <button 
                         onClick={() => { setActiveTab('admin'); setIsMobileMenuOpen(false); }}
@@ -3602,6 +3650,61 @@ export default function App() {
                                           <button 
                                             onClick={() => window.open(doc.url, '_blank')}
                                             className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-pami-blue shadow-sm sm:shadow-none hover:shadow-sm transition-colors flex items-center justify-center"
+                                            title="Imprimir"
+                                          >
+                                            <Printer size={16} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {t.normativas && t.normativas.length > 0 && (
+                                <div className="space-y-3">
+                                  <h4 className="text-xs font-bold uppercase tracking-widest text-[#8abb21]">Resolución / Normativa</h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {t.normativas.map((doc, idx) => (
+                                      <div 
+                                        key={idx} 
+                                        className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg hover:bg-emerald-100/70 transition-all group relative border border-emerald-100"
+                                      >
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                          {getFileIcon(doc.nombre)}
+                                          <a 
+                                            href={doc.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-sm font-medium truncate text-emerald-800 hover:underline decoration-2 underline-offset-4"
+                                            title="Ver / Descargar"
+                                          >
+                                            {doc.nombre}
+                                          </a>
+                                        </div>
+                                        <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <a 
+                                            href={doc.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-emerald-700 shadow-sm sm:shadow-none hover:shadow-sm transition-colors"
+                                            title="Ver / Descargar"
+                                          >
+                                            <ExternalLink size={16} />
+                                          </a>
+                                          <button 
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(doc.url);
+                                              alert("Enlace copiado al portapapeles");
+                                            }}
+                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-emerald-700 shadow-sm sm:shadow-none hover:shadow-sm transition-colors"
+                                            title="Copiar enlace"
+                                          >
+                                            <Paperclip size={16} />
+                                          </button>
+                                          <button 
+                                            onClick={() => window.open(doc.url, '_blank')}
+                                            className="p-1.5 bg-white sm:bg-transparent hover:bg-white rounded-md text-emerald-700 shadow-sm sm:shadow-none hover:shadow-sm transition-colors flex items-center justify-center"
                                             title="Imprimir"
                                           >
                                             <Printer size={16} />
@@ -4426,6 +4529,10 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'fixture' && (
+          <WorldCupFixture />
+        )}
+
         {activeTab === 'admin' && isAdmin && (
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -4999,6 +5106,53 @@ export default function App() {
                   {getFileIcon(file.nombre)}
                   <span className="max-w-[150px] truncate">{file.nombre}</span>
                   <button type="button" onClick={() => removeFile(idx)} className="hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors" title="Eliminar archivo">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="text-sm font-semibold text-pami-muted flex items-center gap-2">
+              <FileText size={16} />
+              Resolución / Normativa
+            </label>
+            
+            <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Input 
+                    placeholder="Nombre del documento (ej: Resolución 123/26)" 
+                    value={manualNormativaName}
+                    onChange={(e) => setManualNormativaName(e.target.value)}
+                    className="text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Pegar enlace (URL) aquí" 
+                      value={manualNormativaUrl}
+                      onChange={(e) => setManualNormativaUrl(e.target.value)}
+                      className="text-xs flex-1"
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={addManualNormativa}
+                      className="h-auto py-1 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      Agregar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {uploadedNormativas.map((file, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-100 px-3 py-1.5 rounded-lg text-xs font-medium animate-in fade-in">
+                  {getFileIcon(file.nombre)}
+                  <span className="max-w-[150px] truncate">{file.nombre}</span>
+                  <button type="button" onClick={() => removeNormativa(idx)} className="hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors" title="Eliminar resolución">
                     <Trash2 size={14} />
                   </button>
                 </div>

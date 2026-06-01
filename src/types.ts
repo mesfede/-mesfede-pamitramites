@@ -41,6 +41,7 @@ export interface Tramite {
   nota?: string;
   oculto?: boolean;
   documentos?: { nombre: string; url: string }[];
+  normativas?: { nombre: string; url: string }[];
   prestadoresIds?: string[];
   createdAt?: any;
   updatedAt?: any;
