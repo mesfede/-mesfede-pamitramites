@@ -1660,36 +1660,112 @@ export default function App() {
 
       const tieneHorarios = p.horariosAtencion && Object.values(p.horariosAtencion).some(v => !!v);
 
+      // Black & White optimized styling with alternating gray levels and high-contrast lines
+      let borderLeftStyle = '6px solid #000000';
+      let bgModulo = '#f1f5f9'; // Soft gray bg
+      let tagBg = '#000000';
+      let tagColor = '#ffffff';
+
+      const lowerTitle = title.toLowerCase();
+      
+      if (lowerTitle.includes('cabecera')) {
+        borderLeftStyle = '6px solid #000000'; // Thick black line
+        bgModulo = '#f1f5f9'; // Alternating light gray
+        tagBg = '#000000';
+        tagColor = '#ffffff';
+      } else if (lowerTitle.includes('odont')) {
+        borderLeftStyle = '6px dashed #475569'; // High contrast dashed
+        bgModulo = '#ffffff'; // Pure white bg
+        tagBg = '#4a5568';
+        tagColor = '#ffffff';
+      } else if (lowerTitle.includes('kines')) {
+        borderLeftStyle = '6px double #1e293b'; // High contrast double line
+        bgModulo = '#f8fafc'; // Extremely light slate
+        tagBg = '#334155';
+        tagColor = '#ffffff';
+      } else {
+        borderLeftStyle = '6px solid #334155'; // Clean charcoal border
+        bgModulo = '#ffffff'; // Pure white bg
+        tagBg = '#1e293b';
+        tagColor = '#ffffff';
+      }
+
       return `
-        <div class="cartilla-module">
-          <div class="module-title">${title} <span style="color:#0b2344;">- ${p.nombre}</span></div>
-          <div class="prestador-content">
-            <div class="prestador-info-col">
-              <div class="prestador-info">
-                ${p.localidad ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.2-4.7-8-8.9-8-11.5a8 8 0 1 1 16 0c0 2.6-3.8 6.8-8 11.5z"/></svg> <span><strong>Localidad:</strong> ${p.localidad}</span></div>` : ''}
-                ${p.direccion ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span><strong>Dirección:</strong> ${p.direccion}</span></div>` : ''}
-                ${p.telefono ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <span><strong>Teléfono:</strong> ${p.telefono}</span></div>` : ''}
-                ${p.whatsapp ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#25D366; flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> <span><strong>WhatsApp:</strong> ${p.whatsapp}</span></div>` : ''}
-                ${p.email ? `<div class="info-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#718096; flex-shrink:0;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span><strong>Email:</strong> ${p.email}</span></div>` : ''}
-              </div>
-              ${p.notas ? `<div class="notas-box"><strong>Notas:</strong><br/>${p.notas}</div>` : ''}
+        <div class="cartilla-item">
+          <div class="cartilla-module" style="background-color: ${bgModulo}; border-left: ${borderLeftStyle};">
+            <div class="module-header">
+              <span class="specialty-label" style="background-color: ${tagBg}; color: ${tagColor};">${title.toUpperCase()}</span>
+              <h3 class="prestador-name">${p.nombre}</h3>
             </div>
-            ${tieneHorarios ? `
-            <div class="prestador-horario-col">
-              <div class="horarios-grid">
-                <div class="horarios-title-mini">Horarios de Atención</div>
-                ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
-                  const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
-                  if (!hValue) return '';
-                  const hValueFormatted = hValue.replace(/\s*-\s*/g, ' - ');
-                  return `<div class="horario-item">
-                    <span class="dia">${dia.substring(0, 3)}.</span>
-                    <span class="horas">${hValueFormatted}</span>
-                  </div>`;
-                }).join('')}
+            
+            <div class="prestador-content">
+              <div class="prestador-info-col">
+                <div class="prestador-info">
+                  ${p.localidad ? `
+                    <div class="info-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2d3748" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="item-icon"><circle cx="12" cy="10" r="3"/><path d="M12 21c-4.2-4.7-8-8.9-8-11.5a8 8 0 1 1 16 0c0 2.6-3.8 6.8-8 11.5z"/></svg>
+                      <div>
+                        <span class="label">Localidad:</span>
+                        <span class="value">${p.localidad}</span>
+                      </div>
+                    </div>` : ''}
+                  ${p.direccion ? `
+                    <div class="info-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2d3748" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="item-icon"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                      <div>
+                        <span class="label">Dirección:</span>
+                        <span class="value">${p.direccion}</span>
+                      </div>
+                    </div>` : ''}
+                  ${p.telefono ? `
+                    <div class="info-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="item-icon"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      <div>
+                        <span class="label">Teléfono:</span>
+                        <span class="value-highlight">${p.telefono}</span>
+                      </div>
+                    </div>` : ''}
+                  ${p.whatsapp ? `
+                    <div class="info-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="item-icon"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                      <div>
+                        <span class="label">WhatsApp:</span>
+                        <span class="value-highlight">${p.whatsapp}</span>
+                      </div>
+                    </div>` : ''}
+                  ${p.email ? `
+                    <div class="info-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2d3748" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="item-icon"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                      <div>
+                        <span class="label">Email:</span>
+                        <span class="value" style="font-size: 13px; word-break: break-all;">${p.email}</span>
+                      </div>
+                    </div>` : ''}
+                </div>
+                ${p.notas ? `<div class="notas-box"><strong>Indicaciones:</strong> ${p.notas}</div>` : ''}
               </div>
+              ${tieneHorarios ? `
+              <div class="prestador-horario-col">
+                <div class="horarios-grid">
+                  <div class="horarios-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Horarios de Atención</span>
+                  </div>
+                  <div class="horarios-list">
+                    ${['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'].map(dia => {
+                      const hValue = p.horariosAtencion?.[dia as keyof typeof p.horariosAtencion];
+                      if (!hValue) return '';
+                      const hValueFormatted = hValue.replace(/\s*-\s*/g, ' - ');
+                      return `<div class="horario-item">
+                        <span class="dia">${dia.substring(0, 3)}.</span>
+                        <span class="horas">${hValueFormatted}</span>
+                      </div>`;
+                    }).join('')}
+                  </div>
+                </div>
+              </div>
+              ` : ''}
             </div>
-            ` : ''}
           </div>
         </div>
       `;
@@ -1697,7 +1773,7 @@ export default function App() {
 
     const modulesHtml = [
       renderPrestadorModule("Médico de Cabecera", cartillaSelections.medicoCabecera),
-      renderPrestadorModule("Odontólogo", cartillaSelections.odontologo),
+      renderPrestadorModule("Odontálogo", cartillaSelections.odontologo),
       renderPrestadorModule("Kinesiología", cartillaSelections.kinesiologia),
       renderPrestadorModule("Internación y Guardia", cartillaSelections.guardia)
     ].filter(html => html !== '').join('');
@@ -1705,134 +1781,301 @@ export default function App() {
     const html = `
       <html>
         <head>
-          <title>Cartilla de Prestadores</title>
+          <title>Cartilla Personalizada de Prestadores</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Varela+Round&display=swap');
-            @page { margin: 1cm; }
-            body { font-family: 'Inter', sans-serif; color: #1a202c; line-height: 1.3; padding: 0; margin: 0; }
-            .header { border-bottom: 2px solid #0b2344; padding-bottom: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .cartilla-title { color: #0b2344; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; }
-            .pami-info { text-align: right; color: #718096; line-height: 1.1; }
-            .pami-info .agency { font-size: 20px; font-weight: 700; color: #0b2344; font-family: 'Varela Round', sans-serif; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+            @page { 
+              size: A4 portrait;
+              margin: 0.8cm 1.0cm; 
+            }
+            body { 
+              font-family: 'Inter', sans-serif; 
+              color: #000000; 
+              line-height: 1.35; 
+              padding: 0; 
+              margin: 0; 
+              -webkit-print-color-adjust: exact; 
+              print-color-adjust: exact; 
+              background-color: #ffffff; 
+              font-size: 14px;
+            }
+            
+            .header-container { 
+              border-bottom: 2.5px solid #000000; 
+              padding-bottom: 10px; 
+              margin-bottom: 24px; 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center; 
+            }
+            .cartilla-badge { 
+              background-color: #000000; 
+              color: #ffffff; 
+              font-size: 10.5px; 
+              font-weight: 900; 
+              padding: 3px 8px; 
+              text-transform: uppercase; 
+              letter-spacing: 0.08em; 
+              display: inline-block; 
+              margin-bottom: 4px; 
+              border-radius: 3px; 
+            }
+            .cartilla-title { 
+              color: #000000; 
+              font-size: 24px; 
+              font-weight: 950; 
+              text-transform: uppercase; 
+              letter-spacing: -0.02em; 
+              margin: 0; 
+            }
+            .cartilla-subtitle { 
+              color: #475569; 
+              font-size: 12px; 
+              font-weight: 600; 
+              margin: 3px 0 0 0; 
+            }
+            
+            .pami-logo-section { text-align: right; }
+            .pami-brand { 
+              font-size: 30px; 
+              font-weight: 900; 
+              color: #000000; 
+              margin: 0; 
+              letter-spacing: -0.03em; 
+              line-height: 1; 
+              text-transform: uppercase;
+            }
             
             .cartilla-grid {
               display: flex;
               flex-direction: column;
-              gap: 15px;
+              gap: 24px;
             }
-            .cartilla-module {
-              border: 1px solid #cbd5e1;
-              border-radius: 8px;
-              padding: 15px 20px;
-              background-color: #f8fafc;
+            
+            .cartilla-item {
+              display: flex;
+              flex-direction: column;
               break-inside: avoid;
             }
-            .module-title {
-              font-size: 16px;
-              font-weight: 800;
-              text-transform: uppercase;
-              color: #009EE3;
-              margin-bottom: 10px;
-              border-bottom: 2px solid #cbd5e1;
-              padding-bottom: 5px;
-              letter-spacing: 0.05em;
-            }
-            .prestador-content {
+            
+            .cartilla-module {
+              border: 1.5px solid #cbd5e1;
+              border-radius: 8px;
+              padding: 16px 20px;
+              break-inside: avoid;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.01);
               display: flex;
-              gap: 20px;
+              flex-direction: column;
+              gap: 10px;
             }
-            .prestador-info-col {
+            
+            .module-header {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              border-bottom: 1.5px solid #000000;
+              padding-bottom: 6px;
+              margin-bottom: 6px;
+            }
+
+            .specialty-label {
+              font-size: 11.5px;
+              font-weight: 900;
+              letter-spacing: 0.05em;
+              padding: 3px 8px;
+              border-radius: 4px;
+              text-transform: uppercase;
+              flex-shrink: 0;
+            }
+            
+            .prestador-name {
+              font-size: 18.5px;
+              font-weight: 900;
+              color: #000000;
+              margin: 0;
+              letter-spacing: -0.015em;
+              text-transform: uppercase;
               flex: 1;
             }
-            .prestador-horario-col {
-              width: 300px;
+            
+            .prestador-content {
+              display: flex;
+              flex-direction: row;
+              gap: 24px;
+              justify-content: space-between;
+              align-items: stretch;
             }
-            .prestador-name {
-              display: none; /* incorporated in module-title */
+            
+            .prestador-info-col {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-start;
+              gap: 8px;
             }
+            
             .prestador-info {
               display: flex;
               flex-direction: column;
-              gap: 8px;
-              margin-bottom: 5px;
+              gap: 7px;
             }
+            
             .info-item {
               font-size: 14px;
-              color: #1a202c;
+              color: #000000;
+              display: flex;
+              align-items: flex-start;
+              gap: 8px;
+              line-height: 1.3;
+            }
+            
+            .item-icon {
+              margin-top: 2px;
+              flex-shrink: 0;
+            }
+            
+            .info-item .label {
+              font-weight: 850;
+              color: #475569;
+              margin-right: 4px;
+              font-size: 12.5px;
+              text-transform: uppercase;
+            }
+            
+            .info-item .value {
+              font-weight: 750;
+              color: #000000;
+            }
+
+            .info-item .value-highlight {
+              font-weight: 900;
+              color: #000000;
+              font-size: 15.5px;
+              border-bottom: 1.5px solid #cbd5e1;
+              padding-bottom: 1px;
+            }
+            
+            .prestador-horario-col {
+              width: 280px;
+              flex-shrink: 0;
+            }
+            
+            .horarios-grid {
+              background: rgba(0, 0, 0, 0.03);
+              padding: 10px 14px;
+              border-radius: 6px;
+              border: 1.5px solid #cbd5e1;
+            }
+            
+            .horarios-header { 
+              font-size: 10.5px; 
+              font-weight: 900; 
+              color: #000000; 
+              margin-bottom: 6px; 
+              text-transform: uppercase; 
+              letter-spacing: 0.05em;
               display: flex;
               align-items: center;
-              gap: 8px;
+              gap: 4px;
+              border-bottom: 1.5px solid #cbd5e1;
+              padding-bottom: 3px;
             }
-            .info-item svg {
-              width: 16px; height: 16px;
+            
+            .horarios-list {
+              display: flex;
+              flex-direction: column;
+              gap: 3.5px;
             }
-            .info-item strong {
-              color: #0b2344;
-              font-weight: 700;
-            }
-            .horarios-grid {
-              background: #fff;
-              padding: 10px 15px;
-              border-radius: 6px;
-              border: 1px dashed #cbd5e1;
-              margin-top: 0;
-            }
-            .horarios-title-mini { 
-              font-size: 13px; 
-              font-weight: 800; 
-              color: #4a5568; 
-              margin-bottom: 8px; 
-              text-transform: uppercase; 
-            }
+            
             .horario-item { 
               display: flex; 
-              flex-direction: row;
               justify-content: space-between; 
-              align-items: center;
-              font-size: 13px;
-              padding-bottom: 4px;
-              margin-bottom: 4px;
-              border-bottom: 1px solid #f1f5f9;
-              gap: 5px;
+              align-items: flex-start;
+              font-size: 12.5px;
+              padding-bottom: 2.5px;
+              border-bottom: 1.5px dotted #e2e8f0;
+              gap: 8px;
             }
+            
             .horario-item:last-child {
               border-bottom: none;
               padding-bottom: 0;
-              margin-bottom: 0;
             }
-            .horario-item .dia { font-weight: 700; color: #4a5568; text-transform: uppercase; }
-            .horario-item .horas { color: #0b2344; white-space: pre-wrap; line-height: 1.1; font-weight: 700; text-align: right; }
+            
+            .horario-item .dia { 
+              font-weight: 850; 
+              color: #475569; 
+              text-transform: uppercase; 
+              font-size: 11px; 
+            }
+            .horario-item .horas { 
+              color: #000000; 
+              font-weight: 900; 
+              text-align: right; 
+            }
+            
             .notas-box {
-              margin-top: 10px;
-              padding: 10px 15px;
-              background-color: #fff;
-              border-left: 4px solid #009EE3;
-              font-size: 14px;
-              color: #1a202c;
-              border-radius: 0 8px 8px 0;
+              padding: 8px 12px;
+              background-color: #f1f5f9;
+              border-left: 4px solid #000000;
+              font-size: 12.5px;
+              color: #000000;
+              border-radius: 3px;
+              line-height: 1.35;
+              margin-top: 4px;
             }
+            
+            .footer-info {
+              margin-top: 35px; 
+              font-size: 11px; 
+              color: #475569; 
+              text-align: center; 
+              border-top: 2.5px double #000000; 
+              padding-top: 10px;
+              line-height: 1.45;
+            }
+            
             @media print {
+              body { background-color: #ffffff !important; }
               .cartilla-module {
-                border: 1px solid #cbd5e1 !important;
-                background-color: #f8fafc !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                border-width: 1.5px !important;
+                border-style: solid !important;
+                border-color: #cbd5e1 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .specialty-label {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .notas-box {
+                background-color: #f1f5f9 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .horarios-grid {
+                background: rgba(0, 0, 0, 0.02) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="cartilla-title">MI CARTILLA</div>
+          <div class="header-container">
+            <div>
+              <h1 class="cartilla-title">Cápita de Prestadores</h1>
+              <p class="cartilla-subtitle">Listado personalizado de profesionales y centros de atención asignados</p>
+            </div>
           </div>
           
           <div class="cartilla-grid">
-            ${modulesHtml || '<div style="text-align: center; color: #718096; padding: 40px; font-size: 18px;">No se han seleccionado prestadores para esta cartilla.</div>'}
+            ${modulesHtml || '<div style="text-align: center; color: #475569; padding: 40px; font-size: 14px; font-weight: 600;">No se han seleccionado prestadores para esta cápita.</div>'}
           </div>
           
-          <div style="margin-top: 40px; font-size: 14px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-            Documento generado el ${new Date().toLocaleDateString('es-AR')} a las ${new Date().toLocaleTimeString('es-AR')}<br>
-            La información contenida en esta cartilla puede estar sujeta a cambios. Ante la duda, comuníquese a su agencia mas cercana.
+          <div class="footer-info">
+            Documento emitido de manera oficial el ${new Date().toLocaleDateString('es-AR')} a las ${new Date().toLocaleTimeString('es-AR')} hs.<br>
+            La información contenida en esta cápita es personalizada y de carácter oficial para el afiliado. Ante cualquier duda, consulte en su agencia asignada.
           </div>
         </body>
       </html>
