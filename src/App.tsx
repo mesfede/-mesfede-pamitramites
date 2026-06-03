@@ -1057,9 +1057,9 @@ export default function App() {
             setUserRole(data.role);
             setUserIsDisabled(data.isDisabled || false);
             
-            // Single session check
+            // Single session check only for 'viewer' (Solo Lectura)
             const deviceId = localStorage.getItem('pami_device_id');
-            if (data.activeDeviceId && deviceId && data.activeDeviceId !== deviceId) {
+            if (data.role === 'viewer' && data.activeDeviceId && deviceId && data.activeDeviceId !== deviceId) {
                 auth.signOut();
                 alert("Has sido desconectado porque se inició sesión desde otro dispositivo.");
             }

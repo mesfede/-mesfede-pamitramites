@@ -12,7 +12,7 @@ export function WeatherWidget() {
     // Fetch weather right away and then every 15 mins
     const fetchWeather = async () => {
       try {
-        const res = await fetch('/api/weather/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code');
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code');
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         if (mounted && data.current) {
