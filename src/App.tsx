@@ -1057,9 +1057,11 @@ export default function App() {
             setUserRole(data.role);
             setUserIsDisabled(data.isDisabled || false);
             
-            // Single session check only for 'viewer' (Solo Lectura) users
+            // Single session check only for 'viewer' (Solo Lectura) users (explicitly exclude any admin by role or email)
+            const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
+            const isUserAdmin = u.email && (ADMIN_EMAILS.includes(u.email) || data.role === 'admin');
             const deviceId = localStorage.getItem('pami_device_id');
-            if (data.role === 'viewer' && data.activeDeviceId && deviceId && data.activeDeviceId !== deviceId) {
+            if (!isUserAdmin && data.role === 'viewer' && data.activeDeviceId && deviceId && data.activeDeviceId !== deviceId) {
                 auth.signOut();
                 alert("Has sido desconectado porque se inició sesión desde otro dispositivo.");
             }

@@ -1,5 +1,8 @@
 {
   "name": "GuíaP!",
   "description": "Aplicación para gestionar y consultar trámites, prestadores y servicios de PAMI con base de datos en tiempo real.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
