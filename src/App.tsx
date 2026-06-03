@@ -855,7 +855,6 @@ const LIBRARIES: ("places")[] = ["places"];
 
 import { WorldCupPollModal } from './components/WorldCupPollModal';
 import { AdminPolls } from './components/AdminPolls';
-import { WorldCupFixture } from './components/WorldCupFixture';
 
 export default function App() {
   const { isLoaded } = useLoadScript({
@@ -880,7 +879,7 @@ export default function App() {
   const [folletoSearch, setFolletoSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'home' | 'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin' | 'fixture'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin'>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -3056,18 +3055,6 @@ export default function App() {
                 </button>
                 {isAdmin && (
                   <button 
-                    onClick={() => setActiveTab('fixture')}
-                    className={cn(
-                      "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
-                      activeTab === 'fixture' ? "border-white text-emerald-400 bg-white/5" : "border-transparent text-emerald-300/80 hover:text-emerald-400 hover:bg-white/5"
-                    )}
-                  >
-                    <Trophy size={16} className="shrink-0" />
-                    Fixture
-                  </button>
-                )}
-                {isAdmin && (
-                  <button 
                     onClick={() => setActiveTab('admin')}
                     className={cn(
                       "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start",
@@ -3156,18 +3143,6 @@ export default function App() {
                       <Phone size={18} className={activeTab === 'telefonos' ? "text-white" : "text-white/50"} />
                       Tel
                     </button>
-                    {isAdmin && (
-                      <button 
-                        onClick={() => { setActiveTab('fixture'); setIsMobileMenuOpen(false); }}
-                        className={cn(
-                          "px-6 py-4 text-left text-sm font-medium transition-all flex items-center gap-3 cursor-pointer",
-                          activeTab === 'fixture' ? "text-emerald-400 bg-white/10" : "text-emerald-300/70 hover:text-emerald-400 hover:bg-white/5"
-                        )}
-                      >
-                        <Trophy size={18} className={activeTab === 'fixture' ? "text-emerald-400" : "text-emerald-300/50"} />
-                        Fixture Mundial
-                      </button>
-                    )}
                     {isAdmin && (
                       <button 
                         onClick={() => { setActiveTab('admin'); setIsMobileMenuOpen(false); }}
@@ -4770,10 +4745,6 @@ export default function App() {
               )}
             </div>
           </div>
-        )}
-
-        {activeTab === 'fixture' && (
-          <WorldCupFixture />
         )}
 
         {activeTab === 'admin' && isAdmin && (
