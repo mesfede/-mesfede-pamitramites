@@ -1195,6 +1195,7 @@ export async function updateUserLastSeen(uid: string) {
 
     await setDoc(docRef, {
       lastSeen: serverTimestamp(),
+      activeDeviceId: deviceId,
       devices: {
         [deviceId]: {
           info: deviceInfo,

@@ -71,7 +71,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { Login } from './components/Login';
 import { AdminUsers } from './components/AdminUsers';
@@ -1045,34 +1045,51 @@ export default function App() {
   };
 
   useEffect(() => {
+    let unsubscribeDoc: () => void;
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       setLoading(true);
       if (u) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', u.uid));
+        // Enforce single session explicitly using snapshot
+        unsubscribeDoc = onSnapshot(doc(db, 'users', u.uid), (userDoc) => {
           if (userDoc.exists()) {
-            setUserRole(userDoc.data().role);
-            setUserIsDisabled(userDoc.data().isDisabled || false);
+            const data = userDoc.data();
+            setUserRole(data.role);
+            setUserIsDisabled(data.isDisabled || false);
+            
+            // Single session check
+            const deviceId = localStorage.getItem('pami_device_id');
+            if (data.activeDeviceId && deviceId && data.activeDeviceId !== deviceId) {
+                auth.signOut();
+                alert("Has sido desconectado porque se inició sesión desde otro dispositivo.");
+            }
           } else {
             setUserRole(null);
             setUserIsDisabled(false);
           }
-        } catch (err) {
-          console.error("Error fetching user role:", err);
+          setIsAuthReady(true);
+          setLoading(false);
+        }, (err) => {
+          console.error("Error fetching user role realtime:", err);
           setUserRole(null);
           setUserIsDisabled(false);
-        }
+          setIsAuthReady(true);
+          setLoading(false);
+        });
         setUser(u);
       } else {
+        if (unsubscribeDoc) unsubscribeDoc();
         setUser(null);
         setUserRole(null);
         setUserIsDisabled(false);
+        setIsAuthReady(true);
+        setLoading(false);
       }
-      setIsAuthReady(true);
-      setLoading(false);
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      if (unsubscribeDoc) unsubscribeDoc();
+      unsubscribeAuth();
+    };
   }, []);
 
   useEffect(() => {
