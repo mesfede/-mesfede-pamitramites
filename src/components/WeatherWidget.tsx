@@ -1,9 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Sun, Cloud, CloudRain, CloudLightning, CloudSnow, CloudFog, Loader2 } from 'lucide-react';
-import { cn } from '../lib/utils';
+
+const mapWeatherCodeToDesc = (code: number): string => {
+  if (code === 0) return 'despejado';
+  if (code >= 1 && code <= 3) return 'algo nublado';
+  if (code >= 45 && code <= 48) return 'niebla';
+  if (code >= 51 && code <= 67) return 'lluvia';
+  if (code >= 71 && code <= 77) return 'nieve';
+  if (code >= 80 && code <= 82) return 'lluvia';
+  if (code >= 85 && code <= 86) return 'nieve';
+  if (code >= 95 && code <= 99) return 'tormenta';
+  return 'nublado';
+};
 
 export function WeatherWidget() {
-  const [weather, setWeather] = useState<{ temp: number; code: number } | null>(null);
+  const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -11,21 +22,41 @@ export function WeatherWidget() {
     
     // Fetch weather right away and then every 15 mins
     const fetchWeather = async () => {
+      // 1. Fetch from our full-stack backend proxy (Bypasses all client-side CORS/CSP blocks!)
+      try {
+        const res = await fetch('/api/weather');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (mounted && data && typeof data.temp === 'number') {
+          setWeather({
+            temp: data.temp,
+            description: data.description || 'nublado'
+          });
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Backend proxy weather fetch failed, trying client fallback...", err);
+      }
+
+      // 2. Direct client fallback (Open-Meteo) as backup
       try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code');
-        if (!res.ok) throw new Error('Fetch failed');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (mounted && data.current) {
           setWeather({
             temp: Math.round(data.current.temperature_2m),
-            code: data.current.weather_code
+            description: mapWeatherCodeToDesc(data.current.weather_code)
           });
+          setLoading(false);
+          return;
         }
       } catch (err) {
-        console.warn("Weather widget could not be loaded (likely network request blocked):", err);
-      } finally {
-        if (mounted) setLoading(false);
+        console.warn("Direct client fallback failed too.", err);
       }
+
+      if (mounted) setLoading(false);
     };
     
     fetchWeather();
@@ -37,26 +68,29 @@ export function WeatherWidget() {
     };
   }, []);
 
-  const getWeatherDetails = (code: number) => {
-    // WMO Weather interpretation codes (https://open-meteo.com/en/docs)
-    switch (true) {
-      case code === 0:
-        return { icon: Sun, label: 'Despejado', color: 'text-amber-500' };
-      case code >= 1 && code <= 3:
-        return { icon: Cloud, label: 'Nuboso', color: 'text-sky-500' };
-      case code >= 45 && code <= 48:
-        return { icon: CloudFog, label: 'Niebla', color: 'text-slate-400' };
-      case code >= 51 && code <= 67:
-      case code >= 80 && code <= 82:
-        return { icon: CloudRain, label: 'Lluvia', color: 'text-blue-500' };
-      case code >= 71 && code <= 77:
-      case code >= 85 && code <= 86:
-        return { icon: CloudSnow, label: 'Nieve', color: 'text-sky-300' };
-      case code >= 95 && code <= 99:
-        return { icon: CloudLightning, label: 'Tormenta', color: 'text-violet-500' };
-      default:
-        return { icon: Cloud, label: 'Variable', color: 'text-sky-500' };
+  const getWeatherDetails = (desc: string) => {
+    if (desc.includes('tormenta') || desc.includes('trueno')) {
+      return { icon: CloudLightning, color: 'text-violet-500' };
     }
+    if (desc.includes('lluvia') || desc.includes('llovizna') || desc.includes('precipitación') || desc.includes('chaparrón')) {
+      return { icon: CloudRain, color: 'text-blue-500' };
+    }
+    if (desc.includes('nieve') || desc.includes('nevada')) {
+      return { icon: CloudSnow, color: 'text-sky-300' };
+    }
+    if (desc.includes('niebla') || desc.includes('neblina') || desc.includes('bruma') || desc.includes('humo') || desc.includes('polvo')) {
+      return { icon: CloudFog, color: 'text-slate-400' };
+    }
+    if (desc.includes('nublado') || desc.includes('cubierto')) {
+      if (desc.includes('parcialmente') || desc.includes('algo')) {
+        return { icon: Cloud, color: 'text-sky-400' };
+      }
+      return { icon: Cloud, color: 'text-slate-400' };
+    }
+    if (desc.includes('despejado')) {
+      return { icon: Sun, color: 'text-amber-500' };
+    }
+    return { icon: Cloud, color: 'text-sky-500' };
   };
 
   if (loading) {
@@ -82,10 +116,10 @@ export function WeatherWidget() {
     );
   }
 
-  const { icon: Icon, label, color } = getWeatherDetails(weather.code);
+  const { icon: Icon, color } = getWeatherDetails(weather.description);
 
   return (
-    <div className="flex flex-col items-center justify-center min-w-[120px] px-3 py-1 rounded border bg-slate-50 text-slate-600 border-slate-200">
+    <div className="flex flex-col items-center justify-center min-w-[120px] px-3 py-1 rounded border bg-slate-50 text-slate-600 border-slate-200" title={weather.description}>
       <div className="flex items-center gap-1.5 font-bold tracking-wider text-sm sm:text-base">
         <Icon size={16} className={color} />
         <span>{weather.temp}°C</span>

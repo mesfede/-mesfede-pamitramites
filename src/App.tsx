@@ -1057,7 +1057,7 @@ export default function App() {
             setUserRole(data.role);
             setUserIsDisabled(data.isDisabled || false);
             
-            // Single session check only for 'viewer' (Solo Lectura)
+            // Single session check only for 'viewer' (Solo Lectura) users
             const deviceId = localStorage.getItem('pami_device_id');
             if (data.role === 'viewer' && data.activeDeviceId && deviceId && data.activeDeviceId !== deviceId) {
                 auth.signOut();
