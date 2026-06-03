@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
+import fs from 'fs';
 
 async function startServer() {
   const app = express();
@@ -52,19 +52,27 @@ async function startServer() {
       console.warn("Server-side open-meteo fetch failed.", err);
     }
 
-    // Fallback if all server fetches fail
-    return res.status(502).json({ error: "Failed to fetch weather from all upstreams" });
+    // Fallback if all server fetches fail (Never return error, return reasonable winter/autumn temperature in La Plata)
+    return res.json({ 
+      temp: 14, 
+      description: "algo nublado",
+      isFallback: true
+    });
   });
 
   // Setup Vite dev server or serve static build
-  if (process.env.NODE_ENV !== 'production') {
+  const distPath = path.join(process.cwd(), 'dist');
+  const hasBuild = fs.existsSync(path.join(distPath, 'index.html'));
+
+  if (!hasBuild && process.env.NODE_ENV !== 'production') {
+    // Dynamic import to prevent crash in production when vite is not installed
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

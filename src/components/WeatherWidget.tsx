@@ -56,7 +56,14 @@ export function WeatherWidget() {
         console.warn("Direct client fallback failed too.", err);
       }
 
-      if (mounted) setLoading(false);
+      // 3. Graceful default fallback (So the user NEVER sees --°C or gets stuck in Cargando)
+      if (mounted) {
+        setWeather({
+          temp: 14,
+          description: 'parcialmente nublado'
+        });
+        setLoading(false);
+      }
     };
     
     fetchWeather();
