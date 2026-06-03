@@ -855,6 +855,7 @@ const LIBRARIES: ("places")[] = ["places"];
 
 import { WorldCupPollModal } from './components/WorldCupPollModal';
 import { AdminPolls } from './components/AdminPolls';
+import { WeatherWidget } from './components/WeatherWidget';
 
 export default function App() {
   const { isLoaded } = useLoadScript({
@@ -3183,10 +3184,6 @@ export default function App() {
                 <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row gap-2 sm:gap-4 items-center">
                   {/* Primary Search: Internal Tramites */}
                   <div className="flex-grow flex items-center gap-2 sm:gap-3 w-full md:pl-6">
-                    <div className="hidden sm:flex items-center gap-2 text-pami-blue whitespace-nowrap shrink-0">
-                      <Search size={16} />
-                      <h3 className="text-sm font-medium">Buscar trámite</h3>
-                    </div>
                     <div className="relative flex-grow">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pami-muted sm:text-pami-muted/70" size={16} />
                       <Input 
@@ -3197,6 +3194,11 @@ export default function App() {
                       />
                     </div>
                   </div>
+
+                  {/* Divider Desktop */}
+                  <div className="hidden md:block w-px h-6 bg-gray-200"></div>
+
+                  <WeatherWidget />
 
                   {/* Divider Desktop */}
                   <div className="hidden md:block w-px h-6 bg-gray-200"></div>
