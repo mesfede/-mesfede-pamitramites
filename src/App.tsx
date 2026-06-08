@@ -1047,6 +1047,14 @@ export default function App() {
 
   useEffect(() => {
     let unsubscribeDoc: () => void;
+    
+    // Failsafe timeout to prevent infinite loading screen (max 5 seconds loading)
+    const failsafeTimeout = setTimeout(() => {
+      console.warn("Failsafe app loading timeout triggered. Unlocking UI.");
+      setIsAuthReady(true);
+      setLoading(false);
+    }, 5000);
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       setLoading(true);
       if (u) {
@@ -1059,7 +1067,8 @@ export default function App() {
             
             // Single session check only for 'viewer' (Solo Lectura) users (explicitly exclude any admin by role or email)
             const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
-            const isUserAdmin = u.email && (ADMIN_EMAILS.includes(u.email) || data.role === 'admin');
+            const userEmailLower = u.email ? u.email.toLowerCase() : '';
+            const isUserAdmin = userEmailLower && (ADMIN_EMAILS.includes(userEmailLower) || data.role === 'admin');
             const deviceId = localStorage.getItem('pami_device_id');
             if (!isUserAdmin && data.role === 'viewer' && data.activeDeviceId && deviceId && data.activeDeviceId !== deviceId) {
                 auth.signOut();
@@ -1071,12 +1080,14 @@ export default function App() {
           }
           setIsAuthReady(true);
           setLoading(false);
+          clearTimeout(failsafeTimeout);
         }, (err) => {
           console.error("Error fetching user role realtime:", err);
           setUserRole(null);
           setUserIsDisabled(false);
           setIsAuthReady(true);
           setLoading(false);
+          clearTimeout(failsafeTimeout);
         });
         setUser(u);
       } else {
@@ -1086,10 +1097,12 @@ export default function App() {
         setUserIsDisabled(false);
         setIsAuthReady(true);
         setLoading(false);
+        clearTimeout(failsafeTimeout);
       }
     });
 
     return () => {
+      clearTimeout(failsafeTimeout);
       if (unsubscribeDoc) unsubscribeDoc();
       unsubscribeAuth();
     };
@@ -1401,6 +1414,70 @@ export default function App() {
 
   const allPrestadorNames = useMemo(() => {
     return Array.from(new Set(prestadores.filter(p => !p.oculto || isAdmin).map(p => p.nombre))).sort((a, b) => a.localeCompare(b));
+  }, [prestadores, isAdmin]);
+
+  const optionsMedicosCabecera = useMemo(() => {
+    return Array.from(new Set(
+      prestadores
+        .filter(p => !p.oculto || isAdmin)
+        .filter(p => {
+          const name = p.nombre.toLowerCase();
+          const specs = (p.especialidades || []).map(e => e.toLowerCase());
+          return name.includes('cabecera') || specs.some(s => s.includes('cabecera'));
+        })
+        .map(p => p.nombre)
+    )).sort((a, b) => a.localeCompare(b));
+  }, [prestadores, isAdmin]);
+
+  const optionsOdontologos = useMemo(() => {
+    return Array.from(new Set(
+      prestadores
+        .filter(p => !p.oculto || isAdmin)
+        .filter(p => {
+          const name = p.nombre.toLowerCase();
+          const specs = (p.especialidades || []).map(e => e.toLowerCase());
+          return name.includes('odontol') || specs.some(s => s.includes('odontol'));
+        })
+        .map(p => p.nombre)
+    )).sort((a, b) => a.localeCompare(b));
+  }, [prestadores, isAdmin]);
+
+  const optionsKinesiologia = useMemo(() => {
+    return Array.from(new Set(
+      prestadores
+        .filter(p => !p.oculto || isAdmin)
+        .filter(p => {
+          const name = p.nombre.toLowerCase();
+          const specs = (p.especialidades || []).map(e => e.toLowerCase());
+          return name.includes('kinesio') || specs.some(s => s.includes('kinesio') || s.includes('fisiokinesio') || s.includes('fisiatria'));
+        })
+        .map(p => p.nombre)
+    )).sort((a, b) => a.localeCompare(b));
+  }, [prestadores, isAdmin]);
+
+  const optionsGuardia = useMemo(() => {
+    return Array.from(new Set(
+      prestadores
+        .filter(p => !p.oculto || isAdmin)
+        .filter(p => {
+          const name = p.nombre.toLowerCase();
+          if (name.includes('lopardo') || name.includes('repetto') || name.includes('imaxe')) {
+            return false;
+          }
+          return (
+            name.includes('althea') ||
+            name.includes('san roque') ||
+            name.includes('rossi') ||
+            name.includes('los tilos') ||
+            name.includes('sudamericano') ||
+            name.includes('belgrano') ||
+            name.includes('excelencia') ||
+            (name.includes('platense') && !name.includes('oftal')) ||
+            ((name.includes('diagnostico') || name.includes('diagnóstico')) && !name.includes('maipu') && !name.includes('nuclear') && !name.includes('mediter') && !name.includes('bioimagenes'))
+          );
+        })
+        .map(p => p.nombre)
+    )).sort((a, b) => a.localeCompare(b));
   }, [prestadores, isAdmin]);
 
   const allSpecialties = useMemo(() => {
@@ -5454,7 +5531,7 @@ export default function App() {
               <AutocompleteSingleSelect
                 value={cartillaSelections.medicoCabecera}
                 onChange={(val) => setCartillaSelections(prev => ({ ...prev, medicoCabecera: val }))}
-                options={allPrestadorNames}
+                options={optionsMedicosCabecera}
                 placeholder="Buscar médico de cabecera..."
                 emptyOptionText="Ninguno"
                 className="w-full"
@@ -5466,7 +5543,7 @@ export default function App() {
               <AutocompleteSingleSelect
                 value={cartillaSelections.odontologo}
                 onChange={(val) => setCartillaSelections(prev => ({ ...prev, odontologo: val }))}
-                options={allPrestadorNames}
+                options={optionsOdontologos}
                 placeholder="Buscar odontólogo..."
                 emptyOptionText="Ninguno"
                 className="w-full"
@@ -5478,7 +5555,7 @@ export default function App() {
               <AutocompleteSingleSelect
                 value={cartillaSelections.kinesiologia}
                 onChange={(val) => setCartillaSelections(prev => ({ ...prev, kinesiologia: val }))}
-                options={allPrestadorNames}
+                options={optionsKinesiologia}
                 placeholder="Buscar kinesiología..."
                 emptyOptionText="Ninguno"
                 className="w-full"
@@ -5490,7 +5567,7 @@ export default function App() {
               <AutocompleteSingleSelect
                 value={cartillaSelections.guardia}
                 onChange={(val) => setCartillaSelections(prev => ({ ...prev, guardia: val }))}
-                options={allPrestadorNames}
+                options={optionsGuardia}
                 placeholder="Buscar centro de internación/guardia..."
                 emptyOptionText="Ninguno"
                 className="w-full"

@@ -20,11 +20,25 @@ export function WeatherWidget() {
   useEffect(() => {
     let mounted = true;
     
+    // Helper to perform fetch with a timeout
+    const fetchWithTimeout = async (url: string, timeoutMs = 3000): Promise<Response> => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        return response;
+      } catch (error) {
+        clearTimeout(id);
+        throw error;
+      }
+    };
+
     // Fetch weather right away and then every 15 mins
     const fetchWeather = async () => {
       // 1. Fetch from our full-stack backend proxy (Bypasses all client-side CORS/CSP blocks!)
       try {
-        const res = await fetch('/api/weather');
+        const res = await fetchWithTimeout('/api/weather', 3000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (mounted && data && typeof data.temp === 'number') {
@@ -41,7 +55,7 @@ export function WeatherWidget() {
 
       // 2. Direct client fallback (Open-Meteo) as backup
       try {
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code');
+        const res = await fetchWithTimeout('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code', 3000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (mounted && data.current) {

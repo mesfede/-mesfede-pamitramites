@@ -2,6 +2,20 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 
+// Helper for safe server-side fetch with timeout
+async function fetchWithTimeout(url: string, timeoutMs = 2500): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -10,7 +24,7 @@ async function startServer() {
   app.get('/api/weather', async (req, res) => {
     // Strategy 1: WTTR.in (Server-to-Server)
     try {
-      const response = await fetch('https://wttr.in/La_Plata?format=j1&lang=es');
+      const response = await fetchWithTimeout('https://wttr.in/La_Plata?format=j1&lang=es', 2500);
       if (response.ok) {
         const data = await response.json();
         if (data.current_condition && data.current_condition.length > 0) {
@@ -27,7 +41,7 @@ async function startServer() {
 
     // Strategy 2: Open-Meteo (Server-to-Server)
     try {
-      const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code');
+      const response = await fetchWithTimeout('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code', 2500);
       if (response.ok) {
         const data = await response.json();
         if (data.current) {
