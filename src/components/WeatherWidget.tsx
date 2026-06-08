@@ -41,13 +41,16 @@ export function WeatherWidget() {
         const res = await fetchWithTimeout('/api/weather', 3000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (mounted && data && typeof data.temp === 'number') {
+        if (mounted && data && typeof data.temp === 'number' && !data.isFallback) {
           setWeather({
             temp: data.temp,
             description: data.description || 'nublado'
           });
           setLoading(false);
           return;
+        }
+        if (data && data.isFallback) {
+          throw new Error("Server returned fallback weather data. Trying client direct fetch...");
         }
       } catch (err) {
         console.warn("Backend proxy weather fetch failed, trying client fallback...", err);
