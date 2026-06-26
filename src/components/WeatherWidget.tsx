@@ -38,7 +38,7 @@ export function WeatherWidget() {
     const fetchWeather = async () => {
       // 1. Fetch from our full-stack backend proxy (Bypasses all client-side CORS/CSP blocks!)
       try {
-        const res = await fetchWithTimeout('/api/weather', 3000);
+        const res = await fetchWithTimeout(`/api/weather?t=${Date.now()}`, 3000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (mounted && data && typeof data.temp === 'number' && !data.isFallback) {
@@ -58,7 +58,7 @@ export function WeatherWidget() {
 
       // 2. Direct client fallback (Open-Meteo) as backup
       try {
-        const res = await fetchWithTimeout('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code', 3000);
+        const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code&nocache=${Date.now()}`, 3000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (mounted && data.current) {

@@ -3,11 +3,17 @@ import path from 'path';
 import fs from 'fs';
 
 // Helper for safe server-side fetch with timeout
-async function fetchWithTimeout(url: string, timeoutMs = 2500): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { 
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
+    });
     clearTimeout(id);
     return response;
   } catch (error) {
@@ -22,26 +28,15 @@ async function startServer() {
 
   // Server-side Weather Proxy that bypasses browser-level CSP / CORS
   app.get('/api/weather', async (req, res) => {
-    // Strategy 1: WTTR.in (Server-to-Server)
-    try {
-      const response = await fetchWithTimeout('https://wttr.in/La_Plata?format=j1&lang=es', 2500);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.current_condition && data.current_condition.length > 0) {
-          const current = data.current_condition[0];
-          return res.json({
-            temp: Math.round(parseFloat(current.temp_C)),
-            description: current.lang_es?.[0]?.value?.toLowerCase() || 'nublado'
-          });
-        }
-      }
-    } catch (err) {
-      console.warn("Server-side wttr.in fetch failed, trying Open-Meteo...", err);
-    }
+    // Set strict anti-cache headers so Nginx and browsers never cache fallback or stale values
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
 
-    // Strategy 2: Open-Meteo (Server-to-Server)
+    // Strategy 1: Open-Meteo (Server-to-Server) - Highly reliable, fast, with almost 100% uptime
     try {
-      const response = await fetchWithTimeout('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code', 2500);
+      const response = await fetchWithTimeout('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code', 3000);
       if (response.ok) {
         const data = await response.json();
         if (data.current) {
@@ -63,7 +58,24 @@ async function startServer() {
         }
       }
     } catch (err) {
-      console.warn("Server-side open-meteo fetch failed.", err);
+      console.warn("Server-side open-meteo fetch failed, trying wttr.in...", err);
+    }
+
+    // Strategy 2: WTTR.in (Server-to-Server) - Backup option
+    try {
+      const response = await fetchWithTimeout('https://wttr.in/La_Plata?format=j1&lang=es', 3000);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.current_condition && data.current_condition.length > 0) {
+          const current = data.current_condition[0];
+          return res.json({
+            temp: Math.round(parseFloat(current.temp_C)),
+            description: current.lang_es?.[0]?.value?.toLowerCase() || 'nublado'
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Server-side wttr.in fetch failed.", err);
     }
 
     // Fallback if all server fetches fail (Never return error, return reasonable winter/autumn temperature in La Plata)
