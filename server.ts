@@ -39,7 +39,38 @@ async function startServer() {
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
 
-    // Strategy 1: Open-Meteo (Server-to-Server) - Highly reliable, fast, with almost 100% uptime
+    const errors: string[] = [];
+
+    // Strategy 1a: Open-Meteo via HTTP (Fastest, avoids SSL overhead / cert validation issues)
+    try {
+      const response = await fetchWithTimeout('http://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code', 3000);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.current) {
+          const mapWeatherCodeToDesc = (code: number): string => {
+            if (code === 0) return 'despejado';
+            if (code >= 1 && code <= 3) return 'algo nublado';
+            if (code >= 45 && code <= 48) return 'niebla';
+            if (code >= 51 && code <= 67) return 'lluvia';
+            if (code >= 71 && code <= 77) return 'nieve';
+            if (code >= 80 && code <= 82) return 'lluvia';
+            if (code >= 85 && code <= 86) return 'nieve';
+            if (code >= 95 && code <= 99) return 'tormenta';
+            return 'nublado';
+          };
+          return res.json({
+            temp: Math.round(data.current.temperature_2m),
+            description: mapWeatherCodeToDesc(data.current.weather_code)
+          });
+        }
+      } else {
+        errors.push(`Open-Meteo HTTP response: ${response.status} ${response.statusText}`);
+      }
+    } catch (err: any) {
+      errors.push(`Open-Meteo HTTP failed: ${err.message || err}`);
+    }
+
+    // Strategy 1b: Open-Meteo via HTTPS (Backup)
     try {
       const response = await fetchWithTimeout('https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code', 3000);
       if (response.ok) {
@@ -61,12 +92,33 @@ async function startServer() {
             description: mapWeatherCodeToDesc(data.current.weather_code)
           });
         }
+      } else {
+        errors.push(`Open-Meteo HTTPS response: ${response.status} ${response.statusText}`);
       }
-    } catch (err) {
-      console.warn("Server-side open-meteo fetch failed, trying wttr.in...", err);
+    } catch (err: any) {
+      errors.push(`Open-Meteo HTTPS failed: ${err.message || err}`);
     }
 
-    // Strategy 2: WTTR.in (Server-to-Server) - Backup option
+    // Strategy 2a: WTTR.in via HTTP (Backup option)
+    try {
+      const response = await fetchWithTimeout('http://wttr.in/La_Plata?format=j1&lang=es', 3000);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.current_condition && data.current_condition.length > 0) {
+          const current = data.current_condition[0];
+          return res.json({
+            temp: Math.round(parseFloat(current.temp_C)),
+            description: current.lang_es?.[0]?.value?.toLowerCase() || 'nublado'
+          });
+        }
+      } else {
+        errors.push(`wttr.in HTTP response: ${response.status} ${response.statusText}`);
+      }
+    } catch (err: any) {
+      errors.push(`wttr.in HTTP failed: ${err.message || err}`);
+    }
+
+    // Strategy 2b: WTTR.in via HTTPS (Backup option)
     try {
       const response = await fetchWithTimeout('https://wttr.in/La_Plata?format=j1&lang=es', 3000);
       if (response.ok) {
@@ -78,16 +130,21 @@ async function startServer() {
             description: current.lang_es?.[0]?.value?.toLowerCase() || 'nublado'
           });
         }
+      } else {
+        errors.push(`wttr.in HTTPS response: ${response.status} ${response.statusText}`);
       }
-    } catch (err) {
-      console.warn("Server-side wttr.in fetch failed.", err);
+    } catch (err: any) {
+      errors.push(`wttr.in HTTPS failed: ${err.message || err}`);
     }
+
+    console.warn("All weather server-side fetch strategies failed:", errors);
 
     // Fallback if all server fetches fail (Never return error, return reasonable winter/autumn temperature in La Plata)
     return res.json({ 
       temp: 14, 
       description: "algo nublado",
-      isFallback: true
+      isFallback: true,
+      errors
     });
   });
 
