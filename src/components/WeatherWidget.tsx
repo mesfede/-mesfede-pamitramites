@@ -73,7 +73,8 @@ export function WeatherWidget() {
       // 2. Direct client fallback (Open-Meteo) as backup
       try {
         logs.push("Intentando conexión directa del navegador a Open-Meteo...");
-        const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code&nocache=${Date.now()}`, 3000);
+        // Use a generous 12-second timeout for slower client networks (e.g., mobile connections in Argentina)
+        const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?latitude=-34.9215&longitude=-57.9545&current=temperature_2m,weather_code&nocache=${Date.now()}`, 12000);
         logs.push(`Respuesta Open-Meteo directa: HTTP ${res.status}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -91,6 +92,30 @@ export function WeatherWidget() {
         }
       } catch (err: any) {
         logs.push(`Fallo de conexión directa a Open-Meteo: ${err.message || err}`);
+      }
+
+      // 2b. Direct client fallback (wttr.in) as secondary backup
+      try {
+        logs.push("Intentando conexión directa del navegador a wttr.in...");
+        const res = await fetchWithTimeout(`https://wttr.in/La_Plata?format=j1&lang=es&nocache=${Date.now()}`, 12000);
+        logs.push(`Respuesta wttr.in directa: HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (mounted && data.current_condition && data.current_condition.length > 0) {
+          const current = data.current_condition[0];
+          const tempVal = Math.round(parseFloat(current.temp_C));
+          const descVal = current.lang_es?.[0]?.value?.toLowerCase() || 'nublado';
+          setWeather({
+            temp: tempVal,
+            description: descVal
+          });
+          logs.push(`Éxito: Clima recibido de wttr.in directo -> ${tempVal}°C, ${descVal}`);
+          setDebugLogs(logs);
+          setLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        logs.push(`Fallo de conexión directa a wttr.in: ${err.message || err}`);
       }
 
       // 3. Graceful default fallback (So the user NEVER sees --°C or gets stuck in Cargando)
