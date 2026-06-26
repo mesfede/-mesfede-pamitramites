@@ -1,6 +1,11 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import dns from 'dns';
+
+// Ensure Node.js prefers IPv4 over IPv6 when resolving hostnames, 
+// which prevents connection hangs/failures in container environments like Cloud Run without IPv6 outbound support.
+dns.setDefaultResultOrder('ipv4first');
 
 // Helper for safe server-side fetch with timeout
 async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
