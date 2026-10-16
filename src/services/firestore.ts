@@ -2538,7 +2538,10 @@ export async function marcarOrdenCargadaYEliminar(
 
   // 1. Guardar en registro de cargadas para evitar re-importación al sincronizar la planilla
   if (cleanOme || cleanBeneficio) {
-    const docId = cleanOme ? `OME_${cleanOme}` : `BEN_${cleanBeneficio}_${cleanFechaOme || Date.now()}`;
+    const safeOme = cleanOme.replace(/[/\\#?.]/g, '_');
+    const safeBeneficio = cleanBeneficio.replace(/[/\\#?.]/g, '_');
+    const safeFechaOme = cleanFechaOme.replace(/[/\\#?.]/g, '_');
+    const docId = safeOme ? `OME_${safeOme}` : `BEN_${safeBeneficio}_${safeFechaOme || Date.now()}`;
     const cargadaRef = doc(db, HIGIENICOS_CARGADAS_COLLECTION, docId);
     await setDoc(cargadaRef, {
       nroOme: cleanOme,
