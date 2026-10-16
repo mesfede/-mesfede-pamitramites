@@ -106,6 +106,33 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["area", "nombre", "interno"]
+    },
+    "HigienicoOrden": {
+      "title": "Orden de Higiénicos Absorbentes",
+      "description": "Seguimiento y control de ciclo de 3 meses para pañales descartables y apósitos OME.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "afiliadoNombre": { "type": "string" },
+        "afiliadoBeneficio": { "type": "string" },
+        "afiliadoDni": { "type": "string" },
+        "hogarPami": { "type": "boolean" },
+        "tieneCud": { "type": "boolean" },
+        "cudNumero": { "type": "string" },
+        "insumoTipo": { "type": "string" },
+        "insumoTalle": { "type": "string" },
+        "medicoCabecera": { "type": "string" },
+        "nroOme": { "type": "string" },
+        "fechaEmisionOme": { "type": "string" },
+        "fechaCargaSistema": { "type": "string" },
+        "fechaVencimiento": { "type": "string" },
+        "estado": { "type": "string", "enum": ["pendiente_carga", "vigente", "proxima_vencer", "vencida", "bloqueada_cud"] },
+        "cargadoPorEmail": { "type": "string" },
+        "notas": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["afiliadoNombre", "afiliadoBeneficio"]
     }
   },
   "firestore": {
@@ -132,6 +159,10 @@
     "/telefonos/{telefonoId}": {
       "schema": "TelefonoInterno",
       "description": "Colección de teléfonos internos."
+    },
+    "/higienicos_ordenes/{ordenId}": {
+      "schema": "HigienicoOrden",
+      "description": "Colección de órdenes de higiénicos absorbentes."
     }
   }
 }

@@ -13,12 +13,112 @@
 }
 
 @layer base {
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --app-height: 100dvh;
+  }
+
+  /* 1. Eliminate tap highlight flashes on iOS and Android */
+  *, *::before, *::after {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 2. Prevent pull-to-refresh from hijacking scroll & bounce */
+  html {
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-pami-bg text-pami-text;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
   }
+
+  /* 3. Eliminate 300ms delayed taps */
+  button, a, input, select, textarea, [role="button"], label {
+    touch-action: manipulation;
+  }
+
   button {
     cursor: pointer;
   }
+
+  /* 4. Prevent long-press button text selection callout */
+  button, [role="button"], nav, .no-select, .select-none {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* 5. Prevent iOS Safari auto-zoom on input focus (minimum 16px) */
+  @media (max-width: 767px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Safe Area Insets for notches, status bars, and home indicators */
+.pt-safe {
+  padding-top: max(0px, env(safe-area-inset-top, 0px));
+}
+.pb-safe {
+  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+}
+.pl-safe {
+  padding-left: max(0px, env(safe-area-inset-left, 0px));
+}
+.pr-safe {
+  padding-right: max(0px, env(safe-area-inset-right, 0px));
+}
+.top-safe {
+  top: max(0px, env(safe-area-inset-top, 0px));
+}
+.bottom-safe {
+  bottom: max(0px, env(safe-area-inset-bottom, 0px));
+}
+
+/* 100dvh dynamic viewport height fix */
+.h-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+.min-h-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.max-h-dvh {
+  max-height: 100vh;
+  max-height: 100dvh;
+}
+
+/* Carousel axis lock: prevent horizontal swipe from getting hijacked diagonally */
+.touch-pan-x-scroll {
+  touch-action: pan-x pinch-zoom;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth, immediate native touch press feedback */
+.touch-press {
+  transition: transform 90ms cubic-bezier(0.4, 0, 0.2, 1), opacity 90ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.touch-press:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+/* Scroll containment for modals, sheets, and scrollable panels */
+.overscroll-contain {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .medical-pattern {

@@ -66,7 +66,9 @@ import {
   Bell,
   Download,
   CreditCard,
-  Trophy
+  Trophy,
+  Smartphone,
+  ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from './firebase';
@@ -76,6 +78,7 @@ import { db } from './firebase';
 import { Login } from './components/Login';
 import { AdminUsers } from './components/AdminUsers';
 import { SolicitudesModal } from './components/SolicitudesModal';
+import { MobileNativeAuditModal } from './components/MobileNativeAuditModal';
 import { generateFullTramitePdf } from './lib/pdfUtils';
 import { 
   subscribeToTramites, 
@@ -126,8 +129,11 @@ import {
   purgeSpecialtyFromDatabase,
   getCompleteBackup,
   importPracticasBatch,
-  updateUserLastSeen
+  updateUserLastSeen,
+  subscribeToHigienicosConfig,
+  subscribeToHigienicosOrdenes
 } from './services/firestore';
+import { processHigienicosOrdenes } from './utils/higienicosUtils';
 import Papa from 'papaparse';
 import { Tramite, Prestador, PracticaOME, Folleto, CentroCoordinador, TelefonoInterno, CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS, CATEGORY_LIGHT_COLORS } from './types';
 import { INITIAL_TRAMITES, INITIAL_PRESTADORES, INITIAL_FOLLETOS } from './initialData';
@@ -226,7 +232,7 @@ const Button = ({
   return (
     <button 
       className={cn(
-        'px-4 py-2 rounded-lg font-medium transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2',
+        'px-4 py-2.5 rounded-lg font-medium transition-all active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 select-none touch-manipulation min-h-[44px]',
         variants[variant],
         className
       )}
@@ -242,7 +248,7 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
   <input 
     ref={ref}
     className={cn(
-      'w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all',
+      'w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all text-base sm:text-sm min-h-[44px] touch-manipulation',
       className
     )}
     {...props}
@@ -253,7 +259,7 @@ Input.displayName = 'Input';
 const TextArea = ({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea 
     className={cn(
-      'w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all min-h-[100px]',
+      'w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pami-cyan focus:border-transparent transition-all min-h-[100px] text-base sm:text-sm touch-manipulation',
       className
     )}
     {...props}
@@ -556,27 +562,37 @@ const AutocompleteSingleSelect = ({
 const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => (
   <AnimatePresence>
     {isOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         />
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 40 }}
+          transition={{ type: "spring", damping: 28, stiffness: 320 }}
+          className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col pb-safe"
         >
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-            <h3 className="text-xl font-semibold text-pami-text">{title}</h3>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          {/* Mobile Sheet Drag Indicator */}
+          <div className="pt-2.5 pb-1 flex justify-center sm:hidden bg-gray-50 border-b border-gray-100/80">
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+          </div>
+
+          <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50 select-none">
+            <h3 className="text-lg sm:text-xl font-bold text-pami-text leading-tight">{title}</h3>
+            <button 
+              onClick={onClose} 
+              className="w-10 h-10 flex items-center justify-center hover:bg-gray-200/60 rounded-full transition-colors active:scale-90 touch-manipulation select-none -mr-1"
+              aria-label="Cerrar modal"
+            >
               <X size={20} />
             </button>
           </div>
-          <div className="p-6 max-h-[80vh] overflow-y-auto">
+          <div className="p-5 sm:p-6 overflow-y-auto overscroll-contain">
             {children}
           </div>
         </motion.div>
@@ -856,6 +872,7 @@ const LIBRARIES: ("places")[] = ["places"];
 import { WorldCupPollModal } from './components/WorldCupPollModal';
 import { AdminPolls } from './components/AdminPolls';
 import { WeatherWidget } from './components/WeatherWidget';
+import { HigienicosDashboard } from './components/HigienicosDashboard';
 
 export default function App() {
   const { isLoaded } = useLoadScript({
@@ -880,8 +897,12 @@ export default function App() {
   const [folletoSearch, setFolletoSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'home' | 'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'admin'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'tramites' | 'prestadores' | 'practicas' | 'centros' | 'folletos' | 'telefonos' | 'higienicos' | 'admin'>('home');
+  const [authorizedHigienicosEmails, setAuthorizedHigienicosEmails] = useState<string[]>(['mesfede@gmail.com']);
+  const [userCanAccessHigienicos, setUserCanAccessHigienicos] = useState<boolean>(false);
+  const [higienicosListasCount, setHigienicosListasCount] = useState<number>(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileAuditOpen, setIsMobileAuditOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -977,6 +998,14 @@ export default function App() {
   const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
   const isAdmin = user?.email && (ADMIN_EMAILS.includes(user.email) || userRole === 'admin');
   const isViewer = isAdmin || userRole === 'viewer';
+  const userEmailLower = user?.email ? user.email.toLowerCase().trim() : '';
+  const canAccessHigienicos = Boolean(
+    userEmailLower && (
+      userEmailLower === 'mesfede@gmail.com' || 
+      authorizedHigienicosEmails.some(e => e.toLowerCase().trim() === userEmailLower) ||
+      userCanAccessHigienicos === true
+    )
+  );
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -1064,6 +1093,7 @@ export default function App() {
             const data = userDoc.data();
             setUserRole(data.role);
             setUserIsDisabled(data.isDisabled || false);
+            setUserCanAccessHigienicos(data.canAccessHigienicos || false);
             
             // Single session check only for 'viewer' (Solo Lectura) users (explicitly exclude any admin by role or email)
             const ADMIN_EMAILS = ['mesfede@gmail.com', 'lizasomariajose@gmail.com'];
@@ -1077,6 +1107,7 @@ export default function App() {
           } else {
             setUserRole(null);
             setUserIsDisabled(false);
+            setUserCanAccessHigienicos(false);
           }
           setIsAuthReady(true);
           setLoading(false);
@@ -1085,6 +1116,7 @@ export default function App() {
           console.error("Error fetching user role realtime:", err);
           setUserRole(null);
           setUserIsDisabled(false);
+          setUserCanAccessHigienicos(false);
           setIsAuthReady(true);
           setLoading(false);
           clearTimeout(failsafeTimeout);
@@ -1095,6 +1127,7 @@ export default function App() {
         setUser(null);
         setUserRole(null);
         setUserIsDisabled(false);
+        setUserCanAccessHigienicos(false);
         setIsAuthReady(true);
         setLoading(false);
         clearTimeout(failsafeTimeout);
@@ -1111,17 +1144,18 @@ export default function App() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (user && !userIsDisabled) {
-      // Update immediately
-      updateUserLastSeen(user.uid);
+      const isUserAdmin = user.email && (ADMIN_EMAILS.includes(user.email.toLowerCase()) || userRole === 'admin');
+      // Update immediately with email and role so it's always recorded in Firestore users collection
+      updateUserLastSeen(user.uid, user.email, isUserAdmin ? 'admin' : (userRole || 'viewer'));
       // Update every 2 minutes
       interval = setInterval(() => {
-        updateUserLastSeen(user.uid);
+        updateUserLastSeen(user.uid, user.email, isUserAdmin ? 'admin' : (userRole || 'viewer'));
       }, 2 * 60 * 1000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [user, userIsDisabled]);
+  }, [user, userIsDisabled, userRole]);
 
   useEffect(() => {
     // Wait until auth state is determined
@@ -1160,6 +1194,18 @@ export default function App() {
       }
     });
 
+    const unsubscribeHigienicosConfig = subscribeToHigienicosConfig((conf) => {
+      if (conf.authorizedEmails && conf.authorizedEmails.length > 0) {
+        setAuthorizedHigienicosEmails(conf.authorizedEmails);
+      }
+    });
+
+    const unsubscribeHigienicosOrdenes = subscribeToHigienicosOrdenes((items) => {
+      const processed = processHigienicosOrdenes(items);
+      const listas = processed.filter(p => p.computedEstado === 'lista_para_cargar').length;
+      setHigienicosListasCount(listas);
+    });
+
     testConnection();
 
     return () => {
@@ -1171,6 +1217,8 @@ export default function App() {
       unsubscribeTelefonos();
       unsubscribeUpdates();
       unsubscribeSolicitudes();
+      unsubscribeHigienicosConfig();
+      unsubscribeHigienicosOrdenes();
     };
   }, [isAuthReady, user, userIsDisabled, isViewer, isAdmin]);
 
@@ -3068,7 +3116,8 @@ export default function App() {
                 />
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col items-end">
                     <span className="text-xs font-bold truncate max-w-[150px]">{user.displayName || user.email}</span>
@@ -3085,8 +3134,8 @@ export default function App() {
             </div>
             
             {/* Tabs */}
-            <div className="relative bg-pami-blue/95 backdrop-blur-sm border-t border-white/10 hidden md:block">
-              <div className="max-w-7xl mx-auto px-0 sm:px-4 flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory overscroll-x-contain">
+            <div className="relative bg-pami-blue/95 backdrop-blur-sm border-t border-white/10 hidden md:block select-none">
+              <div className="max-w-7xl mx-auto px-0 sm:px-4 flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory overscroll-x-contain touch-pan-x-scroll">
                 <button 
                   onClick={() => setActiveTab('tramites')}
                   className={cn(
@@ -3150,6 +3199,23 @@ export default function App() {
                   <Phone size={16} className="shrink-0" />
                   Tel
                 </button>
+                {canAccessHigienicos && (
+                  <button 
+                    onClick={() => setActiveTab('higienicos')}
+                    className={cn(
+                      "px-4 sm:px-6 py-3 md:py-3.5 text-sm font-medium transition-all border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 snap-start cursor-pointer",
+                      activeTab === 'higienicos' ? "border-white text-white bg-white/5" : "border-transparent text-white/70 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <FileSpreadsheet size={16} className="shrink-0 text-teal-300" />
+                    <span>Higiénicos</span>
+                    {higienicosListasCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold shadow-xs animate-pulse" title={`${higienicosListasCount} órdenes habilitadas para cargar hoy`}>
+                        {higienicosListasCount}
+                      </span>
+                    )}
+                  </button>
+                )}
                 {isAdmin && (
                   <button 
                     onClick={() => setActiveTab('admin')}
@@ -3240,6 +3306,25 @@ export default function App() {
                       <Phone size={18} className={activeTab === 'telefonos' ? "text-white" : "text-white/50"} />
                       Tel
                     </button>
+                    {canAccessHigienicos && (
+                      <button 
+                        onClick={() => { setActiveTab('higienicos'); setIsMobileMenuOpen(false); }}
+                        className={cn(
+                          "px-6 py-4 text-left text-sm font-medium transition-all flex items-center justify-between cursor-pointer",
+                          activeTab === 'higienicos' ? "text-white bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileSpreadsheet size={18} className={activeTab === 'higienicos' ? "text-teal-300" : "text-white/50"} />
+                          <span>Higiénicos</span>
+                        </div>
+                        {higienicosListasCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+                            {higienicosListasCount} hoy
+                          </span>
+                        )}
+                      </button>
+                    )}
                     {isAdmin && (
                       <button 
                         onClick={() => { setActiveTab('admin'); setIsMobileMenuOpen(false); }}
@@ -3333,19 +3418,22 @@ export default function App() {
             )}
           </header>
 
-          <main className={cn("max-w-7xl mx-auto px-4 pb-8", isMobile && activeTab === 'home' ? "pt-0 px-0" : "pt-4")}>
+          <main className={cn("max-w-7xl mx-auto px-4", isMobile ? "pb-28" : "pb-8", isMobile && activeTab === 'home' ? "pt-0 px-0" : "pt-4")}>
             {isMobile && activeTab === 'home' && (
-              <div className="w-full min-h-[calc(100vh-80px)] pb-24">
-                {/* Mobile Header Box */}
-                <div className="bg-[#009EE3] text-white rounded-b-[40px] px-6 pt-10 pb-6 relative shadow-md">
+              <div className="w-full min-h-[calc(100dvh-80px)] min-h-[calc(100vh-80px)] pb-24">
+                {/* Mobile Header Box with Safe Area Inset */}
+                <div className="bg-[#009EE3] text-white rounded-b-[40px] px-6 pt-[max(2.5rem,calc(env(safe-area-inset-top)+1rem))] pb-6 relative shadow-md select-none">
                   <div className="flex justify-between items-center mb-6">
-                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors">
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors touch-manipulation">
                       <Menu size={28} />
                     </button>
-                    <h1 className="text-xl font-bold tracking-wide">PAMI Gula</h1>
-                    <div className="relative p-2">
-                      <Bell size={24} />
-                      <span className="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#009EE3]"></span>
+                    <h1 className="text-xl font-bold tracking-wide">PAMI Guía</h1>
+                    <div className="flex items-center gap-1.5">
+
+                      <div className="relative p-2">
+                        <Bell size={24} />
+                        <span className="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#009EE3]"></span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20">
@@ -3427,6 +3515,23 @@ export default function App() {
                     Ver Folletos
                   </button>
 
+                  {canAccessHigienicos && (
+                    <button 
+                      onClick={() => setActiveTab('higienicos')}
+                      className="w-full mt-2 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-800 hover:to-emerald-800 text-white rounded-2xl p-4 shadow-md shadow-teal-700/20 flex items-center justify-between active:scale-[0.98] transition-all font-bold text-lg cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileSpreadsheet size={22} />
+                        <span>Higiénicos Absorbentes</span>
+                      </div>
+                      {higienicosListasCount > 0 && (
+                        <span className="px-2.5 py-1 rounded-full bg-white text-emerald-900 text-xs font-bold shadow-xs">
+                          {higienicosListasCount} listas hoy
+                        </span>
+                      )}
+                    </button>
+                  )}
+
                   {isAdmin && (
                     <button 
                       onClick={() => setActiveTab('admin')}
@@ -3445,6 +3550,41 @@ export default function App() {
             {/* Content Container (Hidden on mobile home) */}
             {(!isMobile || activeTab !== 'home') && (
               <div className="w-full px-4 md:px-0">
+                {/* Mobile Sticky Top Bar with Notch Safe Area */}
+                {isMobile && activeTab !== 'home' && (
+                  <header className="sticky top-0 z-30 bg-[#0b2344] text-white shadow-md pt-[max(0.75rem,env(safe-area-inset-top))] mb-4 -mx-4 px-4 py-3 flex items-center justify-between border-b border-white/10 select-none">
+                    <button 
+                      onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 -ml-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all touch-manipulation text-xs font-bold"
+                    >
+                      <ArrowLeft size={16} />
+                      <span>Inicio</span>
+                    </button>
+
+                    <h1 className="text-sm font-bold truncate max-w-[170px] text-center">
+                      {activeTab === 'tramites' && 'Trámites'}
+                      {activeTab === 'prestadores' && 'Prestadores'}
+                      {activeTab === 'practicas' && 'Prácticas OME'}
+                      {activeTab === 'centros' && 'C. Coordinadores'}
+                      {activeTab === 'folletos' && 'Folletos'}
+                      {activeTab === 'telefonos' && 'Teléfonos'}
+                      {activeTab === 'higienicos' && 'Higiénicos'}
+                      {activeTab === 'admin' && 'Administración'}
+                    </h1>
+
+                    <div className="flex items-center gap-1 -mr-1">
+
+                      <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className="p-2 text-white rounded-lg active:scale-90 transition-all touch-manipulation"
+                        title="Menú"
+                      >
+                        <Menu size={20} />
+                      </button>
+                    </div>
+                  </header>
+                )}
+
             {/* LATEST UPDATE BANNER (TEST) */}
             {showUpdateBanner && latestUpdate && (
               <div className="mb-4 bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm relative pr-8 transition-all">
@@ -3540,7 +3680,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hidden lg:block select-none">
                 <div className="px-4 py-4 bg-white border-b border-gray-200">
                   <h2 className="text-2xl font-semibold text-pami-text">Categorías</h2>
                 </div>
@@ -3600,6 +3740,56 @@ export default function App() {
 
             {/* Content */}
             <div className="lg:col-span-8 space-y-4">
+              {/* Mobile Dedicated Search and Axis-locked Category Carousel */}
+              {isMobile && (
+                <div className="space-y-3 mb-2">
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-pami-muted" size={18} />
+                    <Input 
+                      placeholder="Buscar trámite o práctica..." 
+                      className="pl-10 pr-9 py-2.5 bg-white border-gray-200 shadow-sm"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                    {search && (
+                      <button 
+                        onClick={() => setSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-full active:scale-90 touch-manipulation"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar touch-pan-x-scroll pb-1.5 -mx-4 px-4 snap-x snap-mandatory select-none">
+                    <button
+                      onClick={() => setSelectedCat('all')}
+                      className={cn(
+                        "px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap shrink-0 snap-start transition-all touch-manipulation active:scale-95 shadow-sm border",
+                        selectedCat === 'all'
+                          ? "bg-pami-blue text-white border-pami-blue"
+                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                      )}
+                    >
+                      Todas ({tramites.length})
+                    </button>
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCat(selectedCat === cat ? 'all' : cat)}
+                        className={cn(
+                          "px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 snap-start transition-all touch-manipulation active:scale-95 shadow-sm border flex items-center gap-1.5",
+                          selectedCat === cat
+                            ? "bg-pami-blue text-white border-pami-blue"
+                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                        )}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-grow">
                   <h2 className="text-xl sm:text-2xl font-semibold text-pami-text leading-tight">
@@ -4843,6 +5033,13 @@ export default function App() {
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'higienicos' && (
+          <HigienicosDashboard 
+            currentUserEmail={user?.email || ''} 
+            isAdmin={Boolean(isAdmin)} 
+          />
         )}
 
         {activeTab === 'admin' && isAdmin && (
@@ -6137,7 +6334,7 @@ export default function App() {
       </Modal>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-12 mt-20">
+      <footer className="bg-white border-t border-gray-200 py-12 mt-20 pb-28 md:pb-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-6">
             <AnimatedLogo 
@@ -6156,6 +6353,80 @@ export default function App() {
       </footer>
       
       <WorldCupPollModal user={user} />
+
+      {/* Mobile Native Bottom Navigation Bar */}
+      {isMobile && (
+        <nav 
+          aria-label="Navegación Móvil Inferior"
+          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/90 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.06)] select-none"
+        >
+          <div className="grid grid-cols-5 h-16 items-center px-1">
+            <button
+              onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-1 touch-manipulation transition-all active:scale-90",
+                activeTab === 'home' ? "text-[#009EE3] font-bold" : "text-gray-500 hover:text-gray-800"
+              )}
+            >
+              <Home size={20} className={activeTab === 'home' ? "stroke-[2.5]" : "stroke-[1.8]"} />
+              <span className="text-[11px] leading-none">Inicio</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('tramites'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-1 touch-manipulation transition-all active:scale-90",
+                activeTab === 'tramites' ? "text-[#009EE3] font-bold" : "text-gray-500 hover:text-gray-800"
+              )}
+            >
+              <FileText size={20} className={activeTab === 'tramites' ? "stroke-[2.5]" : "stroke-[1.8]"} />
+              <span className="text-[11px] leading-none">Trámites</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('prestadores'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-1 touch-manipulation transition-all active:scale-90",
+                activeTab === 'prestadores' ? "text-[#009EE3] font-bold" : "text-gray-500 hover:text-gray-800"
+              )}
+            >
+              <Stethoscope size={20} className={activeTab === 'prestadores' ? "stroke-[2.5]" : "stroke-[1.8]"} />
+              <span className="text-[11px] leading-none">Prestadores</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('practicas'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-1 touch-manipulation transition-all active:scale-90",
+                activeTab === 'practicas' ? "text-[#009EE3] font-bold" : "text-gray-500 hover:text-gray-800"
+              )}
+            >
+              <Activity size={20} className={activeTab === 'practicas' ? "stroke-[2.5]" : "stroke-[1.8]"} />
+              <span className="text-[11px] leading-none">Prácticas</span>
+            </button>
+
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-1 touch-manipulation transition-all active:scale-90 relative",
+                isMobileMenuOpen ? "text-[#009EE3] font-bold" : "text-gray-500 hover:text-gray-800"
+              )}
+            >
+              <Menu size={20} className="stroke-[1.8]" />
+              <span className="text-[11px] leading-none">Más</span>
+              {isAdmin && pendingSolicitudesCount > 0 && (
+                <span className="absolute top-1 right-3 w-2 h-2 bg-red-500 rounded-full" />
+              )}
+            </button>
+          </div>
+        </nav>
+      )}
+
+      {/* Mobile Native Audit Modal */}
+      <MobileNativeAuditModal 
+        isOpen={isMobileAuditOpen} 
+        onClose={() => setIsMobileAuditOpen(false)} 
+      />
       
       </>
       )}

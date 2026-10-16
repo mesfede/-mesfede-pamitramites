@@ -142,7 +142,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAdmin();
+      allow create: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
       allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
       allow delete: if isAdmin();
     }
@@ -211,6 +211,18 @@ service cloud.firestore {
 
     match /deleted_items/{itemId} {
       allow read, write: if isAdmin();
+    }
+
+    match /higienicos_ordenes/{ordenId} {
+      allow read, write: if true;
+    }
+
+    match /higienicos_config/{configId} {
+      allow read, write: if true;
+    }
+
+    match /higienicos_cargadas/{id} {
+      allow read, write: if true;
     }
   }
 }

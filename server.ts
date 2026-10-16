@@ -148,6 +148,93 @@ async function startServer() {
     });
   });
 
+  // Server-side Google Sheets / CSV proxy that bypasses browser CORS & iframe sandbox restrictions
+  app.get('/api/fetch-sheet', async (req, res) => {
+    const rawUrl = req.query.url as string;
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return res.status(400).json({ error: 'Falta el parámetro de URL' });
+    }
+
+    try {
+      const trimmed = decodeURIComponent(rawUrl).trim();
+      
+      // Determine candidate URLs to fetch
+      const candidateUrls: string[] = [];
+
+      const idMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      const gidMatch = trimmed.match(/[#?&]gid=([0-9]+)/);
+      const gid = gidMatch ? gidMatch[1] : '0';
+
+      if (idMatch && idMatch[1]) {
+        const sheetId = idMatch[1];
+        // Strategy 1: Google Sheets CSV export
+        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`);
+        // Strategy 2: Google Visualization CSV query (publicly accessible)
+        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`);
+        // Strategy 3: Raw URL
+        candidateUrls.push(trimmed);
+      } else if (trimmed.includes('docs.google.com/spreadsheets/d/e/')) {
+        // Published to web
+        if (!trimmed.includes('output=csv')) {
+          const base = trimmed.split('?')[0].replace(/\/pubhtml$/, '/pub');
+          candidateUrls.push(`${base}?output=csv`);
+        }
+        candidateUrls.push(trimmed);
+      } else {
+        candidateUrls.push(trimmed);
+      }
+
+      let lastError = '';
+      for (const targetUrl of candidateUrls) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const response = await fetch(targetUrl, {
+            signal: controller.signal,
+            redirect: 'follow',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/csv, text/plain, */*'
+            }
+          });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            lastError = `HTTP ${response.status} (${response.statusText})`;
+            continue;
+          }
+
+          const text = await response.text();
+
+          // Check if Google redirected to a login page (sheet is private)
+          if (
+            text.includes('accounts.google.com/ServiceLogin') ||
+            text.includes('accounts.google.com/InteractiveLogin') ||
+            (text.includes('<!DOCTYPE html>') && text.includes('Google Drive'))
+          ) {
+            return res.status(403).json({
+              error: 'La hoja de Google Sheets está configurada como privada. En Google Sheets, ve a Compartir y cambia el Acceso general a "Cualquier persona que tenga el vínculo" con rol de Lector, o descarga el archivo como CSV y súbelo en la pestaña de Archivo.'
+            });
+          }
+
+          // If valid text returned
+          if (text && !text.includes('<!DOCTYPE html>')) {
+            return res.json({ success: true, csv: text });
+          }
+        } catch (err: any) {
+          lastError = err.message || String(err);
+        }
+      }
+
+      return res.status(400).json({
+        error: `No se pudo obtener la planilla (${lastError || 'enlace no accesible'}). Verifica que el archivo de Google Sheets tenga los permisos de lectura públicos.`
+      });
+    } catch (err: any) {
+      console.error('Error in /api/fetch-sheet:', err);
+      return res.status(500).json({ error: `Error del servidor: ${err.message}` });
+    }
+  });
+
   // Setup Vite dev server or serve static build
   const distPath = path.join(process.cwd(), 'dist');
   const hasBuild = fs.existsSync(path.join(distPath, 'index.html'));

@@ -202,3 +202,63 @@ export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
   "Sociales": "bg-emerald-50",
   "Odontología": "bg-sky-50"
 };
+
+export type HigienicoEstado = 'lista_para_cargar' | 'en_espera_vencimiento' | 'vigente' | 'proxima_vencer' | 'vencida' | 'bloqueada_cud';
+
+export interface HigienicoOrden {
+  id: string;
+  afiliadoNombre: string;
+  afiliadoBeneficio: string;
+  afiliadoDni?: string;
+  hogarPami: boolean;
+  tieneCud: boolean;
+  cudNumero?: string;
+  cudVencimiento?: string;
+  insumoTipo: string;
+  insumoTalle?: string;
+  medicoCabecera?: string;
+  nroOme: string;
+  fechaEmisionOme: string;
+  fechaVencimientoOme?: string; // Fecha en la columna Excel 'vencimiento de la OME' (a partir de la cual se puede cargar)
+  fechaCargaSistema?: string;
+  fechaVencimiento?: string;
+  estado?: HigienicoEstado;
+  cargadoPorEmail?: string;
+  notas?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface HigienicosConfig {
+  authorizedEmails: string[];
+  googleSheetUrl?: string;
+  lastSyncAt?: any;
+  totalSynced?: number;
+}
+
+export const ADMIN_EMAILS = [
+  'mesfede@gmail.com',
+  'lizasomariajose@gmail.com'
+];
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  role: 'admin' | 'viewer';
+  displayName?: string;
+  creds_pw?: string;
+  password?: string;
+  isDisabled?: boolean;
+  canAccessHigienicos?: boolean;
+  lastSeen?: any;
+  activeDeviceId?: string;
+  devices?: Record<string, any>;
+  createdAt?: any;
+  updatedAt?: any;
+  isSystemAdmin?: boolean;
+}
+
+export const DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS = [
+  'mesfede@gmail.com'
+];
+

@@ -19,7 +19,22 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
-import { Tramite, Prestador, Folleto, PracticaOME, CentroCoordinador, TelefonoInterno, Solicitud } from '../types';
+import { 
+  Tramite, 
+  Prestador, 
+  Folleto, 
+  PracticaOME, 
+  CentroCoordinador, 
+  TelefonoInterno, 
+  Solicitud, 
+  HigienicoOrden, 
+  HigienicosConfig, 
+  DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS,
+  ADMIN_EMAILS,
+  UserAccount
+} from '../types';
+
+export { ADMIN_EMAILS };
 
 export async function testConnection() {
   try {
@@ -1165,7 +1180,7 @@ export async function deleteAllTelefonos() {
   }
 }
 
-export async function updateUserLastSeen(uid: string) {
+export async function updateUserLastSeen(uid: string, email?: string | null, role?: 'admin' | 'viewer' | null) {
   try {
     const docRef = doc(db, 'users', uid);
     
@@ -1193,7 +1208,7 @@ export async function updateUserLastSeen(uid: string) {
 
     const deviceInfo = `${browser} en ${os}`;
 
-    await setDoc(docRef, {
+    const updatePayload: any = {
       lastSeen: serverTimestamp(),
       activeDeviceId: deviceId,
       devices: {
@@ -1202,23 +1217,93 @@ export async function updateUserLastSeen(uid: string) {
           lastSeen: serverTimestamp()
         }
       }
-    }, { merge: true });
+    };
+
+    if (email) {
+      const cleanEmail = email.toLowerCase().trim();
+      updatePayload.email = cleanEmail;
+      const isAdminEmail = ADMIN_EMAILS.some(a => a.toLowerCase().trim() === cleanEmail);
+      if (isAdminEmail) {
+        updatePayload.role = 'admin';
+      } else if (role) {
+        updatePayload.role = role;
+      }
+    }
+
+    await setDoc(docRef, updatePayload, { merge: true });
   } catch (error) {
     console.error("Error updating user last seen:", error);
   }
 }
 
-export function subscribeToUsers(callback: (users: any[]) => void) {
-  const q = query(collection(db, 'users'), orderBy('email', 'asc'));
-  return onSnapshot(q, (snapshot) => {
-    const users = snapshot.docs.map(doc => ({
+/**
+ * Suscripción en tiempo real a todos los usuarios registrados.
+ * Garantiza que todos los usuarios (incluyendo administradores del sistema como mesfede@gmail.com
+ * y lizasomariajose@gmail.com) aparezcan en la lista visible para el administrador.
+ */
+export function subscribeToUsers(callback: (users: UserAccount[]) => void) {
+  return onSnapshot(collection(db, 'users'), (snapshot) => {
+    const list: any[] = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
-    callback(users);
+
+    // Asegurarse de que todos los ADMIN_EMAILS conocidos estén en la lista
+    for (const adminEmail of ADMIN_EMAILS) {
+      const cleanEmail = adminEmail.toLowerCase().trim();
+      const existing = list.find(u => u.email && u.email.toLowerCase().trim() === cleanEmail);
+      if (existing) {
+        existing.role = 'admin';
+        existing.isSystemAdmin = true;
+      } else {
+        list.push({
+          id: `admin_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+          email: cleanEmail,
+          role: 'admin',
+          isDisabled: false,
+          isSystemAdmin: true,
+          canAccessHigienicos: cleanEmail === 'mesfede@gmail.com'
+        });
+      }
+    }
+
+    // Ordenar: primero administradores, luego alfabéticamente por email
+    list.sort((a, b) => {
+      if (a.role === 'admin' && b.role !== 'admin') return -1;
+      if (b.role === 'admin' && a.role !== 'admin') return 1;
+      return (a.email || '').localeCompare(b.email || '');
+    });
+
+    callback(list as UserAccount[]);
   }, (error) => {
     console.error("Error subscribing to users:", error);
   });
+}
+
+/**
+ * Inicializa los documentos de administradores del sistema en Firestore si aún no existen.
+ */
+export async function ensureAdminUsersExist() {
+  try {
+    for (const adminEmail of ADMIN_EMAILS) {
+      const clean = adminEmail.toLowerCase().trim();
+      const docId = `admin_${clean.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const userRef = doc(db, 'users', docId);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        await setDoc(userRef, {
+          email: clean,
+          role: 'admin',
+          isDisabled: false,
+          canAccessHigienicos: clean === 'mesfede@gmail.com',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+    }
+  } catch (error) {
+    console.warn("Could not ensure admin users:", error);
+  }
 }
 
 // ============================
@@ -1280,15 +1365,29 @@ export async function deleteSolicitud(id: string) {
   }
 }
 
-export async function setUserRole(uid: string, email: string, role: 'admin' | 'viewer', password?: string) {
+export async function setUserRole(
+  uid: string, 
+  email: string, 
+  role: 'admin' | 'viewer', 
+  password?: string,
+  canAccessHigienicos?: boolean
+) {
   try {
     const docRef = doc(db, 'users', uid);
-    return await setDoc(docRef, {
-      email,
+    const cleanEmail = email.toLowerCase().trim();
+    const result = await setDoc(docRef, {
+      email: cleanEmail,
       role,
       creds_pw: password, // Store password as requested
+      canAccessHigienicos: Boolean(canAccessHigienicos),
       updatedAt: serverTimestamp()
     }, { merge: true });
+
+    if (canAccessHigienicos) {
+      await toggleUserHigienicosAccess(cleanEmail, true, uid);
+    }
+
+    return result;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, 'users');
   }
@@ -2345,3 +2444,543 @@ export function subscribeToPollResponses(pollId: string, callback: (responses: a
     callback(responses);
   });
 }
+
+// ===============================================================
+// MÓDULO HIGIÉNICOS ABSORVENTES (PAÑALES / OME)
+// ===============================================================
+
+export const HIGIENICOS_ORDENES_COLLECTION = 'higienicos_ordenes';
+export const HIGIENICOS_CONFIG_COLLECTION = 'higienicos_config';
+export const HIGIENICOS_PERMISOS_DOC = 'permisos';
+export const HIGIENICOS_CARGADAS_COLLECTION = 'higienicos_cargadas';
+
+/**
+ * Calcula la fecha de vencimiento a 90 días (3 meses) a partir de la fecha de carga efectiva en el sistema.
+ */
+export function calculateVencimiento(fechaCarga: string): string {
+  try {
+    const parts = fechaCarga.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day, 12, 0, 0);
+      d.setDate(d.getDate() + 90);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dt = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dt}`;
+    }
+  } catch (err) {
+    console.error("Error calculating vencimiento:", err);
+  }
+  // Fallback
+  const d = new Date();
+  d.setDate(d.getDate() + 90);
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Suscripción en tiempo real a la colección de órdenes de higiénicos.
+ */
+export function subscribeToHigienicosOrdenes(callback: (ordenes: HigienicoOrden[]) => void) {
+  const q = query(collection(db, HIGIENICOS_ORDENES_COLLECTION));
+  return onSnapshot(q, (snapshot) => {
+    const items: HigienicoOrden[] = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        afiliadoNombre: data.afiliadoNombre || '',
+        afiliadoBeneficio: data.afiliadoBeneficio || '',
+        afiliadoDni: data.afiliadoDni || '',
+        hogarPami: Boolean(data.hogarPami),
+        tieneCud: Boolean(data.tieneCud),
+        cudNumero: data.cudNumero || '',
+        cudVencimiento: data.cudVencimiento || '',
+        insumoTipo: data.insumoTipo || 'Pañales / Apósitos',
+        insumoTalle: data.insumoTalle || '',
+        medicoCabecera: data.medicoCabecera || '',
+        nroOme: data.nroOme || '',
+        fechaEmisionOme: data.fechaEmisionOme || '',
+        fechaCargaSistema: data.fechaCargaSistema || '',
+        fechaVencimiento: data.fechaVencimiento || '',
+        cargadoPorEmail: data.cargadoPorEmail || '',
+        notas: data.notas || '',
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      } as HigienicoOrden;
+    });
+
+    // Ordenar de manera inteligente:
+    // 1. Fecha emisión OME descendente
+    items.sort((a, b) => {
+      const dateA = a.fechaEmisionOme || '';
+      const dateB = b.fechaEmisionOme || '';
+      return dateB.localeCompare(dateA);
+    });
+
+    callback(items);
+  }, (err) => {
+    console.error("Error subscribing to higienicos ordenes:", err);
+  });
+}
+
+/**
+ * Marca una orden como cargada en el sistema externo, calculando automáticamente su vencimiento a 3 meses.
+ */
+export async function marcarOrdenCargadaYEliminar(
+  orden: HigienicoOrden,
+  userEmail?: string
+) {
+  const cleanOme = orden.nroOme ? String(orden.nroOme).trim().toUpperCase() : '';
+  const cleanBeneficio = orden.afiliadoBeneficio ? String(orden.afiliadoBeneficio).trim() : '';
+  const cleanFechaOme = orden.fechaEmisionOme ? String(orden.fechaEmisionOme).trim() : '';
+
+  // 1. Guardar en registro de cargadas para evitar re-importación al sincronizar la planilla
+  if (cleanOme || cleanBeneficio) {
+    const docId = cleanOme ? `OME_${cleanOme}` : `BEN_${cleanBeneficio}_${cleanFechaOme || Date.now()}`;
+    const cargadaRef = doc(db, HIGIENICOS_CARGADAS_COLLECTION, docId);
+    await setDoc(cargadaRef, {
+      nroOme: cleanOme,
+      afiliadoNombre: orden.afiliadoNombre || '',
+      afiliadoBeneficio: cleanBeneficio,
+      fechaEmisionOme: cleanFechaOme,
+      cargadoPorEmail: userEmail || auth.currentUser?.email || '',
+      cargadoAt: serverTimestamp()
+    }, { merge: true });
+  }
+
+  // 2. Eliminar de la colección de órdenes activas para que desaparezca inmediatamente
+  const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, orden.id);
+  await deleteDoc(docRef);
+}
+
+/**
+ * Marca una orden como cargada en el sistema externo, calculando automáticamente su vencimiento a 3 meses.
+ */
+export async function marcarOrdenCargada(
+  ordenId: string, 
+  fechaCarga: string, 
+  userEmail?: string, 
+  notas?: string
+) {
+  const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, ordenId);
+  const fechaVencimiento = calculateVencimiento(fechaCarga);
+  
+  const payload: any = {
+    fechaCargaSistema: fechaCarga,
+    fechaVencimiento,
+    cargadoPorEmail: userEmail || auth.currentUser?.email || '',
+    updatedAt: serverTimestamp()
+  };
+  
+  if (notas !== undefined) {
+    payload.notas = notas;
+  }
+  
+  await updateDoc(docRef, payload);
+}
+
+/**
+ * Revierte la carga de una orden (por si se cargó por error o canceló).
+ */
+export async function revertirCargaOrden(ordenId: string) {
+  const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, ordenId);
+  await updateDoc(docRef, {
+    fechaCargaSistema: '',
+    fechaVencimiento: '',
+    cargadoPorEmail: '',
+    updatedAt: serverTimestamp()
+  });
+}
+
+/**
+ * Actualiza el estado de CUD de una orden o afiliado.
+ */
+export async function toggleCudOrden(ordenId: string, tieneCud: boolean, cudNumero?: string) {
+  const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, ordenId);
+  const updateData: any = {
+    tieneCud,
+    updatedAt: serverTimestamp()
+  };
+  if (cudNumero !== undefined) {
+    updateData.cudNumero = cudNumero;
+  }
+  await updateDoc(docRef, updateData);
+}
+
+/**
+ * Guarda o edita manualmente una orden de higiénicos.
+ */
+export async function saveHigienicoOrden(orden: Partial<HigienicoOrden> & { afiliadoNombre: string; afiliadoBeneficio: string }) {
+  const fechaVencimiento = orden.fechaCargaSistema 
+    ? calculateVencimiento(orden.fechaCargaSistema) 
+    : (orden.fechaVencimientoOme || orden.fechaVencimiento || '');
+  
+  const data: any = {
+    afiliadoNombre: orden.afiliadoNombre.trim(),
+    afiliadoBeneficio: orden.afiliadoBeneficio.trim(),
+    afiliadoDni: orden.afiliadoDni ? orden.afiliadoDni.trim() : '',
+    hogarPami: Boolean(orden.hogarPami),
+    tieneCud: Boolean(orden.tieneCud),
+    cudNumero: orden.cudNumero ? orden.cudNumero.trim() : '',
+    cudVencimiento: orden.cudVencimiento || '',
+    insumoTipo: orden.insumoTipo || 'Pañales descartables',
+    insumoTalle: orden.insumoTalle || '',
+    medicoCabecera: orden.medicoCabecera ? orden.medicoCabecera.trim() : '',
+    nroOme: orden.nroOme ? orden.nroOme.trim() : '',
+    fechaEmisionOme: orden.fechaEmisionOme || new Date().toISOString().split('T')[0],
+    fechaVencimientoOme: orden.fechaVencimientoOme || '',
+    fechaCargaSistema: orden.fechaCargaSistema || '',
+    fechaVencimiento,
+    cargadoPorEmail: orden.cargadoPorEmail || '',
+    notas: orden.notas || '',
+    updatedAt: serverTimestamp()
+  };
+
+  if (orden.id) {
+    const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, orden.id);
+    await updateDoc(docRef, data);
+    return orden.id;
+  } else {
+    data.createdAt = serverTimestamp();
+    const docRef = await addDoc(collection(db, HIGIENICOS_ORDENES_COLLECTION), data);
+    return docRef.id;
+  }
+}
+
+/**
+ * Elimina una orden de higiénicos.
+ */
+export async function deleteHigienicoOrden(ordenId: string) {
+  try {
+    console.log('Eliminando orden:', ordenId);
+    const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, ordenId);
+    await deleteDoc(docRef);
+    console.log('Orden eliminada:', ordenId);
+  } catch (err: any) {
+    console.error('Error eliminando orden:', ordenId, err);
+    throw new Error(`Error al eliminar el registro ${ordenId}: ${err.message}`);
+  }
+}
+
+/**
+ * Suscripción a la configuración de permisos y sincronización de Higiénicos.
+ */
+export function subscribeToHigienicosConfig(callback: (config: HigienicosConfig) => void) {
+  const docRef = doc(db, HIGIENICOS_CONFIG_COLLECTION, HIGIENICOS_PERMISOS_DOC);
+  return onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback({
+        authorizedEmails: Array.isArray(data.authorizedEmails) && data.authorizedEmails.length > 0 
+          ? data.authorizedEmails 
+          : DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS,
+        googleSheetUrl: data.googleSheetUrl || '',
+        lastSyncAt: data.lastSyncAt,
+        totalSynced: data.totalSynced || 0
+      });
+    } else {
+      callback({
+        authorizedEmails: DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS,
+        googleSheetUrl: '',
+      });
+    }
+  }, (err) => {
+    console.error("Error subscribing to higienicos config:", err);
+  });
+}
+
+/**
+ * Actualiza la configuración del módulo (correos autorizados, URL de Google Sheet, etc.).
+ */
+export async function updateHigienicosConfig(config: Partial<HigienicosConfig>) {
+  const docRef = doc(db, HIGIENICOS_CONFIG_COLLECTION, HIGIENICOS_PERMISOS_DOC);
+  const snap = await getDoc(docRef);
+  const updateData: any = {
+    ...config,
+    updatedAt: serverTimestamp()
+  };
+  
+  if (snap.exists()) {
+    await updateDoc(docRef, updateData);
+  } else {
+    await setDoc(docRef, {
+      authorizedEmails: config.authorizedEmails || DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS,
+      googleSheetUrl: config.googleSheetUrl || '',
+      createdAt: serverTimestamp(),
+      ...updateData
+    });
+  }
+}
+
+/**
+ * Permite al administrador activar o revocar el acceso al módulo de Higiénicos para cualquier usuario
+ * (tanto administradores como usuarios estándar).
+ */
+export async function toggleUserHigienicosAccess(targetEmail: string, enabled: boolean, uid?: string) {
+  try {
+    const cleanEmail = targetEmail.toLowerCase().trim();
+    const configDocRef = doc(db, HIGIENICOS_CONFIG_COLLECTION, HIGIENICOS_PERMISOS_DOC);
+    const snap = await getDoc(configDocRef);
+    let currentAuthorized: string[] = snap.exists() && Array.isArray(snap.data()?.authorizedEmails)
+      ? [...snap.data().authorizedEmails]
+      : [...DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS];
+
+    if (enabled) {
+      if (!currentAuthorized.some(e => e.toLowerCase().trim() === cleanEmail)) {
+        currentAuthorized.push(cleanEmail);
+      }
+    } else {
+      currentAuthorized = currentAuthorized.filter(e => e.toLowerCase().trim() !== cleanEmail);
+    }
+
+    await setDoc(configDocRef, {
+      authorizedEmails: currentAuthorized,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // También actualizar en la colección 'users' si se proporciona el UID o buscando por email
+    if (uid && !uid.startsWith('admin_')) {
+      const userDocRef = doc(db, 'users', uid);
+      await updateDoc(userDocRef, {
+        canAccessHigienicos: enabled,
+        updatedAt: serverTimestamp()
+      }).catch(() => null);
+    } else {
+      // Buscar documento con este email si es un usuario normal o admin registrado
+      const q = query(collection(db, 'users'), where('email', '==', cleanEmail));
+      const userSnap = await getDocs(q);
+      if (!userSnap.empty) {
+        for (const uDoc of userSnap.docs) {
+          await updateDoc(uDoc.ref, {
+            canAccessHigienicos: enabled,
+            updatedAt: serverTimestamp()
+          }).catch(() => null);
+        }
+      }
+    }
+
+    await logUpdate(`Se ${enabled ? 'habilitó' : 'revocó'} acceso a Higiénicos para ${cleanEmail}`);
+    return currentAuthorized;
+  } catch (error) {
+    console.error("Error toggling user higienicos access:", error);
+    throw error;
+  }
+}
+
+/**
+ * Sincronización inteligente desde Google Sheets / CSV:
+ * Combina las órdenes de la planilla con las existentes.
+ * Si una orden ya fue cargada (tiene fechaCargaSistema) o el CUD fue verificado, NO se sobreescriben.
+ */
+export async function syncHigienicosFromSheet(
+  incomingOrders: Partial<HigienicoOrden>[], 
+  sheetUrl?: string
+): Promise<{ added: number; updated: number; skipped: number; total: number }> {
+  const snap = await getDocs(collection(db, HIGIENICOS_ORDENES_COLLECTION));
+  const existingDocs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+  
+  // Mapa de existentes por nroOme o por beneficio + fechaEmisionOme
+  const existingMapByOme = new Map<string, any>();
+  const existingMapByBeneficioAndDate = new Map<string, any>();
+
+  for (const doc of existingDocs) {
+    if (doc.nroOme) {
+      existingMapByOme.set(String(doc.nroOme).trim().toUpperCase(), doc);
+    }
+    if (doc.afiliadoBeneficio) {
+      const key = `${String(doc.afiliadoBeneficio).trim()}_${String(doc.fechaEmisionOme || '').trim()}`;
+      existingMapByBeneficioAndDate.set(key, doc);
+    }
+  }
+
+  // Mapa de órdenes ya cargadas históricamente y eliminadas (para evitar re-importarlas de la misma planilla)
+  const cargadasSnap = await getDocs(collection(db, HIGIENICOS_CARGADAS_COLLECTION));
+  const cargadasSet = new Set<string>();
+  for (const cDoc of cargadasSnap.docs) {
+    cargadasSet.add(cDoc.id);
+    const cData = cDoc.data();
+    if (cData.nroOme) cargadasSet.add(String(cData.nroOme).trim().toUpperCase());
+    if (cData.afiliadoBeneficio) {
+      cargadasSet.add(`${String(cData.afiliadoBeneficio).trim()}_${String(cData.fechaEmisionOme || '').trim()}`);
+    }
+  }
+
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  // Lotes de Firestore (máximo 500 operaciones por lote)
+  const batchSize = 400;
+  let currentBatch = writeBatch(db);
+  let opCount = 0;
+
+  for (const item of incomingOrders) {
+    if (!item.afiliadoNombre && !item.afiliadoBeneficio && !item.nroOme) {
+      skipped++;
+      continue;
+    }
+
+    const cleanOme = item.nroOme ? String(item.nroOme).trim().toUpperCase() : '';
+    const cleanBeneficio = item.afiliadoBeneficio ? String(item.afiliadoBeneficio).trim() : '';
+    const cleanFechaOme = item.fechaEmisionOme ? String(item.fechaEmisionOme).trim() : '';
+    const benefitKey = `${cleanBeneficio}_${cleanFechaOme}`;
+
+    // Si la orden ya fue cargada en el sistema externo y eliminada por el operador, no re-importarla
+    if ((cleanOme && cargadasSet.has(cleanOme)) || (cleanBeneficio && cargadasSet.has(benefitKey))) {
+      skipped++;
+      continue;
+    }
+
+    const existing = (cleanOme && existingMapByOme.get(cleanOme)) || 
+                     (cleanBeneficio && existingMapByBeneficioAndDate.get(benefitKey));
+
+    if (existing) {
+      console.log('Match encontrado para:', cleanOme, benefitKey, 'ID:', existing.id);
+      // Orden ya existente: preservamos estado de carga y CUD si ya los tiene
+      const hasCarga = Boolean(existing.fechaCargaSistema);
+      const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, existing.id);
+      
+      const payload: any = {
+        afiliadoNombre: item.afiliadoNombre || existing.afiliadoNombre,
+        afiliadoBeneficio: cleanBeneficio || existing.afiliadoBeneficio,
+        afiliadoDni: item.afiliadoDni || existing.afiliadoDni || '',
+        hogarPami: item.hogarPami !== undefined ? Boolean(item.hogarPami) : Boolean(existing.hogarPami),
+        insumoTipo: item.insumoTipo || existing.insumoTipo || 'Pañales descartables',
+        insumoTalle: item.insumoTalle || existing.insumoTalle || '',
+        medicoCabecera: item.medicoCabecera || existing.medicoCabecera || '',
+        nroOme: cleanOme || existing.nroOme || '',
+        fechaEmisionOme: item.fechaEmisionOme !== undefined ? item.fechaEmisionOme : existing.fechaEmisionOme || '',
+        fechaVencimientoOme: item.fechaVencimientoOme !== undefined ? item.fechaVencimientoOme : existing.fechaVencimientoOme || '',
+        updatedAt: serverTimestamp()
+      };
+      
+      console.log('Payload de actualización:', payload);
+      // ...
+
+      if (!hasCarga && item.fechaVencimientoOme !== undefined) {
+        payload.fechaVencimiento = item.fechaVencimientoOme || '';
+      }
+
+      // Si el CUD no estaba tildado en la base pero viene afirmativo en la hoja
+      if (!existing.tieneCud && item.tieneCud) {
+        payload.tieneCud = true;
+      }
+      if (item.cudNumero && !existing.cudNumero) {
+        payload.cudNumero = item.cudNumero;
+      }
+
+      // Si no tenía carga pero viene en la planilla
+      if (!hasCarga && item.fechaCargaSistema) {
+        payload.fechaCargaSistema = item.fechaCargaSistema;
+        payload.fechaVencimiento = calculateVencimiento(item.fechaCargaSistema);
+      }
+
+      currentBatch.update(docRef, payload);
+      updated++;
+      opCount++;
+    } else {
+      console.log('No hubo match. Creando nueva orden para:', cleanOme, cleanBeneficio);
+      // Nueva orden
+      const newDocRef = doc(collection(db, HIGIENICOS_ORDENES_COLLECTION));
+      const fechaCarga = item.fechaCargaSistema || '';
+      const fechaVencimiento = fechaCarga 
+        ? calculateVencimiento(fechaCarga) 
+        : (item.fechaVencimientoOme || item.fechaVencimiento || '');
+
+      const payload: any = {
+        afiliadoNombre: item.afiliadoNombre ? item.afiliadoNombre.trim() : 'Sin nombre',
+        afiliadoBeneficio: cleanBeneficio,
+        afiliadoDni: item.afiliadoDni || '',
+        hogarPami: Boolean(item.hogarPami),
+        tieneCud: Boolean(item.tieneCud),
+        cudNumero: item.cudNumero || '',
+        cudVencimiento: item.cudVencimiento || '',
+        insumoTipo: item.insumoTipo || 'Pañales descartables',
+        insumoTalle: item.insumoTalle || '',
+        medicoCabecera: item.medicoCabecera || '',
+        nroOme: cleanOme,
+        fechaEmisionOme: item.fechaEmisionOme !== undefined ? item.fechaEmisionOme : '',
+        fechaVencimientoOme: item.fechaVencimientoOme !== undefined ? item.fechaVencimientoOme : '',
+        fechaCargaSistema: fechaCarga,
+        fechaVencimiento,
+        cargadoPorEmail: item.cargadoPorEmail || '',
+        notas: item.notas || '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      currentBatch.set(newDocRef, payload);
+      added++;
+      opCount++;
+    }
+
+    if (opCount >= batchSize) {
+      await currentBatch.commit();
+      currentBatch = writeBatch(db);
+      opCount = 0;
+    }
+  }
+
+  if (opCount > 0) {
+    await currentBatch.commit();
+  }
+
+  // Actualizar metadatos de sincronización
+  const configDocRef = doc(db, HIGIENICOS_CONFIG_COLLECTION, HIGIENICOS_PERMISOS_DOC);
+  await updateDoc(configDocRef, {
+    lastSyncAt: serverTimestamp(),
+    totalSynced: added + updated,
+    ...(sheetUrl ? { googleSheetUrl: sheetUrl } : {})
+  }).catch(async () => {
+    await setDoc(configDocRef, {
+      lastSyncAt: serverTimestamp(),
+      totalSynced: added + updated,
+      authorizedEmails: DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS,
+      googleSheetUrl: sheetUrl || ''
+    }, { merge: true });
+  });
+
+  return { added, updated, skipped, total: added + updated };
+}
+
+export async function deleteAllHigienicos(): Promise<{ deleted: number }> {
+  try {
+    const colRef = collection(db, HIGIENICOS_ORDENES_COLLECTION);
+    const snap = await getDocs(colRef);
+    const docs = snap.docs;
+    
+    if (docs.length === 0) {
+      return { deleted: 0 };
+    }
+    
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = writeBatch(db);
+      const chunk = docs.slice(i, i + 400);
+      chunk.forEach(docSnap => {
+        batch.delete(docSnap.ref);
+      });
+      await batch.commit();
+    }
+
+    // Vaciar también el historial de cargadas para permitir re-importación total
+    const cargadasRef = collection(db, HIGIENICOS_CARGADAS_COLLECTION);
+    const cargadasSnap = await getDocs(cargadasRef);
+    for (let i = 0; i < cargadasSnap.docs.length; i += 400) {
+      const batch = writeBatch(db);
+      const chunk = cargadasSnap.docs.slice(i, i + 400);
+      chunk.forEach(docSnap => {
+        batch.delete(docSnap.ref);
+      });
+      await batch.commit();
+    }
+    
+    return { deleted: docs.length };
+  } catch (err: any) {
+    console.error('Error en deleteAllHigienicos:', err);
+    throw err;
+  }
+}
+
+
