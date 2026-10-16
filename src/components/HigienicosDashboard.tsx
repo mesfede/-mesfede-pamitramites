@@ -193,7 +193,9 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
             }
 
             const syncRes = await syncHigienicosFromSheet(mapped, cleanUrl);
-            showFeedback(`¡Planilla actualizada! ${syncRes.total} órdenes sincronizadas.`);
+            await updateHigienicosConfig({ googleSheetUrl: cleanUrl }).catch(() => {});
+            localStorage.setItem('higienicos_last_sheet_url', cleanUrl);
+            showFeedback(`¡Planilla actualizada! Se agregaron ${syncRes.added} nuevas, se actualizaron ${syncRes.updated}.`);
           } catch (syncErr: any) {
             showFeedback('Error al guardar datos: ' + syncErr.message);
           } finally {
