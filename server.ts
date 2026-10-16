@@ -184,8 +184,16 @@ async function startServer() {
         candidateUrls.push(trimmed);
       }
 
+      // Añadir alternativas a través de CORS proxies públicos si Google bloquea la IP del servidor de Cloud Run
+      const expandedUrls: string[] = [];
+      for (const u of candidateUrls) {
+        expandedUrls.push(u);
+        expandedUrls.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`);
+        expandedUrls.push(`https://corsproxy.io/?${encodeURIComponent(u)}`);
+      }
+
       let lastError = '';
-      for (const targetUrl of candidateUrls) {
+      for (const targetUrl of expandedUrls) {
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 8000);
