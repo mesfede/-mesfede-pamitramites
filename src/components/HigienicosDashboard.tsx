@@ -43,7 +43,9 @@ import {
   ProcessedHigienicoOrden, 
   formatDate, 
   getDaysDifference,
-  mapRowToHigienico
+  mapRowToHigienico,
+  normalizeGoogleSheetUrl,
+  getGoogleSheetGvizUrl
 } from '../utils/higienicosUtils';
 import { HigienicosSyncModal } from './HigienicosSyncModal';
 import { HigienicosMarcarCargadoModal } from './HigienicosMarcarCargadoModal';
@@ -116,19 +118,62 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
     }
 
     setIsUpdatingSheet(true);
+    const cleanUrl = url.trim();
+
     try {
-      const proxyUrl = `/api/fetch-sheet?url=${encodeURIComponent(url.trim())}`;
-      const res = await fetch(proxyUrl);
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.error || 'No se pudo leer la planilla de Google Sheets');
-      }
-      const data = await res.json();
-      if (!data.csv) {
-        throw new Error(data.error || 'La planilla no devolvió datos legibles');
+      let csvText = '';
+
+      // 1. Intento por Proxy del Servidor
+      try {
+        const proxyUrl = `/api/fetch-sheet?url=${encodeURIComponent(cleanUrl)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.csv) csvText = data.csv;
+        }
+      } catch (proxyErr) {
+        console.warn('Proxy fetch warning:', proxyErr);
       }
 
-      Papa.parse(data.csv, {
+      // 2. Si falló, intento Gviz de cliente
+      if (!csvText) {
+        try {
+          const gvizUrl = getGoogleSheetGvizUrl(cleanUrl);
+          if (gvizUrl) {
+            const gvizRes = await fetch(gvizUrl);
+            if (gvizRes.ok) {
+              const text = await gvizRes.text();
+              if (text && !text.includes('<!DOCTYPE html>') && text.length > 10) {
+                csvText = text;
+              }
+            }
+          }
+        } catch (gvizErr) {
+          console.warn('Gviz fetch warning:', gvizErr);
+        }
+      }
+
+      // 3. Si aún falló, intento exportación CSV directa de cliente
+      if (!csvText) {
+        try {
+          const directUrl = normalizeGoogleSheetUrl(cleanUrl);
+          const directRes = await fetch(directUrl);
+          if (directRes.ok) {
+            const text = await directRes.text();
+            if (text && !text.includes('<!DOCTYPE html>') && text.length > 10) {
+              csvText = text;
+            }
+          }
+        } catch (directErr) {
+          console.warn('Direct fetch warning:', directErr);
+        }
+      }
+
+      if (!csvText) {
+        throw new Error('No se pudo leer la planilla de Google Sheets. Asegúrate de que tenga permisos públicos de lectura ("Cualquier persona con el enlace").');
+      }
+
+      Papa.parse(csvText, {
         header: true,
         skipEmptyLines: 'greedy',
         dynamicTyping: false,
@@ -147,7 +192,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
               return;
             }
 
-            const syncRes = await syncHigienicosFromSheet(mapped, url.trim());
+            const syncRes = await syncHigienicosFromSheet(mapped, cleanUrl);
             showFeedback(`¡Planilla actualizada! ${syncRes.total} órdenes sincronizadas.`);
           } catch (syncErr: any) {
             showFeedback('Error al guardar datos: ' + syncErr.message);
@@ -162,7 +207,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       });
     } catch (err: any) {
       console.error('Error updating from sheet:', err);
-      showFeedback('Error al actualizar desde Google Sheet: ' + (err.message || 'Error desconocido'));
+      showFeedback('Error: ' + (err.message || 'No se pudo actualizar desde Google Sheet'));
       setIsUpdatingSheet(false);
     }
   };
