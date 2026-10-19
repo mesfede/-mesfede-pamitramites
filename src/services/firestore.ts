@@ -2780,44 +2780,54 @@ export async function toggleUserHigienicosAccess(targetEmail: string, enabled: b
 export async function syncHigienicosFromSheet(
   incomingOrders: Partial<HigienicoOrden>[], 
   sheetUrl?: string
-): Promise<{ added: number; updated: number; skipped: number; total: number }> {
+): Promise<{ added: number; updated: number; deleted: number; skipped: number; total: number }> {
   const snap = await getDocs(collection(db, HIGIENICOS_ORDENES_COLLECTION));
   const existingDocs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
   
-  // Mapa de existentes por nroOme o por beneficio + fechaEmisionOme
+  // Mapas de órdenes activas existentes
   const existingMapByOme = new Map<string, any>();
   const existingMapByBeneficioAndDate = new Map<string, any>();
+  const existingMapByBeneficioOnly = new Map<string, any>();
 
-  for (const doc of existingDocs) {
-    if (doc.nroOme) {
-      existingMapByOme.set(String(doc.nroOme).trim().toUpperCase(), doc);
+  for (const docItem of existingDocs) {
+    const ome = docItem.nroOme ? String(docItem.nroOme).trim().toUpperCase() : '';
+    const ben = docItem.afiliadoBeneficio ? String(docItem.afiliadoBeneficio).trim() : '';
+    const fec = docItem.fechaEmisionOme ? String(docItem.fechaEmisionOme).trim() : '';
+
+    if (ome) {
+      existingMapByOme.set(ome, docItem);
     }
-    if (doc.afiliadoBeneficio) {
-      const key = `${String(doc.afiliadoBeneficio).trim()}_${String(doc.fechaEmisionOme || '').trim()}`;
-      existingMapByBeneficioAndDate.set(key, doc);
+    if (ben && fec) {
+      existingMapByBeneficioAndDate.set(`${ben}_${fec}`, docItem);
+    } else if (ben && !fec && !ome) {
+      existingMapByBeneficioOnly.set(ben, docItem);
     }
   }
 
-  // Mapa de órdenes ya cargadas históricamente y eliminadas (para evitar re-importarlas de la misma planilla)
+  // Mapa de órdenes ya finalizadas / cargadas en SIMAP (para no volver a importar las ya despachadas)
   const cargadasSnap = await getDocs(collection(db, HIGIENICOS_CARGADAS_COLLECTION));
-  const cargadasSet = new Set<string>();
+  const cargadasOmeSet = new Set<string>();
+  const cargadasBeneficioDateSet = new Set<string>();
+
   for (const cDoc of cargadasSnap.docs) {
-    cargadasSet.add(cDoc.id);
     const cData = cDoc.data();
-    if (cData.nroOme) cargadasSet.add(String(cData.nroOme).trim().toUpperCase());
-    if (cData.afiliadoBeneficio) {
-      cargadasSet.add(`${String(cData.afiliadoBeneficio).trim()}_${String(cData.fechaEmisionOme || '').trim()}`);
+    if (cData.nroOme) {
+      cargadasOmeSet.add(String(cData.nroOme).trim().toUpperCase());
+    }
+    if (cData.afiliadoBeneficio && cData.fechaEmisionOme) {
+      cargadasBeneficioDateSet.add(`${String(cData.afiliadoBeneficio).trim()}_${String(cData.fechaEmisionOme).trim()}`);
     }
   }
 
   let added = 0;
   let updated = 0;
+  let deleted = 0;
   let skipped = 0;
 
-  // Lotes de Firestore (máximo 500 operaciones por lote)
   const batchSize = 400;
   let currentBatch = writeBatch(db);
   let opCount = 0;
+  const matchedExistingIds = new Set<string>();
 
   for (const item of incomingOrders) {
     if (!item.afiliadoNombre && !item.afiliadoBeneficio && !item.nroOme) {
@@ -2828,53 +2838,89 @@ export async function syncHigienicosFromSheet(
     const cleanOme = item.nroOme ? String(item.nroOme).trim().toUpperCase() : '';
     const cleanBeneficio = item.afiliadoBeneficio ? String(item.afiliadoBeneficio).trim() : '';
     const cleanFechaOme = item.fechaEmisionOme ? String(item.fechaEmisionOme).trim() : '';
-    const benefitKey = `${cleanBeneficio}_${cleanFechaOme}`;
 
-    // Si la orden ya fue cargada en el sistema externo y eliminada por el operador, no re-importarla
-    if ((cleanOme && cargadasSet.has(cleanOme)) || (cleanBeneficio && cargadasSet.has(benefitKey))) {
-      skipped++;
-      continue;
+    // Búsqueda de coincidencia con orden activa existente:
+    // 1. Por número de OME (clave unívoca)
+    // 2. Por Beneficio + Fecha de emisión de OME
+    // 3. Por Beneficio si ambos carecen de OME y fecha
+    let existing = null;
+    if (cleanOme && existingMapByOme.has(cleanOme)) {
+      existing = existingMapByOme.get(cleanOme);
+    } else if (cleanBeneficio && cleanFechaOme && existingMapByBeneficioAndDate.has(`${cleanBeneficio}_${cleanFechaOme}`)) {
+      existing = existingMapByBeneficioAndDate.get(`${cleanBeneficio}_${cleanFechaOme}`);
+    } else if (cleanBeneficio && !cleanFechaOme && !cleanOme && existingMapByBeneficioOnly.has(cleanBeneficio)) {
+      existing = existingMapByBeneficioOnly.get(cleanBeneficio);
     }
 
-    const existing = (cleanOme && existingMapByOme.get(cleanOme)) || 
-                     (cleanBeneficio && existingMapByBeneficioAndDate.get(benefitKey));
+    // Si NO existe activa y ya fue marcada como cargada en el pasado, omitir reimportarla
+    if (!existing) {
+      const isOmeCargada = cleanOme && cargadasOmeSet.has(cleanOme);
+      const isBenDateCargada = cleanBeneficio && cleanFechaOme && cargadasBeneficioDateSet.has(`${cleanBeneficio}_${cleanFechaOme}`);
+      if (isOmeCargada || isBenDateCargada) {
+        skipped++;
+        continue;
+      }
+    }
 
     if (existing) {
-      console.log('Match encontrado para:', cleanOme, benefitKey, 'ID:', existing.id);
-      // Orden ya existente: preservamos estado de carga y CUD si ya los tiene
-      const hasCarga = Boolean(existing.fechaCargaSistema);
+      // Registrar ID de orden existente encontrada para no borrarla
+      matchedExistingIds.add(existing.id);
+
+      // Modificar / actualizar orden existente con los datos nuevos de la planilla
       const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, existing.id);
+      const hasCarga = Boolean(existing.fechaCargaSistema);
       
       const payload: any = {
-        afiliadoNombre: item.afiliadoNombre || existing.afiliadoNombre,
-        afiliadoBeneficio: cleanBeneficio || existing.afiliadoBeneficio,
-        afiliadoDni: item.afiliadoDni || existing.afiliadoDni || '',
-        hogarPami: item.hogarPami !== undefined ? Boolean(item.hogarPami) : Boolean(existing.hogarPami),
-        insumoTipo: item.insumoTipo || existing.insumoTipo || 'Pañales descartables',
-        insumoTalle: item.insumoTalle || existing.insumoTalle || '',
-        medicoCabecera: item.medicoCabecera || existing.medicoCabecera || '',
-        nroOme: cleanOme || existing.nroOme || '',
-        fechaEmisionOme: item.fechaEmisionOme !== undefined ? item.fechaEmisionOme : existing.fechaEmisionOme || '',
-        fechaVencimientoOme: item.fechaVencimientoOme !== undefined ? item.fechaVencimientoOme : existing.fechaVencimientoOme || '',
         updatedAt: serverTimestamp()
       };
-      
-      console.log('Payload de actualización:', payload);
-      // ...
 
-      if (!hasCarga && item.fechaVencimientoOme !== undefined) {
-        payload.fechaVencimiento = item.fechaVencimientoOme || '';
+      if (item.afiliadoNombre && item.afiliadoNombre.trim()) {
+        payload.afiliadoNombre = item.afiliadoNombre.trim();
       }
-
-      // Si el CUD no estaba tildado en la base pero viene afirmativo en la hoja
-      if (!existing.tieneCud && item.tieneCud) {
-        payload.tieneCud = true;
+      if (cleanBeneficio) {
+        payload.afiliadoBeneficio = cleanBeneficio;
       }
-      if (item.cudNumero && !existing.cudNumero) {
+      if (item.afiliadoDni !== undefined) {
+        payload.afiliadoDni = item.afiliadoDni;
+      }
+      if (item.hogarPami !== undefined) {
+        payload.hogarPami = Boolean(item.hogarPami);
+      }
+      if (item.tieneCud !== undefined) {
+        payload.tieneCud = Boolean(item.tieneCud);
+      }
+      if (item.cudNumero !== undefined) {
         payload.cudNumero = item.cudNumero;
       }
+      if (item.cudVencimiento !== undefined) {
+        payload.cudVencimiento = item.cudVencimiento;
+      }
+      if (item.insumoTipo) {
+        payload.insumoTipo = item.insumoTipo;
+      }
+      if (item.insumoTalle !== undefined) {
+        payload.insumoTalle = item.insumoTalle;
+      }
+      if (item.medicoCabecera !== undefined) {
+        payload.medicoCabecera = item.medicoCabecera;
+      }
+      if (cleanOme) {
+        payload.nroOme = cleanOme;
+      }
+      if (item.fechaEmisionOme !== undefined) {
+        payload.fechaEmisionOme = item.fechaEmisionOme;
+      }
+      if (item.fechaVencimientoOme !== undefined) {
+        payload.fechaVencimientoOme = item.fechaVencimientoOme;
+        if (!hasCarga) {
+          payload.fechaVencimiento = item.fechaVencimientoOme || '';
+        }
+      }
+      if (item.notas !== undefined) {
+        payload.notas = item.notas;
+      }
 
-      // Si no tenía carga pero viene en la planilla
+      // Si viene con fecha de carga en SIMAP y no estaba cargada
       if (!hasCarga && item.fechaCargaSistema) {
         payload.fechaCargaSistema = item.fechaCargaSistema;
         payload.fechaVencimiento = calculateVencimiento(item.fechaCargaSistema);
@@ -2884,8 +2930,7 @@ export async function syncHigienicosFromSheet(
       updated++;
       opCount++;
     } else {
-      console.log('No hubo match. Creando nueva orden para:', cleanOme, cleanBeneficio);
-      // Nueva orden
+      // Agregar orden nueva detectada en la planilla
       const newDocRef = doc(collection(db, HIGIENICOS_ORDENES_COLLECTION));
       const fechaCarga = item.fechaCargaSistema || '';
       const fechaVencimiento = fechaCarga 
@@ -2894,7 +2939,7 @@ export async function syncHigienicosFromSheet(
 
       const payload: any = {
         afiliadoNombre: item.afiliadoNombre ? item.afiliadoNombre.trim() : 'Sin nombre',
-        afiliadoBeneficio: cleanBeneficio,
+        afiliadoBeneficio: cleanBeneficio || item.afiliadoDni || 'Sin beneficio',
         afiliadoDni: item.afiliadoDni || '',
         hogarPami: Boolean(item.hogarPami),
         tieneCud: Boolean(item.tieneCud),
@@ -2904,8 +2949,8 @@ export async function syncHigienicosFromSheet(
         insumoTalle: item.insumoTalle || '',
         medicoCabecera: item.medicoCabecera || '',
         nroOme: cleanOme,
-        fechaEmisionOme: item.fechaEmisionOme !== undefined ? item.fechaEmisionOme : '',
-        fechaVencimientoOme: item.fechaVencimientoOme !== undefined ? item.fechaVencimientoOme : '',
+        fechaEmisionOme: item.fechaEmisionOme || '',
+        fechaVencimientoOme: item.fechaVencimientoOme || '',
         fechaCargaSistema: fechaCarga,
         fechaVencimiento,
         cargadoPorEmail: item.cargadoPorEmail || '',
@@ -2917,6 +2962,12 @@ export async function syncHigienicosFromSheet(
       currentBatch.set(newDocRef, payload);
       added++;
       opCount++;
+
+      // Registrar en memoria para evitar duplicados si la misma planilla repite la fila
+      if (cleanOme) existingMapByOme.set(cleanOme, { id: newDocRef.id, ...payload });
+      if (cleanBeneficio && cleanFechaOme) {
+        existingMapByBeneficioAndDate.set(`${cleanBeneficio}_${cleanFechaOme}`, { id: newDocRef.id, ...payload });
+      }
     }
 
     if (opCount >= batchSize) {
@@ -2926,26 +2977,38 @@ export async function syncHigienicosFromSheet(
     }
   }
 
+  // Eliminar órdenes activas que fueron borradas de la planilla de Google Sheets
+  // (Solo si la planilla leída contenía registros válidos para evitar borrados accidentales)
+  if (incomingOrders.length > 0) {
+    for (const docItem of existingDocs) {
+      if (!matchedExistingIds.has(docItem.id)) {
+        const deleteRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, docItem.id);
+        currentBatch.delete(deleteRef);
+        deleted++;
+        opCount++;
+
+        if (opCount >= batchSize) {
+          await currentBatch.commit();
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      }
+    }
+  }
+
   if (opCount > 0) {
     await currentBatch.commit();
   }
 
   // Actualizar metadatos de sincronización
   const configDocRef = doc(db, HIGIENICOS_CONFIG_COLLECTION, HIGIENICOS_PERMISOS_DOC);
-  await updateDoc(configDocRef, {
+  await setDoc(configDocRef, {
     lastSyncAt: serverTimestamp(),
     totalSynced: added + updated,
     ...(sheetUrl ? { googleSheetUrl: sheetUrl } : {})
-  }).catch(async () => {
-    await setDoc(configDocRef, {
-      lastSyncAt: serverTimestamp(),
-      totalSynced: added + updated,
-      authorizedEmails: DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS,
-      googleSheetUrl: sheetUrl || ''
-    }, { merge: true });
-  });
+  }, { merge: true });
 
-  return { added, updated, skipped, total: added + updated };
+  return { added, updated, deleted, skipped, total: added + updated + deleted };
 }
 
 export async function deleteAllHigienicos(): Promise<{ deleted: number }> {

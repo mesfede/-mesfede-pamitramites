@@ -24,7 +24,7 @@ interface HigienicosSyncModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentSheetUrl?: string;
-  onSuccess: (result: { added: number; updated: number; total: number }) => void;
+  onSuccess: (result: { added: number; updated: number; deleted?: number; total: number }) => void;
 }
 
 export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
@@ -59,9 +59,10 @@ export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
     const cleanUrl = urlToFetch.trim();
     localStorage.setItem('higienicos_last_sheet_url', cleanUrl);
 
+    const now = Date.now();
     try {
-      const proxyUrl = `/api/fetch-sheet?url=${encodeURIComponent(cleanUrl)}`;
-      const proxyResponse = await fetch(proxyUrl);
+      const proxyUrl = `/api/fetch-sheet?url=${encodeURIComponent(cleanUrl)}&_t=${now}`;
+      const proxyResponse = await fetch(proxyUrl, { cache: 'no-store' });
 
       if (proxyResponse.ok) {
         const data = await proxyResponse.json();
@@ -87,9 +88,10 @@ export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
       }
 
       try {
-        const gvizUrl = getGoogleSheetGvizUrl(cleanUrl);
-        if (gvizUrl) {
-          const gvizRes = await fetch(gvizUrl);
+        const gvizBase = getGoogleSheetGvizUrl(cleanUrl);
+        if (gvizBase) {
+          const gvizUrl = gvizBase.includes('?') ? `${gvizBase}&_t=${now}` : `${gvizBase}?_t=${now}`;
+          const gvizRes = await fetch(gvizUrl, { cache: 'no-store' });
           if (gvizRes.ok) {
             const text = await gvizRes.text();
             if (text && !text.includes('<!DOCTYPE html>') && text.length > 10) {
@@ -103,8 +105,9 @@ export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
       }
 
       try {
-        const directCsv = normalizeGoogleSheetUrl(cleanUrl);
-        const directRes = await fetch(directCsv);
+        const directBase = normalizeGoogleSheetUrl(cleanUrl);
+        const directCsv = directBase.includes('?') ? `${directBase}&_t=${now}` : `${directBase}?_t=${now}`;
+        const directRes = await fetch(directCsv, { cache: 'no-store' });
         if (directRes.ok) {
           const text = await directRes.text();
           if (text && !text.includes('<!DOCTYPE html>') && text.length > 10) {

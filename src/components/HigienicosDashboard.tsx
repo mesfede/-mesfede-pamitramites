@@ -36,7 +36,8 @@ import {
   revertirCargaOrden, 
   toggleCudOrden,
   deleteAllHigienicos,
-  syncHigienicosFromSheet
+  syncHigienicosFromSheet,
+  updateHigienicosConfig
 } from '../services/firestore';
 import { 
   processHigienicosOrdenes, 
@@ -109,24 +110,28 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
     setTimeout(() => setFeedbackMessage(null), 4000);
   };
 
-  const handleQuickUpdateFromGoogleSheet = async () => {
+  const handleQuickUpdateFromGoogleSheet = async (isAutoSync: boolean = false) => {
     const url = config.googleSheetUrl || localStorage.getItem('higienicos_last_sheet_url');
     if (!url || !url.trim()) {
-      setIsSyncModalOpen(true);
-      showFeedback('Configura el enlace de tu Google Sheet para actualizar con 1 clic.');
+      if (!isAutoSync) {
+        setIsSyncModalOpen(true);
+        showFeedback('Configura el enlace de tu Google Sheet para actualizar con 1 clic.');
+      }
       return;
     }
 
+    if (isUpdatingSheet) return;
     setIsUpdatingSheet(true);
     const cleanUrl = url.trim();
 
     try {
       let csvText = '';
+      const now = Date.now();
 
-      // 1. Intento por Proxy del Servidor
+      // 1. Intento por Proxy del Servidor con timestamp anti-cache
       try {
-        const proxyUrl = `/api/fetch-sheet?url=${encodeURIComponent(cleanUrl)}`;
-        const res = await fetch(proxyUrl);
+        const proxyUrl = `/api/fetch-sheet?url=${encodeURIComponent(cleanUrl)}&_t=${now}`;
+        const res = await fetch(proxyUrl, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           if (data.csv) csvText = data.csv;
@@ -138,9 +143,10 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       // 2. Si falló, intento Gviz de cliente
       if (!csvText) {
         try {
-          const gvizUrl = getGoogleSheetGvizUrl(cleanUrl);
-          if (gvizUrl) {
-            const gvizRes = await fetch(gvizUrl);
+          const gvizBase = getGoogleSheetGvizUrl(cleanUrl);
+          if (gvizBase) {
+            const gvizUrl = gvizBase.includes('?') ? `${gvizBase}&_t=${now}` : `${gvizBase}?_t=${now}`;
+            const gvizRes = await fetch(gvizUrl, { cache: 'no-store' });
             if (gvizRes.ok) {
               const text = await gvizRes.text();
               if (text && !text.includes('<!DOCTYPE html>') && text.length > 10) {
@@ -156,8 +162,9 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       // 3. Si aún falló, intento exportación CSV directa de cliente
       if (!csvText) {
         try {
-          const directUrl = normalizeGoogleSheetUrl(cleanUrl);
-          const directRes = await fetch(directUrl);
+          const directBase = normalizeGoogleSheetUrl(cleanUrl);
+          const directUrl = directBase.includes('?') ? `${directBase}&_t=${now}` : `${directBase}?_t=${now}`;
+          const directRes = await fetch(directUrl, { cache: 'no-store' });
           if (directRes.ok) {
             const text = await directRes.text();
             if (text && !text.includes('<!DOCTYPE html>') && text.length > 10) {
@@ -170,7 +177,11 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       }
 
       if (!csvText) {
-        throw new Error('No se pudo leer la planilla de Google Sheets. Asegúrate de que tenga permisos públicos de lectura ("Cualquier persona con el enlace").');
+        if (!isAutoSync) {
+          throw new Error('No se pudo leer la planilla de Google Sheets. Verifica que esté configurada como pública ("Cualquier persona con el enlace").');
+        }
+        setIsUpdatingSheet(false);
+        return;
       }
 
       Papa.parse(csvText, {
@@ -187,7 +198,9 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
             }
 
             if (mapped.length === 0) {
-              showFeedback('No se detectaron filas válidas en la planilla');
+              if (!isAutoSync) {
+                showFeedback('No se detectaron filas válidas en la planilla');
+              }
               setIsUpdatingSheet(false);
               return;
             }
@@ -195,24 +208,75 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
             const syncRes = await syncHigienicosFromSheet(mapped, cleanUrl);
             await updateHigienicosConfig({ googleSheetUrl: cleanUrl }).catch(() => {});
             localStorage.setItem('higienicos_last_sheet_url', cleanUrl);
-            showFeedback(`¡Planilla actualizada! Se agregaron ${syncRes.added} nuevas, se actualizaron ${syncRes.updated}.`);
+
+            const detailMsg = [];
+            if (syncRes.added > 0) detailMsg.push(`${syncRes.added} agregadas`);
+            if (syncRes.updated > 0) detailMsg.push(`${syncRes.updated} actualizadas`);
+            if ((syncRes.deleted || 0) > 0) detailMsg.push(`${syncRes.deleted} eliminadas`);
+
+            if (detailMsg.length > 0) {
+              showFeedback(`¡Planilla sincronizada! ${detailMsg.join(', ')}.`);
+            } else if (!isAutoSync) {
+              showFeedback('Planilla sincronizada. Todos los datos ya estaban al día.');
+            }
           } catch (syncErr: any) {
-            showFeedback('Error al guardar datos: ' + syncErr.message);
+            if (!isAutoSync) {
+              showFeedback('Error al guardar datos: ' + syncErr.message);
+            }
           } finally {
             setIsUpdatingSheet(false);
           }
         },
         error: (err: any) => {
-          showFeedback('Error al procesar CSV: ' + err.message);
+          if (!isAutoSync) {
+            showFeedback('Error al procesar CSV: ' + err.message);
+          }
           setIsUpdatingSheet(false);
         }
       });
     } catch (err: any) {
       console.error('Error updating from sheet:', err);
-      showFeedback('Error: ' + (err.message || 'No se pudo actualizar desde Google Sheet'));
+      if (!isAutoSync) {
+        showFeedback('Error: ' + (err.message || 'No se pudo actualizar desde Google Sheet'));
+      }
       setIsUpdatingSheet(false);
     }
   };
+
+  // Auto-sincronización en segundo plano periódica (cada 2 min) y al volver a enfocar la pestaña
+  useEffect(() => {
+    let lastAutoSync = 0;
+    const cooldownMs = 25000; // mínimo 25s entre llamadas automáticas
+
+    const triggerAutoSync = () => {
+      const now = Date.now();
+      if (now - lastAutoSync < cooldownMs) return;
+      lastAutoSync = now;
+      handleQuickUpdateFromGoogleSheet(true);
+    };
+
+    // 1. Intervalo periódico cada 2 minutos (120000 ms)
+    const intervalId = setInterval(triggerAutoSync, 120000);
+
+    // 2. Al volver a la pestaña tras editar el Google Sheet
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        triggerAutoSync();
+      }
+    };
+    const onWindowFocus = () => {
+      triggerAutoSync();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onWindowFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onWindowFocus);
+    };
+  }, [config.googleSheetUrl]);
 
   // Validación de acceso configurable por el administrador
   const isAuthorized = useMemo(() => {
@@ -399,13 +463,16 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
           {/* Botón directo de actualización de Google Sheet */}
           <button
             type="button"
-            onClick={handleQuickUpdateFromGoogleSheet}
+            onClick={() => handleQuickUpdateFromGoogleSheet(false)}
             disabled={isUpdatingSheet}
-            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-            title={config.googleSheetUrl ? "Actualizar con 1 clic desde tu Google Sheet vinculado" : "Configurar y actualizar desde Google Sheet"}
+            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+            title={config.googleSheetUrl ? "Auto-sincronización activa (cada 2 min y al volver a esta pestaña). Clic para sincronizar ahora." : "Configurar y sincronizar Google Sheet"}
           >
             <RefreshCw className={`w-4 h-4 ${isUpdatingSheet ? 'animate-spin' : ''}`} />
-            <span>{isUpdatingSheet ? 'Actualizando...' : 'Actualizar Google Sheet'}</span>
+            <span>{isUpdatingSheet ? 'Sincronizando...' : 'Actualizar Google Sheet'}</span>
+            {config.googleSheetUrl && (
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" title="Auto-sincronización activa" />
+            )}
           </button>
 
           <button
@@ -1036,8 +1103,12 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
         isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
         currentSheetUrl={config.googleSheetUrl}
-        onSuccess={(res) => {
-          showFeedback(`Sincronización completada: ${res.added} añadidas, ${res.updated} actualizadas.`);
+        onSuccess={(res: any) => {
+          const detail = [];
+          if (res.added > 0) detail.push(`${res.added} añadidas`);
+          if (res.updated > 0) detail.push(`${res.updated} actualizadas`);
+          if ((res.deleted || 0) > 0) detail.push(`${res.deleted} eliminadas`);
+          showFeedback(`Sincronización completada: ${detail.length > 0 ? detail.join(', ') : 'todos los datos al día'}.`);
         }}
       />
 

@@ -150,6 +150,12 @@ async function startServer() {
 
   // Server-side Google Sheets / CSV proxy that bypasses browser CORS & iframe sandbox restrictions
   app.get('/api/fetch-sheet', async (req, res) => {
+    // Anti-cache headers to ensure freshly updated sheets are always returned immediately
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+
     const rawUrl = req.query.url as string;
     if (!rawUrl || typeof rawUrl !== 'string') {
       return res.status(400).json({ error: 'Falta el parámetro de URL' });
@@ -157,8 +163,9 @@ async function startServer() {
 
     try {
       const trimmed = decodeURIComponent(rawUrl).trim();
+      const now = Date.now();
       
-      // Determine candidate URLs to fetch
+      // Determine candidate URLs to fetch with cache-busting
       const candidateUrls: string[] = [];
 
       const idMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -167,42 +174,36 @@ async function startServer() {
 
       if (idMatch && idMatch[1]) {
         const sheetId = idMatch[1];
-        // Strategy 1: Google Sheets CSV export
-        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`);
-        // Strategy 2: Google Visualization CSV query (publicly accessible)
-        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`);
-        // Strategy 3: Raw URL
-        candidateUrls.push(trimmed);
+        // Strategy 1: Google Sheets CSV export with fresh timestamp
+        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&_t=${now}`);
+        // Strategy 2: Google Visualization CSV query with fresh timestamp
+        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}&_t=${now}`);
+        // Strategy 3: Direct export without gid if gid is 0
+        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&_t=${now}`);
+        // Strategy 4: Raw URL with timestamp
+        candidateUrls.push(trimmed.includes('?') ? `${trimmed}&_t=${now}` : `${trimmed}?_t=${now}`);
       } else if (trimmed.includes('docs.google.com/spreadsheets/d/e/')) {
         // Published to web
-        if (!trimmed.includes('output=csv')) {
-          const base = trimmed.split('?')[0].replace(/\/pubhtml$/, '/pub');
-          candidateUrls.push(`${base}?output=csv`);
-        }
-        candidateUrls.push(trimmed);
+        const base = trimmed.split('?')[0].replace(/\/pubhtml$/, '/pub');
+        candidateUrls.push(`${base}?output=csv&_t=${now}`);
+        candidateUrls.push(trimmed.includes('?') ? `${trimmed}&_t=${now}` : `${trimmed}?_t=${now}`);
       } else {
-        candidateUrls.push(trimmed);
-      }
-
-      // Añadir alternativas a través de CORS proxies públicos si Google bloquea la IP del servidor de Cloud Run
-      const expandedUrls: string[] = [];
-      for (const u of candidateUrls) {
-        expandedUrls.push(u);
-        expandedUrls.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`);
-        expandedUrls.push(`https://corsproxy.io/?${encodeURIComponent(u)}`);
+        candidateUrls.push(trimmed.includes('?') ? `${trimmed}&_t=${now}` : `${trimmed}?_t=${now}`);
       }
 
       let lastError = '';
-      for (const targetUrl of expandedUrls) {
+      for (const targetUrl of candidateUrls) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const timeoutId = setTimeout(() => controller.abort(), 9000);
           const response = await fetch(targetUrl, {
             signal: controller.signal,
             redirect: 'follow',
+            cache: 'no-store',
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'text/csv, text/plain, */*'
+              'Accept': 'text/csv, text/plain, */*',
+              'Cache-Control': 'no-cache, no-store'
             }
           });
           clearTimeout(timeoutId);
@@ -221,12 +222,12 @@ async function startServer() {
             (text.includes('<!DOCTYPE html>') && text.includes('Google Drive'))
           ) {
             return res.status(403).json({
-              error: 'La hoja de Google Sheets está configurada como privada. En Google Sheets, ve a Compartir y cambia el Acceso general a "Cualquier persona que tenga el vínculo" con rol de Lector, o descarga el archivo como CSV y súbelo en la pestaña de Archivo.'
+              error: 'La hoja de Google Sheets está configurada como privada. En Google Sheets, ve a Compartir y cambia el Acceso general a "Cualquier persona que tenga el vínculo" con rol de Lector.'
             });
           }
 
           // If valid text returned
-          if (text && !text.includes('<!DOCTYPE html>')) {
+          if (text && !text.includes('<!DOCTYPE html>') && text.trim().length > 0) {
             return res.json({ success: true, csv: text });
           }
         } catch (err: any) {
