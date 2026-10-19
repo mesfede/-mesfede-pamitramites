@@ -340,29 +340,57 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
     return '';
   };
 
-  const nombre = findExact(['afiliado', 'nombre', 'apellido y nombre', 'paciente', 'beneficiario']) ||
-                 findIncludes(['afiliado', 'apellido y nombre', 'paciente', 'beneficiario']);
+  // 1. Detección de Nombre del Afiliado
+  const nameKeysExact = [
+    'apellido y nombre', 'apellido y nombres', 'nombre y apellido', 'nombres y apellidos',
+    'apellidos y nombres', 'afiliado', 'afiliados', 'paciente', 'pacientes', 
+    'beneficiario', 'beneficiaria', 'beneficiarios', 'titular', 'persona', 'nombre completo', 'datos del afiliado'
+  ];
+  let nombre = findExact(nameKeysExact) || 
+               findIncludes(['apellido y nombre', 'nombre y apellido', 'apellido y nombres', 'paciente', 'beneficiario', 'titular']);
 
-  const beneficio = findExact(['beneficio', 'nro beneficio', 'n° beneficio', 'nro_beneficio', 'carnet', 'afiliado nro']) ||
-                    findIncludes(['beneficio', 'carnet']);
+  const colApellido = findExact(['apellido', 'apellidos']);
+  const colNombre = findExact(['nombre', 'nombres']);
+  if (colApellido && colNombre) {
+    nombre = `${colApellido} ${colNombre}`.trim();
+  } else if (!nombre) {
+    if (colApellido) nombre = colApellido;
+    else if (colNombre) nombre = colNombre;
+    else {
+      nombre = findIncludes(['afiliado', 'nombre', 'apellido']);
+    }
+  }
 
-  const dni = findExact(['dni', 'documento', 'nro doc', 'documento_nro']) ||
-              findIncludes(['dni', 'documento']);
-  
-  if (!nombre && !beneficio) {
+  // 2. Detección de Beneficio
+  const beneficioKeysExact = [
+    'beneficio', 'nro beneficio', 'n° beneficio', 'nro. beneficio', 'numero de beneficio', 'numero beneficio',
+    'carnet', 'nro carnet', 'n° carnet', 'afiliado nro', 'n° afiliado', 'nro afiliado', 'nro. afiliado',
+    'numero afiliado', 'numero de afiliado', 'benef', 'benef.', 'nro_beneficio', 'id afiliado', 'carnet / beneficio'
+  ];
+  let beneficio = findExact(beneficioKeysExact) || 
+                  findIncludes(['beneficio', 'carnet', 'afiliado nro', 'n° afiliado', 'nro afiliado']);
+
+  if (beneficio && nombre && beneficio.toLowerCase() === nombre.toLowerCase()) {
+    beneficio = '';
+  }
+
+  // 3. Detección de DNI
+  const dniKeysExact = [
+    'dni', 'documento', 'nro doc', 'n° doc', 'nro. doc', 'doc', 'documento_nro', 'numero de documento', 'cedula'
+  ];
+  const dni = findExact(dniKeysExact) || findIncludes(['dni', 'documento']);
+
+  // Si no hay nombre, beneficio, ni DNI, es una fila vacía
+  if (!nombre && !beneficio && !dni) {
     return null;
   }
 
   // Filtrar si es una fila de encabezados repetida en el contenido
-  const lowerNombre = nombre.toLowerCase();
-  const lowerBeneficio = beneficio.toLowerCase();
+  const lowerNombre = (nombre || '').toLowerCase().trim();
+  const lowerBeneficio = (beneficio || '').toLowerCase().trim();
   if (
-    lowerNombre.includes('apellido y nombre') ||
-    lowerNombre === 'nombre' ||
-    lowerNombre === 'afiliado' ||
-    lowerBeneficio.includes('beneficio') && lowerBeneficio.length < 12 ||
-    lowerBeneficio === 'carnet' ||
-    lowerBeneficio === 'nro beneficio'
+    (lowerNombre === 'apellido y nombre' || lowerNombre === 'nombre y apellido' || lowerNombre === 'nombre' || lowerNombre === 'afiliado' || lowerNombre === 'paciente') &&
+    (lowerBeneficio === 'beneficio' || lowerBeneficio === 'nro beneficio' || lowerBeneficio === 'carnet' || !lowerBeneficio)
   ) {
     return null;
   }
