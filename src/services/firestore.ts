@@ -2845,6 +2845,15 @@ export async function syncHigienicosFromSheet(
     const cleanFechaOme = item.fechaEmisionOme ? String(item.fechaEmisionOme).trim() : '';
     const cleanInsumo = item.insumoTipo ? String(item.insumoTipo).trim().toLowerCase() : '';
 
+    // Evitar re-importar órdenes que ya fueron marcadas como cargadas / despachadas (historial HIGIENICOS_CARGADAS_COLLECTION)
+    const isAlreadyLoaded = (cleanOme && cargadasOmeSet.has(cleanOme)) || 
+      (cleanBeneficio && cleanFechaOme && cargadasBeneficioDateSet.has(`${cleanBeneficio}_${cleanFechaOme}`));
+
+    if (isAlreadyLoaded) {
+      skipped++;
+      continue;
+    }
+
     // Búsqueda de coincidencia con orden activa existente:
     // 1. Por número de OME (clave unívoca)
     // 2. Por Beneficio + Fecha de emisión de OME + Insumo
