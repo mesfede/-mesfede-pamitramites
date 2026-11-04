@@ -278,14 +278,16 @@ export function processHigienicosOrdenes(ordenes: HigienicoOrden[]): ProcessedHi
     if (fechaHabilitacion) {
       const diasFaltantes = getDaysDifference(fechaHabilitacion);
       console.log(`DEBUG: Higienico ${orden.afiliadoNombre} habilitacion:${fechaHabilitacion} diasFaltantes:${diasFaltantes}`);
-      if (diasFaltantes > 0) {
-        // La fecha es futura -> Aún NO está disponible para cargar (Pendiente)
+      if (diasFaltantes >= 0) {
+        // La fecha es hoy o futura -> Aún NO está disponible para cargar (Pendiente)
         result.computedEstado = 'en_espera_vencimiento';
         result.puedeCargarse = false;
         result.diasRestantes = diasFaltantes;
-        result.motivoBloqueo = diasFaltantes === 1
+        result.motivoBloqueo = diasFaltantes === 0
           ? `Habilitada a partir de mañana (${formatDate(fechaHabilitacion)})`
-          : `Habilitada a partir del ${formatDate(fechaHabilitacion)} (faltan ${diasFaltantes} días para cargar)`;
+          : (diasFaltantes === 1
+            ? `Habilitada a partir de mañana (${formatDate(fechaHabilitacion)})`
+            : `Habilitada a partir del ${formatDate(fechaHabilitacion)} (faltan ${diasFaltantes} días para cargar)`);
         return result;
       }
     }
