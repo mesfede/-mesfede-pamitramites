@@ -80,19 +80,59 @@ export function calculateVencimiento(fechaCarga: string): string {
 }
 
 /**
- * Convierte formatos comunes de fechas (DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, seriales de Excel y objetos Date) a ISO YYYY-MM-DD
+ * Verifica si una cadena es una fecha ISO válida YYYY-MM-DD.
+ */
+export function isValidIsoDate(dateStr?: string): boolean {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === m - 1 &&
+    dt.getUTCDate() === d
+  );
+}
+
+const MONTH_MAP: Record<string, number> = {
+  ene: 1, enero: 1, jan: 1, january: 1,
+  feb: 2, febrero: 2, february: 2,
+  mar: 3, marzo: 3, march: 3,
+  abr: 4, abril: 4, apr: 4, april: 4,
+  may: 5, mayo: 5,
+  jun: 6, junio: 6, june: 6,
+  jul: 7, julio: 7, july: 7,
+  ago: 8, agosto: 8, aug: 8, august: 8,
+  sep: 9, sept: 9, septiembre: 9, setiembre: 9, september: 9,
+  oct: 10, octubre: 10, october: 10,
+  nov: 11, noviembre: 11, november: 11,
+  dic: 12, diciembre: 12, dec: 12, december: 12,
+};
+
+function formatIsoDate(year: number, month: number, day: number): string {
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return '';
+  if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+  const iso = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return isValidIsoDate(iso) ? iso : '';
+}
+
+/**
+ * Convierte formatos comunes de fechas (DD/MM/YYYY, DD-MM-YYYY, DD/MM, YYYY-MM-DD, meses en texto, seriales de Excel y objetos Date) a ISO YYYY-MM-DD.
+ * Si no representa una fecha válida, devuelve ''.
  */
 export function parseDateToIso(rawDateStr?: any): string {
   if (rawDateStr === undefined || rawDateStr === null) return '';
-  
+
   // Objeto Date
   if (rawDateStr instanceof Date) {
     if (!isNaN(rawDateStr.getTime())) {
-      const y = rawDateStr.getFullYear();
-      const m = String(rawDateStr.getMonth() + 1).padStart(2, '0');
-      const d = String(rawDateStr.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
+      return formatIsoDate(
+        rawDateStr.getFullYear(),
+        rawDateStr.getMonth() + 1,
+        rawDateStr.getDate()
+      );
     }
+    return '';
   }
 
   // Serial numérico directo de Excel (ej: 46320)
@@ -101,56 +141,98 @@ export function parseDateToIso(rawDateStr?: any): string {
       const utcDays = Math.floor(rawDateStr - 25569);
       const dateInfo = new Date(utcDays * 86400 * 1000);
       if (!isNaN(dateInfo.getTime())) {
-        const y = dateInfo.getUTCFullYear();
-        const m = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
-        const d = String(dateInfo.getUTCDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+        return formatIsoDate(
+          dateInfo.getUTCFullYear(),
+          dateInfo.getUTCMonth() + 1,
+          dateInfo.getUTCDate()
+        );
       }
     }
+    return '';
   }
 
   let str = String(rawDateStr).trim();
   if (!str) return '';
 
-  // Quitar horas/timestamps si vienen en la cadena (ej: "28/10/2026 14:00" o "2026-10-28T00:00:00")
-  str = str.split(/[\sT]/)[0].trim();
+  // Extraer fecha si viene acompañada de hora (ej: "2026-10-28T00:00:00" o "28/10/2026 14:00")
+  const firstToken = str.split(/[\sT]/)[0].trim();
 
   // Serial numérico de Excel como texto
-  const numParsed = Number(str);
-  if (!isNaN(numParsed) && numParsed > 30000 && numParsed < 75000) {
-    const utcDays = Math.floor(numParsed - 25569);
-    const dateInfo = new Date(utcDays * 86400 * 1000);
-    if (!isNaN(dateInfo.getTime())) {
-      const y = dateInfo.getUTCFullYear();
-      const m = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
-      const d = String(dateInfo.getUTCDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
+  if (/^\d+(\.\d+)?$/.test(firstToken)) {
+    const numParsed = Number(firstToken);
+    if (!isNaN(numParsed) && numParsed > 30000 && numParsed < 75000) {
+      const utcDays = Math.floor(numParsed - 25569);
+      const dateInfo = new Date(utcDays * 86400 * 1000);
+      if (!isNaN(dateInfo.getTime())) {
+        return formatIsoDate(
+          dateInfo.getUTCFullYear(),
+          dateInfo.getUTCMonth() + 1,
+          dateInfo.getUTCDate()
+        );
+      }
     }
+    return '';
   }
 
   // Ya en formato YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    return str;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(firstToken)) {
+    return isValidIsoDate(firstToken) ? firstToken : '';
   }
 
-  // Formatos con delimitadores: /, -, .
-  const parts = str.split(/[/.-]/);
-  if (parts.length === 3) {
-    let [p1, p2, p3] = parts.map(p => p.trim());
+  // Buscar patrón con 3 partes numéricas dentro del texto (ej. "Vto: 11/11/2026" o "11/11/26")
+  const threePartMatch = str.match(/(\d{1,4})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{1,4})/);
+  if (threePartMatch) {
+    const [, p1Str, p2Str, p3Str] = threePartMatch;
     // Formato YYYY/MM/DD
-    if (p1.length === 4) {
-      return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+    if (p1Str.length === 4) {
+      return formatIsoDate(parseInt(p1Str, 10), parseInt(p2Str, 10), parseInt(p3Str, 10));
     }
-    // Formato DD/MM/YY o DD/MM/YYYY
-    if (p3.length === 2) {
-      p3 = `20${p3}`;
+    let year = parseInt(p3Str, 10);
+    if (p3Str.length === 2) {
+      year += 2000;
     }
-    if (p3.length === 4) {
-      return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+    if (String(year).length === 4) {
+      let day = parseInt(p1Str, 10);
+      let month = parseInt(p2Str, 10);
+      // Si viene exportado en formato US MM/DD/YYYY (mes > 12 y día <= 12), intercambiar
+      if (month > 12 && day <= 12) {
+        [day, month] = [month, day];
+      }
+      return formatIsoDate(year, month, day);
     }
   }
 
-  return str;
+  // Formato con nombre de mes (ej. "11-nov", "11 nov 2026", "11 de noviembre de 2026")
+  const cleanLower = str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const textMonthMatch = cleanLower.match(
+    /(\d{1,2})\s*(?:de\s+|[/.\-\s])\s*([a-z]+)\.?(?:\s*(?:de\s+|[/.\-\s])\s*(\d{2,4}))?/
+  );
+  if (textMonthMatch) {
+    const day = parseInt(textMonthMatch[1], 10);
+    const monthKey = textMonthMatch[2];
+    const month = MONTH_MAP[monthKey];
+    if (month) {
+      let year = textMonthMatch[3] ? parseInt(textMonthMatch[3], 10) : new Date().getFullYear();
+      if (year < 100) year += 2000;
+      return formatIsoDate(year, month, day);
+    }
+  }
+
+  // Formato corto DD/MM o DD-MM sin año (ej. "11/11" o "4/11") -> asume año actual
+  const twoPartMatch = str.match(/^(\d{1,2})\s*[/.-]\s*(\d{1,2})$/);
+  if (twoPartMatch) {
+    let day = parseInt(twoPartMatch[1], 10);
+    let month = parseInt(twoPartMatch[2], 10);
+    if (month > 12 && day <= 12) {
+      [day, month] = [month, day];
+    }
+    return formatIsoDate(new Date().getFullYear(), month, day);
+  }
+
+  return '';
 }
 
 /**
@@ -167,15 +249,19 @@ export function getTodayIso(): string {
 /**
  * Calcula la diferencia en días calendario entre hoy y una fecha YYYY-MM-DD.
  * Positivo (>0): faltan X días para llegar a esa fecha (futura, NO disponible para cargar aún).
- * 0: es exactamente hoy (habilitada para cargar hoy).
+ * 0: es exactamente hoy (habilitada recién a partir de mañana).
  * Negativo (<0): esa fecha ya pasó hace X días (habilitada para cargar).
  */
 export function getDaysDifference(targetDateStr: string): number {
   if (!targetDateStr) return 0;
   try {
-    const cleanTarget = targetDateStr.trim().slice(0, 10);
-    const todayIso = getTodayIso();
+    const cleanTarget = isValidIsoDate(targetDateStr.trim().slice(0, 10))
+      ? targetDateStr.trim().slice(0, 10)
+      : parseDateToIso(targetDateStr);
 
+    if (!cleanTarget) return 0;
+
+    const todayIso = getTodayIso();
     if (cleanTarget === todayIso) {
       return 0; // Es exactamente hoy
     }
@@ -205,11 +291,14 @@ export function processHigienicosOrdenes(ordenes: HigienicoOrden[]): ProcessedHi
 
   // 1ra pasada: identificar para cada afiliado si tiene una orden vigente
   for (const orden of ordenes) {
-    if (orden.fechaCargaSistema && orden.fechaVencimiento) {
-      const dias = getDaysDifference(orden.fechaVencimiento);
+    const cargaIso = parseDateToIso(orden.fechaCargaSistema);
+    const vencIso = parseDateToIso(orden.fechaVencimiento);
+    if (cargaIso && vencIso) {
+      const dias = getDaysDifference(vencIso);
       if (dias >= 0) {
         // Esta orden está vigente o próxima a vencer
-        const key = orden.afiliadoBeneficio.trim();
+        const key = (orden.afiliadoBeneficio || '').trim();
+        if (!key || key.toLowerCase() === 'sin beneficio' || key === '-') continue;
         const prev = activeOrdersByBeneficio.get(key);
         if (!prev) {
           activeOrdersByBeneficio.set(key, orden);
@@ -232,9 +321,12 @@ export function processHigienicosOrdenes(ordenes: HigienicoOrden[]): ProcessedHi
       puedeCargarse: true,
     };
 
+    const cargaIso = parseDateToIso(orden.fechaCargaSistema);
+    const vencSistemaIso = parseDateToIso(orden.fechaVencimiento);
+
     // Caso A: La orden ya fue cargada en el sistema externo
-    if (orden.fechaCargaSistema && orden.fechaVencimiento) {
-      const diasRestantes = getDaysDifference(orden.fechaVencimiento);
+    if (cargaIso && vencSistemaIso) {
+      const diasRestantes = getDaysDifference(vencSistemaIso);
       result.diasRestantes = diasRestantes;
 
       if (diasRestantes < 0) {
@@ -263,7 +355,10 @@ export function processHigienicosOrdenes(ordenes: HigienicoOrden[]): ProcessedHi
     }
 
     // Regla 2: ¿El afiliado ya tiene otra orden vigente en curso?
-    const activeOrder = activeOrdersByBeneficio.get(orden.afiliadoBeneficio.trim());
+    const benKey = (orden.afiliadoBeneficio || '').trim();
+    const activeOrder = benKey && benKey.toLowerCase() !== 'sin beneficio' && benKey !== '-'
+      ? activeOrdersByBeneficio.get(benKey)
+      : undefined;
     if (activeOrder && activeOrder.id !== orden.id) {
       const diasEsperar = getDaysDifference(activeOrder.fechaVencimiento!);
       result.bloqueantePorOrdenVigente = activeOrder;
@@ -273,26 +368,24 @@ export function processHigienicosOrdenes(ordenes: HigienicoOrden[]): ProcessedHi
       return result;
     }
 
-    // Regla 3: Vencimiento de la OME (Fecha a partir de la cual recién se puede cargar)
-    const fechaHabilitacion = orden.fechaVencimientoOme || orden.fechaVencimiento || orden.fechaEmisionOme;
+    // Regla 3: Vencimiento de la OME (Fecha a partir de la cual recién se puede cargar, al día siguiente)
+    const rawFechaHabilitacion = orden.fechaVencimientoOme || orden.fechaVencimiento || orden.fechaEmisionOme;
+    const fechaHabilitacion = parseDateToIso(rawFechaHabilitacion);
     if (fechaHabilitacion) {
       const diasFaltantes = getDaysDifference(fechaHabilitacion);
-      console.log(`DEBUG: Higienico ${orden.afiliadoNombre} habilitacion:${fechaHabilitacion} diasFaltantes:${diasFaltantes}`);
       if (diasFaltantes >= 0) {
-        // La fecha es hoy o futura -> Aún NO está disponible para cargar (Pendiente)
+        // La fecha es hoy o futura -> Aún NO está disponible para cargar (Pendiente hasta el día siguiente)
         result.computedEstado = 'en_espera_vencimiento';
         result.puedeCargarse = false;
         result.diasRestantes = diasFaltantes;
-        result.motivoBloqueo = diasFaltantes === 0
+        result.motivoBloqueo = diasFaltantes <= 1
           ? `Habilitada a partir de mañana (${formatDate(fechaHabilitacion)})`
-          : (diasFaltantes === 1
-            ? `Habilitada a partir de mañana (${formatDate(fechaHabilitacion)})`
-            : `Habilitada a partir del ${formatDate(fechaHabilitacion)} (faltan ${diasFaltantes} días para cargar)`);
+          : `Habilitada a partir del ${formatDate(fechaHabilitacion)} (faltan ${diasFaltantes} días para cargar)`;
         return result;
       }
     }
 
-    // Regla 4: Cumple CUD, sin orden activa previa, y la fecha ya llegó o no tiene restricción
+    // Regla 4: Cumple CUD, sin orden activa previa, y la fecha ya pasó (lista para cargar) o no tiene restricción
     result.computedEstado = 'lista_para_cargar';
     result.puedeCargarse = true;
     result.motivoBloqueo = undefined;
@@ -305,9 +398,11 @@ export function processHigienicosOrdenes(ordenes: HigienicoOrden[]): ProcessedHi
  */
 export function formatDate(dateStr?: string): string {
   if (!dateStr) return '-';
+  const iso = parseDateToIso(dateStr);
+  const target = iso || dateStr;
   try {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
+    const parts = target.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
     return dateStr;
@@ -316,15 +411,40 @@ export function formatDate(dateStr?: string): string {
   }
 }
 
+const normalizeHeader = (text: string): string =>
+  text
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
 /**
  * Mapea una fila cruda de un CSV o Google Sheets a un objeto parcial de HigienicoOrden
  */
 export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOrden> | null {
   const keys = Object.keys(row);
 
-  const findExact = (possibleNames: string[]): string => {
+  const hasHeader = (possibleNames: string[], excludeSubstrings: string[] = []): boolean => {
     for (const p of possibleNames) {
-      const found = keys.find(k => k.trim().toLowerCase() === p.toLowerCase());
+      const pNorm = normalizeHeader(p);
+      const found = keys.find(k => {
+        const kNorm = normalizeHeader(k);
+        if (excludeSubstrings.some(ex => kNorm.includes(ex))) return false;
+        return kNorm === pNorm || kNorm.includes(pNorm);
+      });
+      if (found) return true;
+    }
+    return false;
+  };
+
+  const findExact = (possibleNames: string[], excludeSubstrings: string[] = []): string => {
+    for (const p of possibleNames) {
+      const pNorm = normalizeHeader(p);
+      const found = keys.find(k => {
+        const kNorm = normalizeHeader(k);
+        if (excludeSubstrings.some(ex => kNorm.includes(ex))) return false;
+        return kNorm === pNorm;
+      });
       if (found && row[found] !== undefined && row[found] !== null && String(row[found]).trim() !== '') {
         return String(row[found]).trim();
       }
@@ -332,9 +452,14 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
     return '';
   };
 
-  const findIncludes = (possibleNames: string[]): string => {
+  const findIncludes = (possibleNames: string[], excludeSubstrings: string[] = []): string => {
     for (const p of possibleNames) {
-      const found = keys.find(k => k.trim().toLowerCase().includes(p.toLowerCase()));
+      const pNorm = normalizeHeader(p);
+      const found = keys.find(k => {
+        const kNorm = normalizeHeader(k);
+        if (excludeSubstrings.some(ex => kNorm.includes(ex))) return false;
+        return kNorm.includes(pNorm);
+      });
       if (found && row[found] !== undefined && row[found] !== null && String(row[found]).trim() !== '') {
         return String(row[found]).trim();
       }
@@ -359,7 +484,7 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
     if (colApellido) nombre = colApellido;
     else if (colNombre) nombre = colNombre;
     else {
-      nombre = findIncludes(['afiliado', 'nombre', 'apellido']);
+      nombre = findIncludes(['afiliado', 'nombre', 'apellido'], ['nro', 'numero', 'beneficio', 'medico', 'doctor', 'profesional']);
     }
   }
 
@@ -397,24 +522,37 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
     return null;
   }
 
+  const hasHogarCol = hasHeader(['hogar pami', 'hogar', 'residencia', 'geriatrico', 'institucion']);
   const hogarRaw = (findExact(['hogar pami', 'hogar', 'residencia', 'geriatrico', 'institucion']) ||
                     findIncludes(['hogar', 'residencia', 'geriatrico'])).toLowerCase();
-  const hogarPami = hogarRaw === 'si' || hogarRaw === 'sí' || hogarRaw === 'true' || hogarRaw === '1' || hogarRaw.includes('hogar');
+  const hogarPami = hasHogarCol
+    ? (hogarRaw === 'si' || hogarRaw === 'sí' || hogarRaw === 'true' || hogarRaw === '1' || hogarRaw === 'x' || hogarRaw.includes('hogar'))
+    : undefined;
 
-  const cudRaw = (findExact(['cud', 'tiene cud', 'cud presentado', 'discapacidad']) ||
-                  findIncludes(['cud', 'discapacidad'])).toLowerCase();
-  const tieneCud = cudRaw === 'si' || cudRaw === 'sí' || cudRaw === 'true' || cudRaw === '1' || cudRaw.includes('verificado');
+  const hasCudCol = hasHeader(['cud', 'tiene cud', 'cud presentado', 'discapacidad'], ['vencimiento', 'vto', 'nro', 'numero']);
+  const cudRaw = (findExact(['cud', 'tiene cud', 'cud presentado', 'discapacidad'], ['vencimiento', 'vto', 'nro', 'numero']) ||
+                  findIncludes(['cud', 'discapacidad'], ['vencimiento', 'vto', 'nro', 'numero'])).toLowerCase();
+  const tieneCud = hasCudCol
+    ? (cudRaw
+        ? (cudRaw === 'si' || cudRaw === 'sí' || cudRaw === 'true' || cudRaw === '1' || cudRaw === 'x' || cudRaw === 'ok' ||
+           cudRaw.includes('verificado') || cudRaw.includes('presentado') || cudRaw.includes('vigente') || cudRaw.includes('tiene'))
+        : undefined)
+    : undefined;
   const cudNumero = findExact(['nro cud', 'cud nro', 'numero cud']) || findIncludes(['nro cud', 'cud nro']);
+  const rawCudVencimiento = findExact(['vencimiento cud', 'vto cud', 'cud vencimiento', 'fecha vencimiento cud']) ||
+                            findIncludes(['vencimiento cud', 'vto cud', 'cud vencimiento']);
+  const cudVencimiento = parseDateToIso(rawCudVencimiento);
 
   const insumoTipo = findExact(['insumo', 'tipo', 'producto', 'modulo', 'higienico']) ||
                      findIncludes(['insumo', 'producto', 'modulo']) || 'Pañales descartables';
   const insumoTalle = findExact(['talle', 'medida', 'tamano', 'tamaño']) || findIncludes(['talle', 'medida']);
-  const medicoCabecera = findExact(['medico', 'médico', 'medico cabecera', 'dr', 'doctor', 'profesional']) ||
-                         findIncludes(['medico', 'médico', 'doctor']);
-  const nroOme = findExact(['ome', 'nro ome', 'n° ome', 'orden', 'nro orden', 'orden medica']) ||
-                 findIncludes(['nro ome', 'orden medica', 'ome']);
+  const medicoCabecera = findExact(['medico', 'medico cabecera', 'dr', 'doctor', 'profesional']) ||
+                         findIncludes(['medico', 'doctor']);
+  const omeExclude = ['fecha', 'vencimiento', 'vto', 'vence', 'vigencia', 'emision', 'carga', 'prescripcion', 'f.'];
+  const nroOme = findExact(['ome', 'nro ome', 'n° ome', 'nro. ome', 'numero ome', 'numero de ome', 'orden', 'nro orden', 'orden medica'], omeExclude) ||
+                 findIncludes(['nro ome', 'n° ome', 'numero ome', 'orden medica', 'ome'], omeExclude);
   
-  // 1. Buscar columna específica para fecha de vencimiento / habilitación de carga
+  // 1. Buscar columna específica para fecha de vencimiento / habilitación de carga (EXCLUYENDO columnas de CUD)
   const vencimientoCandidates = [
     'fecha para cargar', 'fecha a cargar', 'cargar a partir de', 'cargar desde', 'para cargar', 
     'proxima carga', 'proxima fecha de carga', 'proximo vencimiento',
@@ -425,18 +563,24 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
     'vence ome', 'vence', 'vencimiento', 'vigencia ome', 'vigencia de ome', 'vigencia', 
     'fecha vigencia', 'fecha de vigencia', 'fecha de carga', 'fecha carga'
   ];
-  let rawVencimientoOme = findExact(vencimientoCandidates) || findIncludes(vencimientoCandidates);
+  let rawVencimientoOme =
+    findExact(vencimientoCandidates, ['cud', 'simap']) ||
+    findIncludes(vencimientoCandidates, ['cud', 'simap']);
 
-  // 2. Buscar columna específica para emisión
+  // 2. Buscar columna específica para emisión (EXCLUYENDO columnas de CUD)
   const emisionCandidates = [
     'fecha emision ome', 'fecha de emision ome', 'fecha emision', 'fecha de emision', 
     'fecha ome', 'fecha prescripcion', 'fecha de prescripcion', 'emision', 'f. emision', 'f.emision'
   ];
-  let rawFechaEmision = findExact(emisionCandidates) || findIncludes(emisionCandidates);
+  let rawFechaEmision =
+    findExact(emisionCandidates, ['cud']) ||
+    findIncludes(emisionCandidates, ['cud']);
 
   // 3. Si solo hay una columna genérica "fecha" o "date":
   if (!rawVencimientoOme && !rawFechaEmision) {
-    const genericFecha = findExact(['fecha', 'date']) || findIncludes(['fecha', 'date']);
+    const genericFecha =
+      findExact(['fecha', 'date'], ['cud', 'simap']) ||
+      findIncludes(['fecha', 'date'], ['cud', 'simap']);
     if (genericFecha) {
       rawVencimientoOme = genericFecha;
     }
@@ -445,10 +589,10 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
   let fechaVencimientoOme = parseDateToIso(rawVencimientoOme);
   let fechaEmisionOme = parseDateToIso(rawFechaEmision);
 
-  // Si la fecha de emisión detectada es futura, en realidad es la fecha a esperar para cargar
+  // Si la fecha de emisión detectada es hoy o futura, también representa fecha a esperar para cargar
   if (fechaEmisionOme && !fechaVencimientoOme) {
     const dias = getDaysDifference(fechaEmisionOme);
-    if (dias > 0) {
+    if (dias >= 0) {
       fechaVencimientoOme = fechaEmisionOme;
     }
   }
@@ -475,6 +619,7 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
     hogarPami,
     tieneCud,
     cudNumero,
+    cudVencimiento: cudVencimiento || undefined,
     insumoTipo,
     insumoTalle,
     medicoCabecera,

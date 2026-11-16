@@ -33,6 +33,7 @@ import {
   ADMIN_EMAILS,
   UserAccount
 } from '../types';
+import { parseDateToIso } from '../utils/higienicosUtils';
 
 export { ADMIN_EMAILS };
 
@@ -2500,8 +2501,9 @@ export function subscribeToHigienicosOrdenes(callback: (ordenes: HigienicoOrden[
         insumoTipo: data.insumoTipo || 'Pañales / Apósitos',
         insumoTalle: data.insumoTalle || '',
         medicoCabecera: data.medicoCabecera || '',
-        nroOme: data.nroOme || '',
+        nroOme: isValidRealOme(data.nroOme) ? String(data.nroOme).trim() : '',
         fechaEmisionOme: data.fechaEmisionOme || '',
+        fechaVencimientoOme: data.fechaVencimientoOme || '',
         fechaCargaSistema: data.fechaCargaSistema || '',
         fechaVencimiento: data.fechaVencimiento || '',
         cargadoPorEmail: data.cargadoPorEmail || '',
@@ -2525,6 +2527,25 @@ export function subscribeToHigienicosOrdenes(callback: (ordenes: HigienicoOrden[
   });
 }
 
+function isValidRealOme(ome?: string): boolean {
+  if (!ome) return false;
+  const norm = String(ome).trim().toUpperCase();
+  if (!norm) return false;
+  const invalidValues = new Set(['-', '--', '---', 'S/N', 'SN', 'N/A', 'NA', '0', 'NO', 'SIN OME', 'SIN NUMERO', 'SIN NRO', 'PENDIENTE']);
+  if (invalidValues.has(norm)) return false;
+  // Evitar que una fecha guardada por error en nroOme (ej. "11/11", "11/11/2026" o "2026-11-11") bloquee o se muestre como OME
+  if (/^\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?$/.test(norm) || /^\d{4}[/.-]\d{1,2}[/.-]\d{1,2}$/.test(norm)) return false;
+  return true;
+}
+
+function isValidRealBeneficio(ben?: string): boolean {
+  if (!ben) return false;
+  const norm = String(ben).trim().toUpperCase();
+  if (!norm) return false;
+  const invalidValues = new Set(['-', '--', 'SIN BENEFICIO', 'N/A', 'NA', '0']);
+  return !invalidValues.has(norm);
+}
+
 /**
  * Marca una orden como cargada en el sistema externo, calculando automáticamente su vencimiento a 3 meses.
  */
@@ -2532,22 +2553,29 @@ export async function marcarOrdenCargadaYEliminar(
   orden: HigienicoOrden,
   userEmail?: string
 ) {
-  const cleanOme = orden.nroOme ? String(orden.nroOme).trim().toUpperCase() : '';
-  const cleanBeneficio = orden.afiliadoBeneficio ? String(orden.afiliadoBeneficio).trim() : '';
+  const rawOme = orden.nroOme ? String(orden.nroOme).trim().toUpperCase() : '';
+  const cleanOme = isValidRealOme(rawOme) ? rawOme : '';
+  const rawBeneficio = orden.afiliadoBeneficio ? String(orden.afiliadoBeneficio).trim() : '';
+  const cleanBeneficio = isValidRealBeneficio(rawBeneficio) ? rawBeneficio : '';
   const cleanFechaOme = orden.fechaEmisionOme ? String(orden.fechaEmisionOme).trim() : '';
+  const cleanInsumo = orden.insumoTipo ? String(orden.insumoTipo).trim().toLowerCase() : '';
 
   // 1. Guardar en registro de cargadas para evitar re-importación al sincronizar la planilla
   if (cleanOme || cleanBeneficio) {
     const safeOme = cleanOme.replace(/[/\\#?.]/g, '_');
     const safeBeneficio = cleanBeneficio.replace(/[/\\#?.]/g, '_');
     const safeFechaOme = cleanFechaOme.replace(/[/\\#?.]/g, '_');
-    const docId = safeOme ? `OME_${safeOme}` : `BEN_${safeBeneficio}_${safeFechaOme || Date.now()}`;
+    const safeInsumo = cleanInsumo.replace(/[^a-z0-9]/g, '_');
+    const docId = safeOme
+      ? `OME_${safeOme}`
+      : `BEN_${safeBeneficio}_${safeFechaOme || 'no_date'}_${safeInsumo || Date.now()}`;
     const cargadaRef = doc(db, HIGIENICOS_CARGADAS_COLLECTION, docId);
     await setDoc(cargadaRef, {
       nroOme: cleanOme,
       afiliadoNombre: orden.afiliadoNombre || '',
       afiliadoBeneficio: cleanBeneficio,
       fechaEmisionOme: cleanFechaOme,
+      insumoTipo: orden.insumoTipo || '',
       cargadoPorEmail: userEmail || auth.currentUser?.email || '',
       cargadoAt: serverTimestamp()
     }, { merge: true });
@@ -2784,43 +2812,58 @@ export async function syncHigienicosFromSheet(
   const snap = await getDocs(collection(db, HIGIENICOS_ORDENES_COLLECTION));
   const existingDocs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
   
-  // Mapas de órdenes activas existentes
-  const existingMapByOme = new Map<string, any>();
-  const existingMapByBeneficioAndDate = new Map<string, any>();
-  const existingMapByBeneficioOnly = new Map<string, any>();
+  // Mapas de órdenes activas existentes (listas para evitar colapsar filas con misma clave)
+  const existingMapByOme = new Map<string, any[]>();
+  const existingMapByBeneficioAndDate = new Map<string, any[]>();
+  const existingMapByBeneficioOnly = new Map<string, any[]>();
+
+  const pushToMap = (map: Map<string, any[]>, key: string, value: any) => {
+    const arr = map.get(key);
+    if (arr) arr.push(value);
+    else map.set(key, [value]);
+  };
 
   for (const docItem of existingDocs) {
-    const ome = docItem.nroOme ? String(docItem.nroOme).trim().toUpperCase() : '';
-    const ben = docItem.afiliadoBeneficio ? String(docItem.afiliadoBeneficio).trim() : '';
+    const rawOme = docItem.nroOme ? String(docItem.nroOme).trim().toUpperCase() : '';
+    const ome = isValidRealOme(rawOme) ? rawOme : '';
+    const rawBen = docItem.afiliadoBeneficio ? String(docItem.afiliadoBeneficio).trim() : '';
+    const ben = isValidRealBeneficio(rawBen) ? rawBen : '';
     const fec = docItem.fechaEmisionOme ? String(docItem.fechaEmisionOme).trim() : '';
-
     const ins = docItem.insumoTipo ? String(docItem.insumoTipo).trim().toLowerCase() : '';
 
     if (ome) {
-      existingMapByOme.set(ome, docItem);
+      pushToMap(existingMapByOme, ome, docItem);
     }
     if (ben && fec) {
-      existingMapByBeneficioAndDate.set(`${ben}_${fec}_${ins}`, docItem);
-      if (!existingMapByBeneficioAndDate.has(`${ben}_${fec}`)) {
-        existingMapByBeneficioAndDate.set(`${ben}_${fec}`, docItem);
-      }
+      pushToMap(existingMapByBeneficioAndDate, `${ben}_${fec}_${ins}`, docItem);
+      pushToMap(existingMapByBeneficioAndDate, `${ben}_${fec}`, docItem);
     } else if (ben && !fec && !ome) {
-      existingMapByBeneficioOnly.set(ben, docItem);
+      pushToMap(existingMapByBeneficioOnly, ben, docItem);
     }
   }
 
   // Mapa de órdenes ya finalizadas / cargadas en SIMAP (para no volver a importar las ya despachadas)
   const cargadasSnap = await getDocs(collection(db, HIGIENICOS_CARGADAS_COLLECTION));
   const cargadasOmeSet = new Set<string>();
-  const cargadasBeneficioDateSet = new Set<string>();
+  const cargadasNoOmeBeneficioDateInsumoSet = new Set<string>();
+  const cargadasNoOmeBeneficioDateSet = new Set<string>();
 
   for (const cDoc of cargadasSnap.docs) {
     const cData = cDoc.data();
-    if (cData.nroOme) {
-      cargadasOmeSet.add(String(cData.nroOme).trim().toUpperCase());
-    }
-    if (cData.afiliadoBeneficio && cData.fechaEmisionOme) {
-      cargadasBeneficioDateSet.add(`${String(cData.afiliadoBeneficio).trim()}_${String(cData.fechaEmisionOme).trim()}`);
+    const cOme = cData.nroOme ? String(cData.nroOme).trim().toUpperCase() : '';
+    const cBen = cData.afiliadoBeneficio ? String(cData.afiliadoBeneficio).trim() : '';
+    const cFec = cData.fechaEmisionOme ? String(cData.fechaEmisionOme).trim() : '';
+    const cIns = cData.insumoTipo ? String(cData.insumoTipo).trim().toLowerCase() : '';
+
+    if (isValidRealOme(cOme)) {
+      cargadasOmeSet.add(cOme);
+    } else if (isValidRealBeneficio(cBen) && cFec) {
+      // Solo bloquear por beneficio+fecha cuando la orden cargada no tenía un N° OME real
+      if (cIns) {
+        cargadasNoOmeBeneficioDateInsumoSet.add(`${cBen}_${cFec}_${cIns}`);
+      } else {
+        cargadasNoOmeBeneficioDateSet.add(`${cBen}_${cFec}`);
+      }
     }
   }
 
@@ -2834,20 +2877,37 @@ export async function syncHigienicosFromSheet(
   let opCount = 0;
   const matchedExistingIds = new Set<string>();
 
+  const findFirstUnmatched = (candidates?: any[]) => {
+    if (!candidates) return null;
+    for (const c of candidates) {
+      if (!matchedExistingIds.has(c.id)) return c;
+    }
+    return null;
+  };
+
   for (const item of incomingOrders) {
     if (!item.afiliadoNombre && !item.afiliadoBeneficio && !item.nroOme && !item.afiliadoDni) {
       skipped++;
       continue;
     }
 
-    const cleanOme = item.nroOme ? String(item.nroOme).trim().toUpperCase() : '';
+    const rawOme = item.nroOme ? String(item.nroOme).trim().toUpperCase() : '';
+    const cleanOme = isValidRealOme(rawOme) ? rawOme : '';
     const cleanBeneficio = item.afiliadoBeneficio ? String(item.afiliadoBeneficio).trim() : '';
+    const realBeneficio = isValidRealBeneficio(cleanBeneficio) ? cleanBeneficio : '';
     const cleanFechaOme = item.fechaEmisionOme ? String(item.fechaEmisionOme).trim() : '';
     const cleanInsumo = item.insumoTipo ? String(item.insumoTipo).trim().toLowerCase() : '';
 
     // Evitar re-importar órdenes que ya fueron marcadas como cargadas / despachadas (historial HIGIENICOS_CARGADAS_COLLECTION)
-    const isAlreadyLoaded = (cleanOme && cargadasOmeSet.has(cleanOme)) || 
-      (cleanBeneficio && cleanFechaOme && cargadasBeneficioDateSet.has(`${cleanBeneficio}_${cleanFechaOme}`));
+    // Si tiene N° OME real, solo se compara por ese N° OME para nunca ocultar otra orden del mismo afiliado/fecha.
+    const isAlreadyLoaded = cleanOme
+      ? cargadasOmeSet.has(cleanOme)
+      : Boolean(
+          realBeneficio &&
+            cleanFechaOme &&
+            ((cleanInsumo && cargadasNoOmeBeneficioDateInsumoSet.has(`${realBeneficio}_${cleanFechaOme}_${cleanInsumo}`)) ||
+              cargadasNoOmeBeneficioDateSet.has(`${realBeneficio}_${cleanFechaOme}`))
+        );
 
     if (isAlreadyLoaded) {
       skipped++;
@@ -2855,27 +2915,22 @@ export async function syncHigienicosFromSheet(
     }
 
     // Búsqueda de coincidencia con orden activa existente:
-    // 1. Por número de OME (clave unívoca)
+    // 1. Por número de OME real (clave unívoca)
     // 2. Por Beneficio + Fecha de emisión de OME + Insumo
     // 3. Por Beneficio + Fecha de emisión de OME
     // 4. Por Beneficio si ambos carecen de OME y fecha
-    // (Aseguramos que un mismo documento no sea reclamado por dos filas distintas para no colapsar filas)
     let existing = null;
-    if (cleanOme && existingMapByOme.has(cleanOme)) {
-      const candidate = existingMapByOme.get(cleanOme);
-      if (!matchedExistingIds.has(candidate.id)) existing = candidate;
+    if (cleanOme) {
+      existing = findFirstUnmatched(existingMapByOme.get(cleanOme));
     }
-    if (!existing && cleanBeneficio && cleanFechaOme && cleanInsumo && existingMapByBeneficioAndDate.has(`${cleanBeneficio}_${cleanFechaOme}_${cleanInsumo}`)) {
-      const candidate = existingMapByBeneficioAndDate.get(`${cleanBeneficio}_${cleanFechaOme}_${cleanInsumo}`);
-      if (!matchedExistingIds.has(candidate.id)) existing = candidate;
+    if (!existing && realBeneficio && cleanFechaOme && cleanInsumo) {
+      existing = findFirstUnmatched(existingMapByBeneficioAndDate.get(`${realBeneficio}_${cleanFechaOme}_${cleanInsumo}`));
     }
-    if (!existing && cleanBeneficio && cleanFechaOme && existingMapByBeneficioAndDate.has(`${cleanBeneficio}_${cleanFechaOme}`)) {
-      const candidate = existingMapByBeneficioAndDate.get(`${cleanBeneficio}_${cleanFechaOme}`);
-      if (!matchedExistingIds.has(candidate.id)) existing = candidate;
+    if (!existing && realBeneficio && cleanFechaOme) {
+      existing = findFirstUnmatched(existingMapByBeneficioAndDate.get(`${realBeneficio}_${cleanFechaOme}`));
     }
-    if (!existing && cleanBeneficio && !cleanFechaOme && !cleanOme && existingMapByBeneficioOnly.has(cleanBeneficio)) {
-      const candidate = existingMapByBeneficioOnly.get(cleanBeneficio);
-      if (!matchedExistingIds.has(candidate.id)) existing = candidate;
+    if (!existing && realBeneficio && !cleanFechaOme && !cleanOme) {
+      existing = findFirstUnmatched(existingMapByBeneficioOnly.get(realBeneficio));
     }
 
     if (existing) {
@@ -2884,11 +2939,17 @@ export async function syncHigienicosFromSheet(
 
       // Modificar / actualizar orden existente con los datos nuevos de la planilla
       const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, existing.id);
-      const hasCarga = Boolean(existing.fechaCargaSistema);
+      const validExistingCarga = parseDateToIso(existing.fechaCargaSistema);
+      const hasCarga = Boolean(validExistingCarga);
       
       const payload: any = {
         updatedAt: serverTimestamp()
       };
+
+      // Limpiar si había una fechaCargaSistema inválida (ej. "NO" o "-")
+      if (existing.fechaCargaSistema && !validExistingCarga) {
+        payload.fechaCargaSistema = '';
+      }
 
       if (item.afiliadoNombre && item.afiliadoNombre.trim()) {
         payload.afiliadoNombre = item.afiliadoNombre.trim();
@@ -2902,10 +2963,11 @@ export async function syncHigienicosFromSheet(
       if (item.hogarPami !== undefined) {
         payload.hogarPami = Boolean(item.hogarPami);
       }
-      if (item.tieneCud !== undefined) {
+      // Preservar CUD si ya fue verificado manualmente o en la planilla
+      if (item.tieneCud === true || (item.tieneCud !== undefined && !existing.tieneCud)) {
         payload.tieneCud = Boolean(item.tieneCud);
       }
-      if (item.cudNumero !== undefined) {
+      if (item.cudNumero !== undefined && item.cudNumero !== '') {
         payload.cudNumero = item.cudNumero;
       }
       if (item.cudVencimiento !== undefined) {
@@ -2922,6 +2984,8 @@ export async function syncHigienicosFromSheet(
       }
       if (cleanOme) {
         payload.nroOme = cleanOme;
+      } else if (existing.nroOme && !isValidRealOme(existing.nroOme)) {
+        payload.nroOme = '';
       }
       if (item.fechaEmisionOme !== undefined) {
         payload.fechaEmisionOme = item.fechaEmisionOme;
@@ -2931,12 +2995,16 @@ export async function syncHigienicosFromSheet(
         if (!hasCarga) {
           payload.fechaVencimiento = item.fechaVencimientoOme || '';
         }
+      } else if (!hasCarga) {
+        // Si en la planilla se borró la fecha de vencimiento/habilitación, limpiar también en Firestore
+        payload.fechaVencimientoOme = '';
+        payload.fechaVencimiento = item.fechaEmisionOme || '';
       }
       if (item.notas !== undefined) {
         payload.notas = item.notas;
       }
 
-      // Si viene con fecha de carga en SIMAP y no estaba cargada
+      // Si viene con fecha de carga en SIMAP válida y no estaba cargada
       if (!hasCarga && item.fechaCargaSistema) {
         payload.fechaCargaSistema = item.fechaCargaSistema;
         payload.fechaVencimiento = calculateVencimiento(item.fechaCargaSistema);
@@ -2981,12 +3049,10 @@ export async function syncHigienicosFromSheet(
 
       // Registrar en memoria para evitar duplicados si la misma planilla repite la fila
       matchedExistingIds.add(newDocRef.id);
-      if (cleanOme) existingMapByOme.set(cleanOme, { id: newDocRef.id, ...payload });
-      if (cleanBeneficio && cleanFechaOme) {
-        existingMapByBeneficioAndDate.set(`${cleanBeneficio}_${cleanFechaOme}_${cleanInsumo}`, { id: newDocRef.id, ...payload });
-        if (!existingMapByBeneficioAndDate.has(`${cleanBeneficio}_${cleanFechaOme}`)) {
-          existingMapByBeneficioAndDate.set(`${cleanBeneficio}_${cleanFechaOme}`, { id: newDocRef.id, ...payload });
-        }
+      if (cleanOme) pushToMap(existingMapByOme, cleanOme, { id: newDocRef.id, ...payload });
+      if (realBeneficio && cleanFechaOme) {
+        pushToMap(existingMapByBeneficioAndDate, `${realBeneficio}_${cleanFechaOme}_${cleanInsumo}`, { id: newDocRef.id, ...payload });
+        pushToMap(existingMapByBeneficioAndDate, `${realBeneficio}_${cleanFechaOme}`, { id: newDocRef.id, ...payload });
       }
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   FileSpreadsheet, 
   Plus, 
@@ -86,6 +86,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
   const [activeFilter, setActiveFilter] = useState<'todos' | 'listas' | 'en_espera' | 'vigentes' | 'por_vencer' | 'bloqueadas_cud' | 'hogar_pami'>('todos');
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [isUpdatingSheet, setIsUpdatingSheet] = useState(false);
+  const isUpdatingSheetRef = useRef(false);
 
   // Suscripciones en tiempo real
   useEffect(() => {
@@ -120,7 +121,8 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       return;
     }
 
-    if (isUpdatingSheet) return;
+    if (isUpdatingSheetRef.current) return;
+    isUpdatingSheetRef.current = true;
     setIsUpdatingSheet(true);
     const cleanUrl = url.trim();
 
@@ -180,6 +182,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
         if (!isAutoSync) {
           throw new Error('No se pudo leer la planilla de Google Sheets. Verifica que esté configurada como pública ("Cualquier persona con el enlace").');
         }
+        isUpdatingSheetRef.current = false;
         setIsUpdatingSheet(false);
         return;
       }
@@ -201,6 +204,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
               if (!isAutoSync) {
                 showFeedback('No se detectaron filas válidas en la planilla');
               }
+              isUpdatingSheetRef.current = false;
               setIsUpdatingSheet(false);
               return;
             }
@@ -224,6 +228,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
               showFeedback('Error al guardar datos: ' + syncErr.message);
             }
           } finally {
+            isUpdatingSheetRef.current = false;
             setIsUpdatingSheet(false);
           }
         },
@@ -231,6 +236,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
           if (!isAutoSync) {
             showFeedback('Error al procesar CSV: ' + err.message);
           }
+          isUpdatingSheetRef.current = false;
           setIsUpdatingSheet(false);
         }
       });
@@ -239,6 +245,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       if (!isAutoSync) {
         showFeedback('Error: ' + (err.message || 'No se pudo actualizar desde Google Sheet'));
       }
+      isUpdatingSheetRef.current = false;
       setIsUpdatingSheet(false);
     }
   };
@@ -902,9 +909,11 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                             Talle: <span className="font-semibold">{item.insumoTalle}</span>
                           </div>
                         )}
-                        <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                          OME: {item.nroOme || '-'}
-                        </div>
+                        {item.nroOme && (
+                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                            N° OME: {item.nroOme}
+                          </div>
+                        )}
                         {(item.fechaVencimientoOme || (!isLoaded && item.fechaVencimiento)) && (
                           <div className="mt-1">
                             <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-900 bg-amber-50/90 border border-amber-200 px-2 py-0.5 rounded-md">
@@ -940,10 +949,10 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-300">
                               <CalendarClock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                              Habilitada a partir del {formatDate(item.fechaVencimientoOme || item.fechaVencimiento)}
+                              Habilitada a partir del {formatDate(item.fechaVencimientoOme || item.fechaVencimiento || item.fechaEmisionOme)}
                             </span>
                             <p className="text-[11px] text-amber-800 font-medium">
-                              {item.motivoBloqueo || `Vencimiento OME: ${formatDate(item.fechaVencimientoOme || item.fechaVencimiento)} (en espera de fecha de carga)`}
+                              {item.motivoBloqueo || `Vencimiento OME: ${formatDate(item.fechaVencimientoOme || item.fechaVencimiento || item.fechaEmisionOme)} (en espera de fecha de carga)`}
                             </p>
                           </div>
                         )}
