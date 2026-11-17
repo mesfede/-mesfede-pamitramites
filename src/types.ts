@@ -203,7 +203,7 @@ export const CATEGORY_LIGHT_COLORS: Record<string, string> = {
   "Odontología": "bg-sky-50"
 };
 
-export type HigienicoEstado = 'lista_para_cargar' | 'en_espera_vencimiento' | 'vigente' | 'proxima_vencer' | 'vencida' | 'bloqueada_cud';
+export type HigienicoEstado = 'lista_para_cargar' | 'en_espera_vencimiento' | 'sin_fecha';
 
 export interface HigienicoOrden {
   id: string;
@@ -227,6 +227,21 @@ export interface HigienicoOrden {
   notas?: string;
   createdAt?: any;
   updatedAt?: any;
+}
+
+export interface HigienicoCargada {
+  id: string;
+  nroOme: string;
+  afiliadoNombre: string;
+  afiliadoBeneficio: string;
+  afiliadoDni?: string;
+  hogarPami?: boolean;
+  tieneCud?: boolean;
+  fechaEmisionOme: string;
+  fechaVencimientoOme?: string;
+  insumoTipo?: string;
+  cargadoPorEmail?: string;
+  cargadoAt?: any;
 }
 
 export interface HigienicosConfig {

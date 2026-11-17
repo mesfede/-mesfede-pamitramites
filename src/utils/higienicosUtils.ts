@@ -1,9 +1,9 @@
+import Papa from 'papaparse';
 import { HigienicoOrden, HigienicoEstado } from '../types';
 
 export interface ProcessedHigienicoOrden extends HigienicoOrden {
   computedEstado: HigienicoEstado;
   diasRestantes?: number;
-  bloqueantePorOrdenVigente?: HigienicoOrden;
   puedeCargarse: boolean;
   motivoBloqueo?: string;
 }
@@ -281,111 +281,46 @@ export function getDaysDifference(targetDateStr: string): number {
 }
 
 /**
- * Procesa una lista completa de órdenes y resuelve las relaciones cruzadas por afiliado
- * (vigencia, bloqueo por orden previa activa, validación de CUD, y fecha de vencimiento de la OME
- * a partir de la cual recién se habilita la carga en el sistema).
+ * Procesa las órdenes valiéndose exclusivamente de la fecha OME de la planilla:
+ * - Sin fecha: estado 'sin_fecha' (NO aparece para cargar).
+ * - Fecha hoy o futura (>= 0 días): estado 'en_espera_vencimiento' (habilitada al día siguiente).
+ * - Fecha pasada (< 0 días): estado 'lista_para_cargar' (habilitada para cargar hoy).
  */
 export function processHigienicosOrdenes(ordenes: HigienicoOrden[]): ProcessedHigienicoOrden[] {
-  // Agrupar órdenes activas por beneficio del afiliado
-  const activeOrdersByBeneficio = new Map<string, HigienicoOrden>();
-
-  // 1ra pasada: identificar para cada afiliado si tiene una orden vigente
-  for (const orden of ordenes) {
-    const cargaIso = parseDateToIso(orden.fechaCargaSistema);
-    const vencIso = parseDateToIso(orden.fechaVencimiento);
-    if (cargaIso && vencIso) {
-      const dias = getDaysDifference(vencIso);
-      if (dias >= 0) {
-        // Esta orden está vigente o próxima a vencer
-        const key = (orden.afiliadoBeneficio || '').trim();
-        if (!key || key.toLowerCase() === 'sin beneficio' || key === '-') continue;
-        const prev = activeOrdersByBeneficio.get(key);
-        if (!prev) {
-          activeOrdersByBeneficio.set(key, orden);
-        } else {
-          // Si hay varias, tomar la que vence más adelante
-          const prevDias = getDaysDifference(prev.fechaVencimiento!);
-          if (dias > prevDias) {
-            activeOrdersByBeneficio.set(key, orden);
-          }
-        }
-      }
-    }
-  }
-
-  // 2da pasada: computar el estado detallado de cada orden
   return ordenes.map(orden => {
     const result: ProcessedHigienicoOrden = {
       ...orden,
-      computedEstado: 'lista_para_cargar',
-      puedeCargarse: true,
+      computedEstado: 'sin_fecha',
+      puedeCargarse: false,
     };
 
-    const cargaIso = parseDateToIso(orden.fechaCargaSistema);
-    const vencSistemaIso = parseDateToIso(orden.fechaVencimiento);
-
-    // Caso A: La orden ya fue cargada en el sistema externo
-    if (cargaIso && vencSistemaIso) {
-      const diasRestantes = getDaysDifference(vencSistemaIso);
-      result.diasRestantes = diasRestantes;
-
-      if (diasRestantes < 0) {
-        result.computedEstado = 'vencida';
-        result.puedeCargarse = false; // Ya fue cargada y su ciclo terminó
-        result.motivoBloqueo = 'Ciclo de 3 meses cumplido';
-      } else if (diasRestantes <= 5) {
-        result.computedEstado = 'proxima_vencer';
-        result.puedeCargarse = false; // Ya está cargada, vence pronto
-        result.motivoBloqueo = `Vence en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}`;
-      } else {
-        result.computedEstado = 'vigente';
-        result.puedeCargarse = false; // Ya está cargada y vigente
-        result.motivoBloqueo = `Activa. Vence en ${diasRestantes} días`;
-      }
-      return result;
-    }
-
-    // Caso B: La orden aún NO fue cargada en el sistema externo
-    // Regla 1: Afiliado en Hogar PAMI requiere CUD OBLIGATORIO
-    if (orden.hogarPami && !orden.tieneCud) {
-      result.computedEstado = 'bloqueada_cud';
-      result.puedeCargarse = false;
-      result.motivoBloqueo = 'Bloqueada: Requiere CUD para afiliados en Hogar PAMI';
-      return result;
-    }
-
-    // Regla 2: ¿El afiliado ya tiene otra orden vigente en curso?
-    const benKey = (orden.afiliadoBeneficio || '').trim();
-    const activeOrder = benKey && benKey.toLowerCase() !== 'sin beneficio' && benKey !== '-'
-      ? activeOrdersByBeneficio.get(benKey)
-      : undefined;
-    if (activeOrder && activeOrder.id !== orden.id) {
-      const diasEsperar = getDaysDifference(activeOrder.fechaVencimiento!);
-      result.bloqueantePorOrdenVigente = activeOrder;
-      result.puedeCargarse = false;
-      result.computedEstado = 'en_espera_vencimiento';
-      result.motivoBloqueo = `Orden previa activa (vence el ${formatDate(activeOrder.fechaVencimiento!)} - faltan ${diasEsperar} días)`;
-      return result;
-    }
-
-    // Regla 3: Vencimiento de la OME (Fecha a partir de la cual recién se puede cargar, al día siguiente)
-    const rawFechaHabilitacion = orden.fechaVencimientoOme || orden.fechaVencimiento || orden.fechaEmisionOme;
+    const rawFechaHabilitacion = orden.fechaVencimientoOme || orden.fechaEmisionOme || orden.fechaVencimiento;
     const fechaHabilitacion = parseDateToIso(rawFechaHabilitacion);
-    if (fechaHabilitacion) {
-      const diasFaltantes = getDaysDifference(fechaHabilitacion);
-      if (diasFaltantes >= 0) {
-        // La fecha es hoy o futura -> Aún NO está disponible para cargar (Pendiente hasta el día siguiente)
-        result.computedEstado = 'en_espera_vencimiento';
-        result.puedeCargarse = false;
-        result.diasRestantes = diasFaltantes;
-        result.motivoBloqueo = diasFaltantes <= 1
-          ? `Habilitada a partir de mañana (${formatDate(fechaHabilitacion)})`
-          : `Habilitada a partir del ${formatDate(fechaHabilitacion)} (faltan ${diasFaltantes} días para cargar)`;
-        return result;
-      }
+
+    // 1. Si no tiene fecha asignada en la planilla -> No puede cargarse
+    if (!fechaHabilitacion) {
+      result.computedEstado = 'sin_fecha';
+      result.puedeCargarse = false;
+      result.motivoBloqueo = 'No tiene fecha de OME cargada en la planilla';
+      return result;
     }
 
-    // Regla 4: Cumple CUD, sin orden activa previa, y la fecha ya pasó (lista para cargar) o no tiene restricción
+    // 2. Si la fecha es hoy o futura -> En espera hasta el día siguiente
+    const diasFaltantes = getDaysDifference(fechaHabilitacion);
+    if (diasFaltantes >= 0) {
+      result.computedEstado = 'en_espera_vencimiento';
+      result.puedeCargarse = false;
+      result.diasRestantes = diasFaltantes;
+      result.motivoBloqueo =
+        diasFaltantes === 0
+          ? `Vence hoy (${formatDate(fechaHabilitacion)}). Habilitada a partir de mañana`
+          : diasFaltantes === 1
+            ? `Vence mañana (${formatDate(fechaHabilitacion)}). Habilitada al día siguiente`
+            : `Habilitada después del ${formatDate(fechaHabilitacion)} (faltan ${diasFaltantes} días)`;
+      return result;
+    }
+
+    // 3. Fecha ya vencida/cumplida -> Lista para cargar hoy
     result.computedEstado = 'lista_para_cargar';
     result.puedeCargarse = true;
     result.motivoBloqueo = undefined;
@@ -418,6 +353,11 @@ const normalizeHeader = (text: string): string =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
+const cleanCellText = (val: any): string =>
+  val === undefined || val === null
+    ? ''
+    : String(val).replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+
 /**
  * Mapea una fila cruda de un CSV o Google Sheets a un objeto parcial de HigienicoOrden
  */
@@ -445,8 +385,8 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
         if (excludeSubstrings.some(ex => kNorm.includes(ex))) return false;
         return kNorm === pNorm;
       });
-      if (found && row[found] !== undefined && row[found] !== null && String(row[found]).trim() !== '') {
-        return String(row[found]).trim();
+      if (found && row[found] !== undefined && row[found] !== null && cleanCellText(row[found]) !== '') {
+        return cleanCellText(row[found]);
       }
     }
     return '';
@@ -460,8 +400,8 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
         if (excludeSubstrings.some(ex => kNorm.includes(ex))) return false;
         return kNorm.includes(pNorm);
       });
-      if (found && row[found] !== undefined && row[found] !== null && String(row[found]).trim() !== '') {
-        return String(row[found]).trim();
+      if (found && row[found] !== undefined && row[found] !== null && cleanCellText(row[found]) !== '') {
+        return cleanCellText(row[found]);
       }
     }
     return '';
@@ -630,6 +570,49 @@ export function mapRowToHigienico(row: Record<string, any>): Partial<HigienicoOr
     fechaVencimiento: fechaCargaSistema ? calculateVencimiento(fechaCargaSistema) : (fechaVencimientoOme || undefined),
     notas
   };
+}
+
+/**
+ * Parsea un CSV completo de Google Sheets / Excel eliminando BOM y filas de título previas al encabezado real.
+ */
+export function parseHigienicosCsv(csvText: string): Partial<HigienicoOrden>[] {
+  if (!csvText) return [];
+  const withoutBom = csvText.replace(/^\uFEFF/, '').trim();
+  if (!withoutBom) return [];
+
+  // Detectar si las primeras filas (hasta 6) son títulos vacíos/decorativos antes del encabezado real
+  const headerKeywords = ['apellido', 'nombre', 'afiliado', 'paciente', 'beneficio', 'beneficiario', 'dni', 'ome'];
+  const previewLines = withoutBom.split(/\r?\n/).slice(0, 8);
+  let headerRowIdx = 0;
+  for (let i = 0; i < previewLines.length; i++) {
+    const lineNorm = normalizeHeader(previewLines[i]);
+    if (!lineNorm.replace(/[,;\t\s"]/g, '')) continue;
+    const matchCount = headerKeywords.filter(kw => lineNorm.includes(kw)).length;
+    if (matchCount >= 2 || (lineNorm.includes('beneficio') && lineNorm.includes('ome'))) {
+      headerRowIdx = i;
+      break;
+    }
+  }
+
+  const normalizedCsv = headerRowIdx > 0
+    ? withoutBom.split(/\r?\n/).slice(headerRowIdx).join('\n')
+    : withoutBom;
+
+  const parsed = Papa.parse(normalizedCsv, {
+    header: true,
+    skipEmptyLines: 'greedy',
+    dynamicTyping: false
+  });
+
+  const rawRows = (parsed.data || []) as Record<string, any>[];
+  const mapped: Partial<HigienicoOrden>[] = [];
+  for (const raw of rawRows) {
+    const item = mapRowToHigienico(raw);
+    if (item) {
+      mapped.push(item);
+    }
+  }
+  return mapped;
 }
 
 /**

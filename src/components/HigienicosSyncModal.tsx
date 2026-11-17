@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Papa from 'papaparse';
 import { 
   X, 
   FileSpreadsheet, 
@@ -13,7 +12,7 @@ import {
 } from 'lucide-react';
 import { HigienicoOrden } from '../types';
 import { 
-  mapRowToHigienico, 
+  parseHigienicosCsv,
   normalizeGoogleSheetUrl, 
   getGoogleSheetGvizUrl,
   formatDate 
@@ -24,7 +23,7 @@ interface HigienicosSyncModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentSheetUrl?: string;
-  onSuccess: (result: { added: number; updated: number; deleted?: number; total: number }) => void;
+  onSuccess: (result: { added: number; updated: number; deleted?: number; skipped?: number; skippedNames?: string[]; total: number }) => void;
 }
 
 export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
@@ -134,36 +133,16 @@ export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
       return;
     }
 
-    Papa.parse(content.trim(), {
-      header: true,
-      skipEmptyLines: 'greedy',
-      dynamicTyping: false,
-      complete: (results) => {
-        const rawRows = results.data as Record<string, any>[];
-        if (!rawRows || rawRows.length === 0) {
-          setError('La planilla no contiene filas con datos legibles.');
-          return;
-        }
-
-        const mapped: Partial<HigienicoOrden>[] = [];
-        for (const raw of rawRows) {
-          const item = mapRowToHigienico(raw);
-          if (item) {
-            mapped.push(item);
-          }
-        }
-
-        if (mapped.length === 0) {
-          setError('No se detectaron columnas compatibles en la planilla. Asegúrate de incluir encabezados como: Afiliado / Paciente, Beneficio, Insumo, OME, Vencimiento OME.');
-          return;
-        }
-
-        setPreviewRows(mapped);
-      },
-      error: (err: any) => {
-        setError('Error al analizar la planilla: ' + err.message);
+    try {
+      const mapped = parseHigienicosCsv(content);
+      if (mapped.length === 0) {
+        setError('No se detectaron columnas compatibles en la planilla. Asegúrate de incluir encabezados como: Afiliado / Paciente, Beneficio, Insumo, OME, Vencimiento OME.');
+        return;
       }
-    });
+      setPreviewRows(mapped);
+    } catch (err: any) {
+      setError('Error al analizar la planilla: ' + (err.message || 'Error desconocido'));
+    }
   };
 
   const handleWipeExisting = async () => {
@@ -311,7 +290,7 @@ export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
                   </span>
                 </div>
                 <span className="text-[11px] text-slate-500">
-                  Las órdenes ya cargadas preservarán su vigencia
+                  Las fechas de OME de la planilla definen cuándo cargar
                 </span>
               </div>
 
@@ -322,10 +301,9 @@ export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
                       <th className="p-2.5">Afiliado</th>
                       <th className="p-2.5">Beneficio</th>
                       <th className="p-2.5">Hogar</th>
-                      <th className="p-2.5">CUD</th>
                       <th className="p-2.5">Insumo</th>
                       <th className="p-2.5">N° OME</th>
-                      <th className="p-2.5">Vto. OME (Habilitación)</th>
+                      <th className="p-2.5">Fecha OME</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-normal">
@@ -342,24 +320,15 @@ export const HigienicosSyncModal: React.FC<HigienicosSyncModalProps> = ({
                             <span className="text-slate-400 text-[11px]">-</span>
                           )}
                         </td>
-                        <td className="p-2.5">
-                          {row.tieneCud ? (
-                            <span className="px-1.5 py-0.5 rounded-sm bg-teal-100 text-teal-700 text-[10px] font-semibold">
-                              CUD Sí
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 text-[11px]">No</span>
-                          )}
-                        </td>
                         <td className="p-2.5">{row.insumoTipo} {row.insumoTalle ? `(${row.insumoTalle})` : ''}</td>
                         <td className="p-2.5 font-mono text-[11px] text-slate-600">{row.nroOme || '-'}</td>
                         <td className="p-2.5 font-mono text-[11px]">
-                          {row.fechaVencimientoOme || row.fechaVencimiento ? (
+                          {row.fechaVencimientoOme || row.fechaVencimiento || row.fechaEmisionOme ? (
                             <span className="font-semibold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                              {formatDate(row.fechaVencimientoOme || row.fechaVencimiento)}
+                              {formatDate(row.fechaVencimientoOme || row.fechaVencimiento || row.fechaEmisionOme)}
                             </span>
                           ) : (
-                            <span className="text-slate-400">Inmediata</span>
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">No tiene fecha</span>
                           )}
                         </td>
                       </tr>

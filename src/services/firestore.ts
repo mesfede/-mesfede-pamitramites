@@ -28,6 +28,7 @@ import {
   TelefonoInterno, 
   Solicitud, 
   HigienicoOrden, 
+  HigienicoCargada,
   HigienicosConfig, 
   DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS,
   ADMIN_EMAILS,
@@ -2574,7 +2575,11 @@ export async function marcarOrdenCargadaYEliminar(
       nroOme: cleanOme,
       afiliadoNombre: orden.afiliadoNombre || '',
       afiliadoBeneficio: cleanBeneficio,
+      afiliadoDni: orden.afiliadoDni || '',
+      hogarPami: Boolean(orden.hogarPami),
+      tieneCud: Boolean(orden.tieneCud),
       fechaEmisionOme: cleanFechaOme,
+      fechaVencimientoOme: orden.fechaVencimientoOme || '',
       insumoTipo: orden.insumoTipo || '',
       cargadoPorEmail: userEmail || auth.currentUser?.email || '',
       cargadoAt: serverTimestamp()
@@ -2584,6 +2589,89 @@ export async function marcarOrdenCargadaYEliminar(
   // 2. Eliminar de la colección de órdenes activas para que desaparezca inmediatamente
   const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, orden.id);
   await deleteDoc(docRef);
+}
+
+/**
+ * Suscripción en tiempo real al historial de órdenes ya cargadas / omitidas en sincronización.
+ */
+export function subscribeToHigienicosCargadas(callback: (items: HigienicoCargada[]) => void) {
+  const q = query(collection(db, HIGIENICOS_CARGADAS_COLLECTION));
+  return onSnapshot(q, (snapshot) => {
+    const items: HigienicoCargada[] = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        nroOme: isValidRealOme(data.nroOme) ? String(data.nroOme).trim() : '',
+        afiliadoNombre: data.afiliadoNombre || '',
+        afiliadoBeneficio: data.afiliadoBeneficio || '',
+        afiliadoDni: data.afiliadoDni || '',
+        hogarPami: Boolean(data.hogarPami),
+        tieneCud: Boolean(data.tieneCud),
+        fechaEmisionOme: data.fechaEmisionOme || '',
+        fechaVencimientoOme: data.fechaVencimientoOme || '',
+        insumoTipo: data.insumoTipo || 'Pañales descartables',
+        cargadoPorEmail: data.cargadoPorEmail || '',
+        cargadoAt: data.cargadoAt,
+      };
+    });
+
+    items.sort((a, b) => {
+      const tA = a.cargadoAt?.toMillis ? a.cargadoAt.toMillis() : 0;
+      const tB = b.cargadoAt?.toMillis ? b.cargadoAt.toMillis() : 0;
+      return tB - tA;
+    });
+
+    callback(items);
+  }, (err) => {
+    console.error("Error subscribing to higienicos cargadas:", err);
+  });
+}
+
+/**
+ * Restaura una orden desde el historial de cargadas hacia el listado activo de órdenes pendientes.
+ */
+export async function restaurarOrdenCargada(cargada: HigienicoCargada): Promise<void> {
+  // 1. Quitar del historial de cargadas para que no vuelva a ser omitida al sincronizar
+  await deleteDoc(doc(db, HIGIENICOS_CARGADAS_COLLECTION, cargada.id));
+
+  // 2. Re-crear en órdenes activas como pendiente (si aún no está en la colección)
+  const fechaVencOme = cargada.fechaVencimientoOme || cargada.fechaEmisionOme || '';
+  await addDoc(collection(db, HIGIENICOS_ORDENES_COLLECTION), {
+    afiliadoNombre: cargada.afiliadoNombre || 'Sin nombre',
+    afiliadoBeneficio: cargada.afiliadoBeneficio || 'Sin beneficio',
+    afiliadoDni: cargada.afiliadoDni || '',
+    hogarPami: Boolean(cargada.hogarPami),
+    tieneCud: Boolean(cargada.tieneCud),
+    cudNumero: '',
+    cudVencimiento: '',
+    insumoTipo: cargada.insumoTipo || 'Pañales descartables',
+    insumoTalle: '',
+    medicoCabecera: '',
+    nroOme: isValidRealOme(cargada.nroOme) ? cargada.nroOme : '',
+    fechaEmisionOme: cargada.fechaEmisionOme || fechaVencOme,
+    fechaVencimientoOme: fechaVencOme,
+    fechaCargaSistema: '',
+    fechaVencimiento: fechaVencOme,
+    cargadoPorEmail: '',
+    notas: 'Restaurada desde historial de cargadas',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+/**
+ * Vacía únicamente el historial de órdenes cargadas para permitir re-importarlas desde la planilla.
+ */
+export async function limpiarHistorialCargadas(): Promise<number> {
+  const cargadasRef = collection(db, HIGIENICOS_CARGADAS_COLLECTION);
+  const cargadasSnap = await getDocs(cargadasRef);
+  for (let i = 0; i < cargadasSnap.docs.length; i += 400) {
+    const batch = writeBatch(db);
+    const chunk = cargadasSnap.docs.slice(i, i + 400);
+    chunk.forEach(docSnap => batch.delete(docSnap.ref));
+    await batch.commit();
+  }
+  return cargadasSnap.docs.length;
 }
 
 /**
@@ -2644,9 +2732,7 @@ export async function toggleCudOrden(ordenId: string, tieneCud: boolean, cudNume
  * Guarda o edita manualmente una orden de higiénicos.
  */
 export async function saveHigienicoOrden(orden: Partial<HigienicoOrden> & { afiliadoNombre: string; afiliadoBeneficio: string }) {
-  const fechaVencimiento = orden.fechaCargaSistema 
-    ? calculateVencimiento(orden.fechaCargaSistema) 
-    : (orden.fechaVencimientoOme || orden.fechaVencimiento || '');
+  const fechaVencimiento = orden.fechaVencimientoOme || orden.fechaEmisionOme || orden.fechaVencimiento || '';
   
   const data: any = {
     afiliadoNombre: orden.afiliadoNombre.trim(),
@@ -2660,9 +2746,9 @@ export async function saveHigienicoOrden(orden: Partial<HigienicoOrden> & { afil
     insumoTalle: orden.insumoTalle || '',
     medicoCabecera: orden.medicoCabecera ? orden.medicoCabecera.trim() : '',
     nroOme: orden.nroOme ? orden.nroOme.trim() : '',
-    fechaEmisionOme: orden.fechaEmisionOme || new Date().toISOString().split('T')[0],
+    fechaEmisionOme: orden.fechaEmisionOme || '',
     fechaVencimientoOme: orden.fechaVencimientoOme || '',
-    fechaCargaSistema: orden.fechaCargaSistema || '',
+    fechaCargaSistema: '',
     fechaVencimiento,
     cargadoPorEmail: orden.cargadoPorEmail || '',
     notas: orden.notas || '',
@@ -2808,7 +2894,7 @@ export async function toggleUserHigienicosAccess(targetEmail: string, enabled: b
 export async function syncHigienicosFromSheet(
   incomingOrders: Partial<HigienicoOrden>[], 
   sheetUrl?: string
-): Promise<{ added: number; updated: number; deleted: number; skipped: number; total: number }> {
+): Promise<{ added: number; updated: number; deleted: number; skipped: number; skippedNames: string[]; total: number }> {
   const snap = await getDocs(collection(db, HIGIENICOS_ORDENES_COLLECTION));
   const existingDocs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
   
@@ -2842,7 +2928,11 @@ export async function syncHigienicosFromSheet(
     }
   }
 
-  // Mapa de órdenes ya finalizadas / cargadas en SIMAP (para no volver a importar las ya despachadas)
+  // Mapa de órdenes ya marcadas como cargadas (para no volver a importar las ya despachadas)
+  const configDocRef = doc(db, HIGIENICOS_CONFIG_COLLECTION, HIGIENICOS_PERMISOS_DOC);
+  const configSnap = await getDoc(configDocRef);
+  const needsPradaCleanup = !configSnap.exists() || !configSnap.data()?.pradaUnblockedV2;
+
   const cargadasSnap = await getDocs(collection(db, HIGIENICOS_CARGADAS_COLLECTION));
   const cargadasOmeSet = new Set<string>();
   const cargadasNoOmeBeneficioDateInsumoSet = new Set<string>();
@@ -2852,8 +2942,15 @@ export async function syncHigienicosFromSheet(
     const cData = cDoc.data();
     const cOme = cData.nroOme ? String(cData.nroOme).trim().toUpperCase() : '';
     const cBen = cData.afiliadoBeneficio ? String(cData.afiliadoBeneficio).trim() : '';
+    const cNom = cData.afiliadoNombre ? String(cData.afiliadoNombre).trim().toUpperCase() : '';
     const cFec = cData.fechaEmisionOme ? String(cData.fechaEmisionOme).trim() : '';
     const cIns = cData.insumoTipo ? String(cData.insumoTipo).trim().toLowerCase() : '';
+
+    // Limpieza única si quedó bloqueado por pruebas anteriores el registro de Prada Marcela Laura
+    if (needsPradaCleanup && (cBen === '14010026510200' || (cNom.includes('PRADA') && cNom.includes('MARCELA')))) {
+      await deleteDoc(cDoc.ref).catch(() => null);
+      continue;
+    }
 
     if (isValidRealOme(cOme)) {
       cargadasOmeSet.add(cOme);
@@ -2867,10 +2964,15 @@ export async function syncHigienicosFromSheet(
     }
   }
 
+  if (needsPradaCleanup) {
+    await setDoc(configDocRef, { pradaUnblockedV2: true }, { merge: true }).catch(() => null);
+  }
+
   let added = 0;
   let updated = 0;
   let deleted = 0;
   let skipped = 0;
+  const skippedNames: string[] = [];
 
   const batchSize = 400;
   let currentBatch = writeBatch(db);
@@ -2911,6 +3013,7 @@ export async function syncHigienicosFromSheet(
 
     if (isAlreadyLoaded) {
       skipped++;
+      if (item.afiliadoNombre) skippedNames.push(item.afiliadoNombre);
       continue;
     }
 
@@ -2937,19 +3040,13 @@ export async function syncHigienicosFromSheet(
       // Registrar ID de orden existente encontrada para no sobreescribirla ni borrarla
       matchedExistingIds.add(existing.id);
 
-      // Modificar / actualizar orden existente con los datos nuevos de la planilla
+      // Modificar / actualizar orden existente siempre respetando la fecha y OME de la planilla
       const docRef = doc(db, HIGIENICOS_ORDENES_COLLECTION, existing.id);
-      const validExistingCarga = parseDateToIso(existing.fechaCargaSistema);
-      const hasCarga = Boolean(validExistingCarga);
       
       const payload: any = {
+        fechaCargaSistema: '',
         updatedAt: serverTimestamp()
       };
-
-      // Limpiar si había una fechaCargaSistema inválida (ej. "NO" o "-")
-      if (existing.fechaCargaSistema && !validExistingCarga) {
-        payload.fechaCargaSistema = '';
-      }
 
       if (item.afiliadoNombre && item.afiliadoNombre.trim()) {
         payload.afiliadoNombre = item.afiliadoNombre.trim();
@@ -2963,8 +3060,7 @@ export async function syncHigienicosFromSheet(
       if (item.hogarPami !== undefined) {
         payload.hogarPami = Boolean(item.hogarPami);
       }
-      // Preservar CUD si ya fue verificado manualmente o en la planilla
-      if (item.tieneCud === true || (item.tieneCud !== undefined && !existing.tieneCud)) {
+      if (item.tieneCud !== undefined) {
         payload.tieneCud = Boolean(item.tieneCud);
       }
       if (item.cudNumero !== undefined && item.cudNumero !== '') {
@@ -2987,27 +3083,14 @@ export async function syncHigienicosFromSheet(
       } else if (existing.nroOme && !isValidRealOme(existing.nroOme)) {
         payload.nroOme = '';
       }
-      if (item.fechaEmisionOme !== undefined) {
-        payload.fechaEmisionOme = item.fechaEmisionOme;
-      }
-      if (item.fechaVencimientoOme !== undefined) {
-        payload.fechaVencimientoOme = item.fechaVencimientoOme;
-        if (!hasCarga) {
-          payload.fechaVencimiento = item.fechaVencimientoOme || '';
-        }
-      } else if (!hasCarga) {
-        // Si en la planilla se borró la fecha de vencimiento/habilitación, limpiar también en Firestore
-        payload.fechaVencimientoOme = '';
-        payload.fechaVencimiento = item.fechaEmisionOme || '';
-      }
+
+      // La planilla manda: si no tiene fecha, limpiar las fechas para que figure como "Sin fecha"
+      payload.fechaEmisionOme = item.fechaEmisionOme || '';
+      payload.fechaVencimientoOme = item.fechaVencimientoOme || '';
+      payload.fechaVencimiento = item.fechaVencimientoOme || item.fechaEmisionOme || '';
+
       if (item.notas !== undefined) {
         payload.notas = item.notas;
-      }
-
-      // Si viene con fecha de carga en SIMAP válida y no estaba cargada
-      if (!hasCarga && item.fechaCargaSistema) {
-        payload.fechaCargaSistema = item.fechaCargaSistema;
-        payload.fechaVencimiento = calculateVencimiento(item.fechaCargaSistema);
       }
 
       currentBatch.update(docRef, payload);
@@ -3016,10 +3099,7 @@ export async function syncHigienicosFromSheet(
     } else {
       // Agregar orden nueva detectada en la planilla
       const newDocRef = doc(collection(db, HIGIENICOS_ORDENES_COLLECTION));
-      const fechaCarga = item.fechaCargaSistema || '';
-      const fechaVencimiento = fechaCarga 
-        ? calculateVencimiento(fechaCarga) 
-        : (item.fechaVencimientoOme || item.fechaVencimiento || '');
+      const fechaVencimiento = item.fechaVencimientoOme || item.fechaEmisionOme || item.fechaVencimiento || '';
 
       const payload: any = {
         afiliadoNombre: item.afiliadoNombre ? item.afiliadoNombre.trim() : 'Sin nombre',
@@ -3035,7 +3115,7 @@ export async function syncHigienicosFromSheet(
         nroOme: cleanOme,
         fechaEmisionOme: item.fechaEmisionOme || '',
         fechaVencimientoOme: item.fechaVencimientoOme || '',
-        fechaCargaSistema: fechaCarga,
+        fechaCargaSistema: '',
         fechaVencimiento,
         cargadoPorEmail: item.cargadoPorEmail || '',
         notas: item.notas || '',
@@ -3087,14 +3167,13 @@ export async function syncHigienicosFromSheet(
   }
 
   // Actualizar metadatos de sincronización
-  const configDocRef = doc(db, HIGIENICOS_CONFIG_COLLECTION, HIGIENICOS_PERMISOS_DOC);
   await setDoc(configDocRef, {
     lastSyncAt: serverTimestamp(),
     totalSynced: added + updated,
     ...(sheetUrl ? { googleSheetUrl: sheetUrl } : {})
   }, { merge: true });
 
-  return { added, updated, deleted, skipped, total: added + updated + deleted };
+  return { added, updated, deleted, skipped, skippedNames, total: added + updated + deleted };
 }
 
 export async function deleteAllHigienicos(): Promise<{ deleted: number }> {

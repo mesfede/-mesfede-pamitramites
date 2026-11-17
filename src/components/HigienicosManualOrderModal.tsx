@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, Building2, ShieldAlert } from 'lucide-react';
+import { X, Save, AlertCircle, Building2 } from 'lucide-react';
 import { HigienicoOrden } from '../types';
 import { saveHigienicoOrden } from '../services/firestore';
 
@@ -27,7 +27,7 @@ export const HigienicosManualOrderModal: React.FC<HigienicosManualOrderModalProp
     insumoTalle: 'Grande (G)',
     medicoCabecera: '',
     nroOme: '',
-    fechaEmisionOme: new Date().toISOString().split('T')[0],
+    fechaEmisionOme: '',
     fechaVencimientoOme: '',
     fechaCargaSistema: '',
     notas: ''
@@ -50,9 +50,9 @@ export const HigienicosManualOrderModal: React.FC<HigienicosManualOrderModalProp
         insumoTalle: orderToEdit.insumoTalle || 'Grande (G)',
         medicoCabecera: orderToEdit.medicoCabecera || '',
         nroOme: orderToEdit.nroOme || '',
-        fechaEmisionOme: orderToEdit.fechaEmisionOme || new Date().toISOString().split('T')[0],
+        fechaEmisionOme: orderToEdit.fechaEmisionOme || '',
         fechaVencimientoOme: orderToEdit.fechaVencimientoOme || orderToEdit.fechaVencimiento || '',
-        fechaCargaSistema: orderToEdit.fechaCargaSistema || '',
+        fechaCargaSistema: '',
         notas: orderToEdit.notas || ''
       });
     } else {
@@ -67,7 +67,7 @@ export const HigienicosManualOrderModal: React.FC<HigienicosManualOrderModalProp
         insumoTalle: 'Grande (G)',
         medicoCabecera: '',
         nroOme: '',
-        fechaEmisionOme: new Date().toISOString().split('T')[0],
+        fechaEmisionOme: '',
         fechaVencimientoOme: '',
         fechaCargaSistema: '',
         notas: ''
@@ -170,56 +170,18 @@ export const HigienicosManualOrderModal: React.FC<HigienicosManualOrderModalProp
               </div>
             </div>
 
-            {/* Reglas Hogar PAMI y CUD */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-800 flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.hogarPami}
-                    onChange={e => setFormData({ ...formData, hogarPami: e.target.checked })}
-                    className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
-                  />
-                  <Building2 className="w-4 h-4 text-purple-600" />
-                  <span>Reside en Hogar PAMI / Residencia Geriátrica</span>
-                </label>
-                {formData.hogarPami && (
-                  <span className="px-2 py-0.5 rounded-sm bg-purple-100 text-purple-700 text-[10px] font-semibold">
-                    CUD Obligatorio
-                  </span>
-                )}
-              </div>
-
-              <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
-                <label className="text-xs font-medium text-slate-800 flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.tieneCud}
-                    onChange={e => setFormData({ ...formData, tieneCud: e.target.checked })}
-                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
-                  />
-                  <span>Certificado Único de Discapacidad (CUD) Presentado</span>
-                </label>
-
-                {formData.tieneCud && (
-                  <input
-                    type="text"
-                    value={formData.cudNumero || ''}
-                    onChange={e => setFormData({ ...formData, cudNumero: e.target.value })}
-                    placeholder="N° de CUD (opcional)"
-                    className="px-2.5 py-1 text-xs font-mono border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-teal-600"
-                  />
-                )}
-              </div>
-
-              {formData.hogarPami && !formData.tieneCud && (
-                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 flex items-start gap-2">
-                  <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Atención:</strong> Al estar en Hogar PAMI, el sistema bloqueará la carga externa hasta tanto se verifique el CUD.
-                  </span>
-                </div>
-              )}
+            {/* Hogar PAMI informativo */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+              <label className="text-xs font-medium text-slate-800 flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hogarPami}
+                  onChange={e => setFormData({ ...formData, hogarPami: e.target.checked })}
+                  className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+                />
+                <Building2 className="w-4 h-4 text-purple-600" />
+                <span>Reside en Hogar PAMI / Residencia Geriátrica</span>
+              </label>
             </div>
 
             {/* Prescripción Médica */}
@@ -285,7 +247,7 @@ export const HigienicosManualOrderModal: React.FC<HigienicosManualOrderModalProp
 
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Vencimiento de la OME (Habilitada para cargar a partir de esta fecha)
+                  Vencimiento de la OME (Habilitada al día siguiente de esta fecha)
                 </label>
                 <input
                   type="date"
@@ -294,7 +256,7 @@ export const HigienicosManualOrderModal: React.FC<HigienicosManualOrderModalProp
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
                 />
                 <span className="text-[11px] text-amber-700 mt-1 block">
-                  Indica a partir de qué fecha se podrá cargar en el sistema. Si la fecha es futura, permanecerá en espera.
+                  Si se deja sin fecha, figurará como "No tiene fecha" y no se habilitará para cargar.
                 </span>
               </div>
 
@@ -310,22 +272,6 @@ export const HigienicosManualOrderModal: React.FC<HigienicosManualOrderModalProp
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
                 />
               </div>
-            </div>
-
-            {/* Fecha carga previa si se desea registrar histórica */}
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Fecha de carga en sistema externo (opcional)
-              </label>
-              <input
-                type="date"
-                value={formData.fechaCargaSistema}
-                onChange={e => setFormData({ ...formData, fechaCargaSistema: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
-              />
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                Déjalo vacío si es una orden nueva lista para cargar. Si la completas, iniciará sus 3 meses de vigencia a partir de esa fecha.
-              </span>
             </div>
 
             {/* Notas */}

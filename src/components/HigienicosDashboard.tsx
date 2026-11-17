@@ -1,40 +1,29 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   FileSpreadsheet, 
-  Plus, 
   Search, 
-  Clock, 
   CheckCircle2, 
-  AlertTriangle, 
-  ShieldAlert, 
   Users, 
-  Calendar, 
-  ArrowUpDown, 
-  ExternalLink, 
-  Check, 
   RotateCcw, 
   Edit3, 
   Trash2, 
   Building2, 
-  ShieldCheck, 
-  Sparkles,
   Info,
-  CheckSquare,
-  Square,
   Lock,
   RefreshCw,
-  SlidersHorizontal,
-  ChevronRight,
-  CalendarClock
+  CalendarClock,
+  History,
+  X,
+  CalendarOff
 } from 'lucide-react';
-import Papa from 'papaparse';
-import { HigienicoOrden, HigienicosConfig, DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS } from '../types';
+import { HigienicoOrden, HigienicoCargada, HigienicosConfig, DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS } from '../types';
 import { 
   subscribeToHigienicosOrdenes, 
   subscribeToHigienicosConfig, 
+  subscribeToHigienicosCargadas,
+  restaurarOrdenCargada,
+  limpiarHistorialCargadas,
   deleteHigienicoOrden, 
-  revertirCargaOrden, 
-  toggleCudOrden,
   deleteAllHigienicos,
   syncHigienicosFromSheet,
   updateHigienicosConfig
@@ -43,8 +32,7 @@ import {
   processHigienicosOrdenes, 
   ProcessedHigienicoOrden, 
   formatDate, 
-  getDaysDifference,
-  mapRowToHigienico,
+  parseHigienicosCsv,
   normalizeGoogleSheetUrl,
   getGoogleSheetGvizUrl
 } from '../utils/higienicosUtils';
@@ -65,6 +53,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
   console.log('HigienicosDashboard rendered');
   console.log('HigienicosDashboard props:', { currentUserEmail, isAdmin });
   const [ordenes, setOrdenes] = useState<HigienicoOrden[]>([]);
+  const [cargadas, setCargadas] = useState<HigienicoCargada[]>([]);
   const [config, setConfig] = useState<HigienicosConfig>({
     authorizedEmails: DEFAULT_AUTHORIZED_HIGIENICOS_EMAILS
   });
@@ -74,19 +63,23 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isCargadasModalOpen, setIsCargadasModalOpen] = useState(false);
+  const [cargadasSearch, setCargadasSearch] = useState('');
+  const [restoringCargadaId, setRestoringCargadaId] = useState<string | null>(null);
+  const [isClearingCargadas, setIsClearingCargadas] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState<HigienicoOrden | null>(null);
   const [orderToMarkCargado, setOrderToMarkCargado] = useState<HigienicoOrden | null>(null);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ProcessedHigienicoOrden | null>(null);
-  const [itemToRevert, setItemToRevert] = useState<ProcessedHigienicoOrden | null>(null);
 
   // Búsqueda y Filtros
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'todos' | 'listas' | 'en_espera' | 'vigentes' | 'por_vencer' | 'bloqueadas_cud' | 'hogar_pami'>('todos');
+  const [activeFilter, setActiveFilter] = useState<'todos' | 'listas' | 'en_espera' | 'sin_fecha'>('todos');
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [isUpdatingSheet, setIsUpdatingSheet] = useState(false);
   const isUpdatingSheetRef = useRef(false);
+  const hasInitialAutoSyncRef = useRef(false);
 
   // Suscripciones en tiempo real
   useEffect(() => {
@@ -100,15 +93,20 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       setConfig(conf);
     });
 
+    const unsubCargadas = subscribeToHigienicosCargadas((items) => {
+      setCargadas(items);
+    });
+
     return () => {
       unsubOrdenes();
       unsubConfig();
+      unsubCargadas();
     };
   }, []);
 
   const showFeedback = (msg: string) => {
     setFeedbackMessage(msg);
-    setTimeout(() => setFeedbackMessage(null), 4000);
+    setTimeout(() => setFeedbackMessage(null), 5000);
   };
 
   const handleQuickUpdateFromGoogleSheet = async (isAutoSync: boolean = false) => {
@@ -187,73 +185,55 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
         return;
       }
 
-      Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: 'greedy',
-        dynamicTyping: false,
-        complete: async (results) => {
-          try {
-            const rawRows = results.data as Record<string, any>[];
-            const mapped: Partial<HigienicoOrden>[] = [];
-            for (const raw of rawRows) {
-              const item = mapRowToHigienico(raw);
-              if (item) mapped.push(item);
-            }
-
-            if (mapped.length === 0) {
-              if (!isAutoSync) {
-                showFeedback('No se detectaron filas válidas en la planilla');
-              }
-              isUpdatingSheetRef.current = false;
-              setIsUpdatingSheet(false);
-              return;
-            }
-
-            const syncRes = await syncHigienicosFromSheet(mapped, cleanUrl);
-            await updateHigienicosConfig({ googleSheetUrl: cleanUrl }).catch(() => {});
-            localStorage.setItem('higienicos_last_sheet_url', cleanUrl);
-
-            const detailMsg = [];
-            if (syncRes.added > 0) detailMsg.push(`${syncRes.added} agregadas`);
-            if (syncRes.updated > 0) detailMsg.push(`${syncRes.updated} actualizadas`);
-            if ((syncRes.deleted || 0) > 0) detailMsg.push(`${syncRes.deleted} eliminadas`);
-
-            if (detailMsg.length > 0) {
-              showFeedback(`¡Planilla sincronizada! ${detailMsg.join(', ')}.`);
-            } else if (!isAutoSync) {
-              showFeedback('Planilla sincronizada. Todos los datos ya estaban al día.');
-            }
-          } catch (syncErr: any) {
-            if (!isAutoSync) {
-              showFeedback('Error al guardar datos: ' + syncErr.message);
-            }
-          } finally {
-            isUpdatingSheetRef.current = false;
-            setIsUpdatingSheet(false);
-          }
-        },
-        error: (err: any) => {
-          if (!isAutoSync) {
-            showFeedback('Error al procesar CSV: ' + err.message);
-          }
-          isUpdatingSheetRef.current = false;
-          setIsUpdatingSheet(false);
+      const mapped = parseHigienicosCsv(csvText);
+      if (mapped.length === 0) {
+        if (!isAutoSync) {
+          showFeedback('No se detectaron filas válidas en la planilla');
         }
-      });
+        return;
+      }
+
+      const syncRes = await syncHigienicosFromSheet(mapped, cleanUrl);
+      await updateHigienicosConfig({ googleSheetUrl: cleanUrl }).catch(() => {});
+      localStorage.setItem('higienicos_last_sheet_url', cleanUrl);
+
+      const detailMsg = [];
+      if (syncRes.added > 0) detailMsg.push(`${syncRes.added} agregadas`);
+      if (syncRes.updated > 0) detailMsg.push(`${syncRes.updated} actualizadas`);
+      if ((syncRes.deleted || 0) > 0) detailMsg.push(`${syncRes.deleted} eliminadas`);
+
+      if (detailMsg.length > 0) {
+        const skippedNote = syncRes.skipped > 0 ? ` (${syncRes.skipped} omitidas por ya estar cargadas)` : '';
+        showFeedback(`¡Planilla sincronizada! ${detailMsg.join(', ')}.${skippedNote}`);
+      } else if (!isAutoSync) {
+        if (syncRes.skipped > 0) {
+          showFeedback(`Planilla al día. ${syncRes.skipped} ${syncRes.skipped === 1 ? 'orden fue omitida porque ya figura en Cargadas' : 'órdenes fueron omitidas porque ya figuran en Cargadas'}.`);
+        } else {
+          showFeedback('Planilla sincronizada. Todos los datos ya estaban al día.');
+        }
+      }
     } catch (err: any) {
       console.error('Error updating from sheet:', err);
       if (!isAutoSync) {
         showFeedback('Error: ' + (err.message || 'No se pudo actualizar desde Google Sheet'));
       }
+    } finally {
       isUpdatingSheetRef.current = false;
       setIsUpdatingSheet(false);
     }
   };
 
-  // Auto-sincronización en segundo plano periódica (cada 2 min) y al volver a enfocar la pestaña
+  // Auto-sincronización inicial al abrir, periódica (cada 2 min) y al volver a enfocar la pestaña
   useEffect(() => {
     let lastAutoSync = 0;
     const cooldownMs = 25000; // mínimo 25s entre llamadas automáticas
+
+    const effectiveUrl = config.googleSheetUrl || localStorage.getItem('higienicos_last_sheet_url');
+    if (effectiveUrl && !hasInitialAutoSyncRef.current) {
+      hasInitialAutoSyncRef.current = true;
+      lastAutoSync = Date.now();
+      handleQuickUpdateFromGoogleSheet(true);
+    }
 
     const triggerAutoSync = () => {
       const now = Date.now();
@@ -295,7 +275,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
     return authorized.some(e => e.toLowerCase().trim() === lowerEmail);
   }, [currentUserEmail, config.authorizedEmails]);
 
-  // Procesamiento de órdenes con reglas de negocio (3 meses, CUD, bloqueo por orden previa)
+  // Procesamiento de órdenes según la fecha de OME de la planilla
   const processedOrdenes = useMemo(() => {
     return processHigienicosOrdenes(ordenes);
   }, [ordenes]);
@@ -304,28 +284,19 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
   const stats = useMemo(() => {
     let listasParaCargar = 0;
     let enEsperaVencimiento = 0;
-    let vigentes = 0;
-    let porVencer = 0;
-    let bloqueadasCud = 0;
-    let hogarPamiTotal = 0;
+    let sinFecha = 0;
 
     for (const item of processedOrdenes) {
-      if (item.hogarPami) hogarPamiTotal++;
       if (item.computedEstado === 'lista_para_cargar') listasParaCargar++;
       else if (item.computedEstado === 'en_espera_vencimiento') enEsperaVencimiento++;
-      else if (item.computedEstado === 'vigente') vigentes++;
-      else if (item.computedEstado === 'proxima_vencer') porVencer++;
-      else if (item.computedEstado === 'bloqueada_cud') bloqueadasCud++;
+      else if (item.computedEstado === 'sin_fecha') sinFecha++;
     }
 
     return {
       total: processedOrdenes.length,
       listasParaCargar,
       enEsperaVencimiento,
-      vigentes,
-      porVencer,
-      bloqueadasCud,
-      hogarPamiTotal
+      sinFecha
     };
   }, [processedOrdenes]);
 
@@ -335,10 +306,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       // Filtro de estado
       if (activeFilter === 'listas' && item.computedEstado !== 'lista_para_cargar') return false;
       if (activeFilter === 'en_espera' && item.computedEstado !== 'en_espera_vencimiento') return false;
-      if (activeFilter === 'vigentes' && item.computedEstado !== 'vigente') return false;
-      if (activeFilter === 'por_vencer' && item.computedEstado !== 'proxima_vencer') return false;
-      if (activeFilter === 'bloqueadas_cud' && item.computedEstado !== 'bloqueada_cud') return false;
-      if (activeFilter === 'hogar_pami' && !item.hogarPami) return false;
+      if (activeFilter === 'sin_fecha' && item.computedEstado !== 'sin_fecha') return false;
 
       // Filtro de búsqueda
       if (!searchQuery.trim()) return true;
@@ -357,40 +325,76 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
       const priority: Record<string, number> = {
         'lista_para_cargar': 1,
         'en_espera_vencimiento': 2,
-        'bloqueada_cud': 3,
-        'proxima_vencer': 4,
-        'vigente': 5,
-        'vencida': 6
+        'sin_fecha': 3
       };
       const pA = priority[a.computedEstado] || 99;
       const pB = priority[b.computedEstado] || 99;
       if (pA !== pB) return pA - pB;
 
-      // Si ambas están en espera, ordenar por la fecha más cercana
-      const dateA = a.fechaVencimientoOme || a.fechaVencimiento || '';
-      const dateB = b.fechaVencimientoOme || b.fechaVencimiento || '';
+      // Ordenar por fecha más cercana / antigua primero
+      const dateA = a.fechaVencimientoOme || a.fechaEmisionOme || a.fechaVencimiento || '';
+      const dateB = b.fechaVencimientoOme || b.fechaEmisionOme || b.fechaVencimiento || '';
       return dateA.localeCompare(dateB);
     });
   }, [processedOrdenes, activeFilter, searchQuery]);
 
-  const handleToggleCud = async (item: ProcessedHigienicoOrden) => {
+  // Coincidencias de búsqueda en otras pestañas o en Historial de Cargadas
+  const searchCrossMatches = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return { otherOrders: [] as ProcessedHigienicoOrden[], cargadasMatches: [] as HigienicoCargada[] };
+
+    const visibleIds = new Set(filteredOrdenes.map(o => o.id));
+    const otherOrders = processedOrdenes.filter(item => {
+      if (visibleIds.has(item.id)) return false;
+      return (
+        item.afiliadoNombre.toLowerCase().includes(q) ||
+        item.afiliadoBeneficio.toLowerCase().includes(q) ||
+        (item.afiliadoDni && item.afiliadoDni.toLowerCase().includes(q)) ||
+        item.nroOme.toLowerCase().includes(q)
+      );
+    });
+
+    const cargadasMatches = cargadas.filter(c =>
+      c.afiliadoNombre.toLowerCase().includes(q) ||
+      c.afiliadoBeneficio.toLowerCase().includes(q) ||
+      (c.afiliadoDni && c.afiliadoDni.toLowerCase().includes(q)) ||
+      (c.nroOme && c.nroOme.toLowerCase().includes(q))
+    );
+
+    return { otherOrders, cargadasMatches };
+  }, [searchQuery, filteredOrdenes, processedOrdenes, cargadas]);
+
+  const filteredCargadas = useMemo(() => {
+    const q = cargadasSearch.toLowerCase().trim();
+    if (!q) return cargadas;
+    return cargadas.filter(c =>
+      c.afiliadoNombre.toLowerCase().includes(q) ||
+      c.afiliadoBeneficio.toLowerCase().includes(q) ||
+      (c.nroOme && c.nroOme.toLowerCase().includes(q))
+    );
+  }, [cargadas, cargadasSearch]);
+
+  const handleRestoreCargada = async (cargada: HigienicoCargada) => {
+    setRestoringCargadaId(cargada.id);
     try {
-      const nuevoEstado = !item.tieneCud;
-      await toggleCudOrden(item.id, nuevoEstado);
-      showFeedback(`CUD ${nuevoEstado ? 'verificado' : 'desmarcado'} para ${item.afiliadoNombre}`);
+      await restaurarOrdenCargada(cargada);
+      showFeedback(`Orden de ${cargada.afiliadoNombre} restaurada a pendientes.`);
     } catch (err: any) {
-      showFeedback('Error al modificar CUD: ' + (err.message || 'Error desconocido'));
+      showFeedback('Error al restaurar orden: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setRestoringCargadaId(null);
     }
   };
 
-  const handleConfirmRevert = async () => {
-    if (!itemToRevert) return;
+  const handleClearCargadasHistory = async () => {
+    setIsClearingCargadas(true);
     try {
-      await revertirCargaOrden(itemToRevert.id);
-      showFeedback(`Carga revertida para ${itemToRevert.afiliadoNombre}`);
-      setItemToRevert(null);
+      const count = await limpiarHistorialCargadas();
+      showFeedback(`Se limpiaron ${count} registros del historial de cargadas.`);
     } catch (err: any) {
-      showFeedback('Error al revertir carga: ' + (err.message || 'Error desconocido'));
+      showFeedback('Error al limpiar historial: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setIsClearingCargadas(false);
     }
   };
 
@@ -461,7 +465,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Seguimiento de vigencia de 3 meses, sincronización de órdenes y validación de CUD para Hogar PAMI.
+            Control de órdenes OME disponibles según las fechas de la planilla de Google Sheets.
           </p>
         </div>
 
@@ -499,6 +503,16 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
 
           <button
             type="button"
+            onClick={() => { setCargadasSearch(searchQuery); setIsCargadasModalOpen(true); }}
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Ver órdenes marcadas como ya cargadas (omitidas al sincronizar)"
+          >
+            <History className="w-4 h-4 text-slate-600" />
+            <span>Cargadas ({cargadas.length})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsDeleteAllModalOpen(true)}
             className="px-3.5 py-2 text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
             title="Vaciar todos los registros de higiénicos"
@@ -527,13 +541,13 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-emerald-950 flex items-center gap-2">
-                <span>¡Tienes órdenes listas para cargar hoy en el sistema!</span>
+                <span>¡Tienes órdenes listas para cargar hoy!</span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-semibold">
-                  Habilitadas hoy
+                  Disponibles hoy
                 </span>
               </h2>
               <p className="text-xs text-emerald-800 mt-0.5">
-                Cumplieron su fecha límite/vigencia de OME y ya pueden ingresarse en SIMAP.
+                Cumplieron la fecha indicada en la planilla y ya están habilitadas para cargar.
               </p>
             </div>
           </div>
@@ -552,17 +566,15 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
               <CalendarClock className="w-4 h-4" />
             </div>
             <span>
-              <strong>Sin órdenes para cargar hoy:</strong> Las <strong>{stats.enEsperaVencimiento}</strong> órdenes cargadas se encuentran pendientes porque aún no se cumplió su fecha. El sistema colocará el aviso con el número justo el día en que cada una se habilite.
+              <strong>Sin órdenes para cargar hoy:</strong> {stats.enEsperaVencimiento > 0 ? `${stats.enEsperaVencimiento} esperando su fecha` : 'ninguna en espera'}
+              {stats.sinFecha > 0 ? ` y ${stats.sinFecha} sin fecha asignada en la planilla` : ''}.
             </span>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[11px] font-semibold shrink-0">
-            {stats.enEsperaVencimiento} en espera futura
-          </span>
         </div>
       ) : null}
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         {/* Card 1: Listas para Cargar */}
         <div 
           onClick={() => setActiveFilter('listas')}
@@ -578,11 +590,11 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
           </div>
           <div className="text-2xl font-bold text-slate-900 font-mono">{stats.listasParaCargar}</div>
           <p className="text-[11px] text-emerald-700 mt-1">
-            Habilitadas para cargar hoy
+            Fecha de OME cumplida
           </p>
         </div>
 
-        {/* Card 2: En Espera por Vencimiento OME */}
+        {/* Card 2: En Espera de Fecha */}
         <div 
           onClick={() => setActiveFilter('en_espera')}
           className={`p-4 rounded-2xl border transition-all cursor-pointer ${
@@ -592,73 +604,35 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-amber-800 mb-1">
-            <span className="text-xs font-semibold tracking-wider uppercase">En Espera Vigencia OME</span>
+            <span className="text-xs font-semibold tracking-wider uppercase">En Espera de Fecha</span>
             <CalendarClock className="w-4 h-4 text-amber-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900 font-mono">{stats.enEsperaVencimiento}</div>
           <p className="text-[11px] text-amber-700 mt-1">
-            Carga a partir de vigencia
+            Habilitan al día siguiente
           </p>
         </div>
 
-        {/* Card 3: Vigentes */}
+        {/* Card 3: Sin Fecha */}
         <div 
-          onClick={() => setActiveFilter('vigentes')}
+          onClick={() => setActiveFilter('sin_fecha')}
           className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            activeFilter === 'vigentes' 
-              ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20' 
-              : 'bg-white border-slate-200 hover:border-blue-300 shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between text-blue-800 mb-1">
-            <span className="text-xs font-semibold tracking-wider uppercase">Vigentes (Activas)</span>
-            <Clock className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 font-mono">{stats.vigentes}</div>
-          <p className="text-[11px] text-blue-700 mt-1">
-            Cursando sus 3 meses
-          </p>
-        </div>
-
-        {/* Card 4: Próximas a Vencer */}
-        <div 
-          onClick={() => setActiveFilter('por_vencer')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            activeFilter === 'por_vencer' 
-              ? 'bg-orange-50/80 border-orange-500 ring-2 ring-orange-500/20' 
-              : 'bg-white border-slate-200 hover:border-orange-300 shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between text-orange-800 mb-1">
-            <span className="text-xs font-semibold tracking-wider uppercase">Por Vencer</span>
-            <AlertTriangle className="w-4 h-4 text-orange-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 font-mono">{stats.porVencer}</div>
-          <p className="text-[11px] text-orange-700 mt-1">
-            Vencen en ≤ 15 días
-          </p>
-        </div>
-
-        {/* Card 5: Bloqueadas por CUD */}
-        <div 
-          onClick={() => setActiveFilter('bloqueadas_cud')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            activeFilter === 'bloqueadas_cud' 
+            activeFilter === 'sin_fecha' 
               ? 'bg-rose-50/80 border-rose-500 ring-2 ring-rose-500/20' 
               : 'bg-white border-slate-200 hover:border-rose-300 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between text-rose-800 mb-1">
-            <span className="text-xs font-semibold tracking-wider uppercase">Requieren CUD</span>
-            <ShieldAlert className="w-4 h-4 text-rose-600" />
+            <span className="text-xs font-semibold tracking-wider uppercase">Sin Fecha</span>
+            <CalendarOff className="w-4 h-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 font-mono">{stats.bloqueadasCud}</div>
+          <div className="text-2xl font-bold text-slate-900 font-mono">{stats.sinFecha}</div>
           <p className="text-[11px] text-rose-700 mt-1">
-            Hogar PAMI sin CUD
+            No tienen fecha en planilla
           </p>
         </div>
 
-        {/* Card 6: Total */}
+        {/* Card 4: Total */}
         <div 
           onClick={() => setActiveFilter('todos')}
           className={`p-4 rounded-2xl border transition-all cursor-pointer ${
@@ -673,7 +647,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
           </div>
           <div className="text-2xl font-bold text-slate-900 font-mono">{stats.total}</div>
           <p className="text-[11px] text-slate-500 mt-1">
-            {stats.hogarPamiTotal} en Hogar PAMI
+            Sincronizadas desde planilla
           </p>
         </div>
       </div>
@@ -734,54 +708,62 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                   : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
               }`}
             >
-              En espera Vigencia OME ({stats.enEsperaVencimiento})
+              En espera de fecha ({stats.enEsperaVencimiento})
             </button>
             <button
               type="button"
-              onClick={() => setActiveFilter('vigentes')}
+              onClick={() => setActiveFilter('sin_fecha')}
               className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors ${
-                activeFilter === 'vigentes' 
-                  ? 'bg-blue-700 text-white font-semibold' 
-                  : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
-              }`}
-            >
-              Vigentes ({stats.vigentes})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFilter('por_vencer')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors ${
-                activeFilter === 'por_vencer' 
-                  ? 'bg-amber-600 text-white font-semibold' 
-                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
-              }`}
-            >
-              Por vencer ({stats.porVencer})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFilter('bloqueadas_cud')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors ${
-                activeFilter === 'bloqueadas_cud' 
+                activeFilter === 'sin_fecha' 
                   ? 'bg-rose-700 text-white font-semibold' 
                   : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
               }`}
             >
-              Sin CUD ({stats.bloqueadasCud})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFilter('hogar_pami')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors ${
-                activeFilter === 'hogar_pami' 
-                  ? 'bg-purple-700 text-white font-semibold' 
-                  : 'bg-purple-50 text-purple-800 hover:bg-purple-100'
-              }`}
-            >
-              Hogar PAMI ({stats.hogarPamiTotal})
+              Sin fecha ({stats.sinFecha})
             </button>
           </div>
         </div>
+
+        {/* Alerta de coincidencias en otras pestañas o en Historial de Cargadas */}
+        {searchQuery.trim() && (searchCrossMatches.otherOrders.length > 0 || searchCrossMatches.cargadasMatches.length > 0) && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-start sm:items-center gap-2">
+              <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5 sm:mt-0" />
+              <div className="space-y-0.5">
+                {searchCrossMatches.otherOrders.length > 0 && (
+                  <p>
+                    Hay <strong>{searchCrossMatches.otherOrders.length}</strong> {searchCrossMatches.otherOrders.length === 1 ? 'coincidencia' : 'coincidencias'} en otra categoría ({searchCrossMatches.otherOrders.map(o => `${o.afiliadoNombre} [${o.computedEstado === 'sin_fecha' ? 'No tiene fecha' : o.computedEstado === 'en_espera_vencimiento' ? 'En espera' : 'Lista para cargar'}]`).slice(0, 3).join(', ')}).
+                  </p>
+                )}
+                {searchCrossMatches.cargadasMatches.length > 0 && (
+                  <p>
+                    Hay <strong>{searchCrossMatches.cargadasMatches.length}</strong> {searchCrossMatches.cargadasMatches.length === 1 ? 'registro marcado como ya cargado' : 'registros marcados como ya cargados'} en Historial Cargadas ({searchCrossMatches.cargadasMatches.map(c => c.afiliadoNombre).slice(0, 3).join(', ')}), por eso se omite en sincronización.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {searchCrossMatches.otherOrders.length > 0 && activeFilter !== 'todos' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter('todos')}
+                  className="px-2.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-[11px] font-semibold cursor-pointer transition-colors"
+                >
+                  Ver en Todas
+                </button>
+              )}
+              {searchCrossMatches.cargadasMatches.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setCargadasSearch(searchQuery); setIsCargadasModalOpen(true); }}
+                  className="px-2.5 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[11px] font-semibold cursor-pointer transition-colors"
+                >
+                  Ver / Restaurar en Cargadas
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Table View */}
@@ -821,23 +803,17 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
               <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Afiliado</th>
-                  <th className="py-3 px-4">Hogar & CUD</th>
-                  <th className="py-3 px-4">Prescripción OME</th>
-                  <th className="py-3 px-4">Ciclo de 3 Meses & Estado</th>
+                  <th className="py-3 px-4">Modalidad</th>
+                  <th className="py-3 px-4">Prescripción & Fecha OME</th>
+                  <th className="py-3 px-4">Estado de OME</th>
                   <th className="py-3 px-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {filteredOrdenes.map((item) => {
-                  const diasRestantes = item.diasRestantes ?? 0;
-                  const isLoaded = Boolean(item.fechaCargaSistema);
-                  const isBlockedByCud = item.computedEstado === 'bloqueada_cud';
-                  const isBlockedByActiveOrder = Boolean(item.bloqueantePorOrdenVigente);
                   const isReadyToLoad = item.computedEstado === 'lista_para_cargar';
-
-                  // Porcentaje transcurrido de los 90 días
-                  const diasTranscurridos = isLoaded ? Math.max(0, 90 - diasRestantes) : 0;
-                  const porcentajeTranscurrido = Math.min(100, Math.max(0, Math.round((diasTranscurridos / 90) * 100)));
+                  const isSinFecha = item.computedEstado === 'sin_fecha';
+                  const displayFechaOme = item.fechaVencimientoOme || item.fechaEmisionOme || item.fechaVencimiento;
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
@@ -857,46 +833,16 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                         )}
                       </td>
 
-                      {/* Column 2: Hogar & CUD */}
+                      {/* Column 2: Modalidad */}
                       <td className="py-3 px-4 align-top">
-                        <div className="space-y-1.5">
-                          {item.hogarPami ? (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-semibold">
-                              <Building2 className="w-3 h-3 text-purple-700" />
-                              Hogar PAMI
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-slate-400">Particular</span>
-                          )}
-
-                          {/* Interactive CUD Checkbox */}
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleCud(item)}
-                              className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg border transition-all ${
-                                item.tieneCud 
-                                  ? 'bg-teal-50 border-teal-300 text-teal-800 hover:bg-teal-100' 
-                                  : item.hogarPami 
-                                    ? 'bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100' 
-                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                              }`}
-                              title={item.hogarPami && !item.tieneCud ? 'Obligatorio: Haga clic para validar CUD y desbloquear' : 'Alternar CUD'}
-                            >
-                              {item.tieneCud ? (
-                                <CheckSquare className="w-3.5 h-3.5 text-teal-700" />
-                              ) : (
-                                <Square className="w-3.5 h-3.5 text-slate-400" />
-                              )}
-                              <span>{item.tieneCud ? 'CUD Presentado' : 'Sin CUD'}</span>
-                            </button>
-                            {item.cudNumero && (
-                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                #{item.cudNumero}
-                              </div>
-                            )}
+                        {item.hogarPami ? (
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-semibold">
+                            <Building2 className="w-3 h-3 text-purple-700" />
+                            Hogar PAMI
                           </div>
-                        </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-500">Particular</span>
+                        )}
                       </td>
 
                       {/* Column 3: Prescripción OME */}
@@ -914,14 +860,19 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                             N° OME: {item.nroOme}
                           </div>
                         )}
-                        {(item.fechaVencimientoOme || (!isLoaded && item.fechaVencimiento)) && (
-                          <div className="mt-1">
+                        <div className="mt-1">
+                          {displayFechaOme && !isSinFecha ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-900 bg-amber-50/90 border border-amber-200 px-2 py-0.5 rounded-md">
                               <CalendarClock className="w-3 h-3 text-amber-700 shrink-0" />
-                              Vigencia de OME: {formatDate(item.fechaVencimientoOme || item.fechaVencimiento)}
+                              Fecha OME: {formatDate(displayFechaOme)}
                             </span>
-                          </div>
-                        )}
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                              <CalendarOff className="w-3 h-3 text-rose-600 shrink-0" />
+                              No tiene fecha
+                            </span>
+                          )}
+                        </div>
                         {item.medicoCabecera && (
                           <div className="text-[11px] text-slate-500 truncate max-w-[200px] mt-0.5" title={item.medicoCabecera}>
                             Dr: {item.medicoCabecera}
@@ -929,9 +880,8 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                         )}
                       </td>
 
-                      {/* Column 4: Ciclo de 3 Meses & Estado Operativo */}
+                      {/* Column 4: Estado OME */}
                       <td className="py-3 px-4 align-top">
-                        {/* Estado: Lista para cargar */}
                         {isReadyToLoad && (
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold border border-emerald-200">
@@ -939,97 +889,32 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                               Lista para cargar hoy
                             </span>
                             <p className="text-[11px] text-slate-500">
-                              Fecha de vencimiento cumplida o sin orden activa. Habilitada para cargar.
+                              Fecha de OME cumplida. Disponible para cargar.
                             </p>
                           </div>
                         )}
 
-                        {/* Estado: En espera por vencimiento de OME (No disponible hasta esa fecha) */}
-                        {item.computedEstado === 'en_espera_vencimiento' && !isBlockedByActiveOrder && (
+                        {item.computedEstado === 'en_espera_vencimiento' && (
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-300">
                               <CalendarClock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                              Habilitada a partir del {formatDate(item.fechaVencimientoOme || item.fechaVencimiento || item.fechaEmisionOme)}
+                              En espera ({formatDate(displayFechaOme)})
                             </span>
                             <p className="text-[11px] text-amber-800 font-medium">
-                              {item.motivoBloqueo || `Vencimiento OME: ${formatDate(item.fechaVencimientoOme || item.fechaVencimiento || item.fechaEmisionOme)} (en espera de fecha de carga)`}
+                              {item.motivoBloqueo}
                             </p>
                           </div>
                         )}
 
-                        {/* Estado: Bloqueada por CUD */}
-                        {isBlockedByCud && (
+                        {isSinFecha && (
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[11px] font-semibold border border-rose-200">
-                              <ShieldAlert className="w-3 h-3 text-rose-700" />
-                              Bloqueada: Requiere CUD
+                              <CalendarOff className="w-3 h-3 text-rose-700 shrink-0" />
+                              No tiene fecha
                             </span>
-                            <p className="text-[11px] text-rose-600">
-                              Afiliado en Hogar PAMI. Tilda "CUD Presentado" para desbloquear.
+                            <p className="text-[11px] text-rose-700">
+                              Falta fecha en la planilla. No se habilita para cargar.
                             </p>
-                          </div>
-                        )}
-
-                        {/* Estado: En espera por orden previa vigente */}
-                        {isBlockedByActiveOrder && (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold border border-amber-200">
-                              <Clock className="w-3 h-3 text-amber-700" />
-                              En espera por orden vigente
-                            </span>
-                            <p className="text-[11px] text-slate-600">
-                              Habilitada a partir del <strong>{formatDate(item.bloqueantePorOrdenVigente?.fechaVencimiento)}</strong> (faltan {getDaysDifference(item.bloqueantePorOrdenVigente?.fechaVencimiento || '')} días).
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Estado: Vigente o Próxima a Vencer (Ya cargada) */}
-                        {isLoaded && (
-                          <div className="space-y-1.5 min-w-[210px]">
-                            <div className="flex items-center justify-between">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
-                                item.computedEstado === 'proxima_vencer' 
-                                  ? 'bg-amber-100 text-amber-800 border-amber-300' 
-                                  : item.computedEstado === 'vencida'
-                                    ? 'bg-slate-100 text-slate-800 border-slate-300'
-                                    : 'bg-blue-100 text-blue-800 border-blue-200'
-                              }`}>
-                                <Clock className="w-3 h-3" />
-                                {item.computedEstado === 'proxima_vencer' 
-                                  ? `Vence en ${diasRestantes} días` 
-                                  : item.computedEstado === 'vencida'
-                                    ? 'Ciclo cumplido (Vencida)'
-                                    : `Vigente · ${diasRestantes} días rest.`}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {porcentajeTranscurrido}%
-                              </span>
-                            </div>
-
-                            {/* Barra de progreso de los 90 días */}
-                            <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                              <div 
-                                className={`h-1.5 rounded-full transition-all ${
-                                  item.computedEstado === 'proxima_vencer' 
-                                    ? 'bg-amber-500' 
-                                    : item.computedEstado === 'vencida'
-                                      ? 'bg-slate-400'
-                                      : 'bg-blue-600'
-                                }`} 
-                                style={{ width: `${porcentajeTranscurrido}%` }} 
-                              />
-                            </div>
-
-                            <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                              <span>Carga: {formatDate(item.fechaCargaSistema)}</span>
-                              <span className="font-medium text-slate-700">Vence: {formatDate(item.fechaVencimiento)}</span>
-                            </div>
-
-                            {item.cargadoPorEmail && (
-                              <div className="text-[10px] text-slate-400">
-                                Cargado por {item.cargadoPorEmail.split('@')[0]}
-                              </div>
-                            )}
                           </div>
                         )}
                       </td>
@@ -1037,32 +922,20 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
                       {/* Column 5: Acciones */}
                       <td className="py-3 px-4 align-top text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Botón principal: Marcar Cargado */}
-                          {!isLoaded ? (
-                            <button
-                              type="button"
-                              onClick={() => setOrderToMarkCargado(item)}
-                              disabled={!item.puedeCargarse}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-xs ${
-                                item.puedeCargarse
-                                  ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
-                                  : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                              }`}
-                              title={item.motivoBloqueo || 'Marcar como cargada en PAMI y quitar de pendientes'}
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Cargar OM</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setItemToRevert(item)}
-                              className="px-2.5 py-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg text-xs transition-colors border border-slate-200 cursor-pointer"
-                              title="Revertir carga (reiniciar a pendiente)"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setOrderToMarkCargado(item)}
+                            disabled={!item.puedeCargarse}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-xs ${
+                              item.puedeCargarse
+                                ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
+                                : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                            }`}
+                            title={item.motivoBloqueo || 'Marcar como cargada y quitar de pendientes'}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Cargar OM</span>
+                          </button>
 
                           {/* Editar */}
                           <button
@@ -1099,7 +972,7 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-teal-700 shrink-0" />
           <span>
-            <strong>Regla de negocio activa:</strong> Las órdenes tienen una vigencia de 90 días a partir de la fecha de carga efectiva. Afiliados en Hogar PAMI exigen CUD obligatorio.
+            <strong>Regla activa:</strong> La fecha de OME de tu planilla de Google Sheets indica cuándo cargar. Los registros sin fecha o con fecha de hoy/futura no se habilitan para cargar.
           </span>
         </div>
         <div className="text-[11px] text-slate-400 shrink-0">
@@ -1117,7 +990,8 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
           if (res.added > 0) detail.push(`${res.added} añadidas`);
           if (res.updated > 0) detail.push(`${res.updated} actualizadas`);
           if ((res.deleted || 0) > 0) detail.push(`${res.deleted} eliminadas`);
-          showFeedback(`Sincronización completada: ${detail.length > 0 ? detail.join(', ') : 'todos los datos al día'}.`);
+          const skippedNote = (res.skipped || 0) > 0 ? ` (${res.skipped} omitidas por ya figurar en Cargadas)` : '';
+          showFeedback(`Sincronización completada: ${detail.length > 0 ? detail.join(', ') : 'todos los datos al día'}.${skippedNote}`);
         }}
       />
 
@@ -1233,33 +1107,118 @@ export const HigienicosDashboard: React.FC<HigienicosDashboardProps> = ({
         </div>
       )}
 
-      {/* Modal de confirmación para Revertir Carga */}
-      {itemToRevert && (
+      {/* Modal: Historial de Órdenes Cargadas (Omitidas en Sincronización) */}
+      {isCargadasModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 space-y-4" role="dialog" aria-modal="true">
-            <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
-              <RotateCcw className="w-5 h-5" />
-            </div>
-            <div className="text-center space-y-1.5">
-              <h3 className="text-base font-bold text-slate-900">¿Revertir estado de carga?</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                La orden de <strong>{itemToRevert.afiliadoNombre}</strong> volverá a figurar como <em>pendiente de carga</em> y su ciclo de 90 días se reiniciará.
-              </p>
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-slate-200"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Historial de Órdenes Cargadas ({cargadas.length})</h2>
+                  <p className="text-xs text-slate-500">
+                    Las órdenes aquí registradas se omiten automáticamente al sincronizar con Google Sheets. Puedes restaurar cualquiera a pendientes.
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => setItemToRevert(null)}
-                className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                onClick={() => setIsCargadasModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
               >
-                Cancelar
+                <X className="w-5 h-5" />
               </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 bg-white">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={cargadasSearch}
+                  onChange={(e) => setCargadasSearch(e.target.value)}
+                  placeholder="Buscar por apellido, beneficio o N° OME en historial..."
+                  className="w-full pl-9 pr-8 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 bg-slate-50/50"
+                />
+                {cargadasSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setCargadasSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {filteredCargadas.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500 space-y-2">
+                  <History className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p>No hay órdenes cargadas {cargadasSearch ? 'que coincidan con la búsqueda' : 'registradas en el historial'}.</p>
+                </div>
+              ) : (
+                filteredCargadas.map((c) => (
+                  <div
+                    key={c.id}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-slate-900 uppercase">
+                        {c.afiliadoNombre || 'Sin nombre'}
+                      </div>
+                      <div className="text-[11px] text-slate-600 font-mono flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                        <span>Ben: <strong>{c.afiliadoBeneficio || '-'}</strong></span>
+                        {(c.fechaVencimientoOme || c.fechaEmisionOme) && (
+                          <span>Vigencia OME: <strong>{formatDate(c.fechaVencimientoOme || c.fechaEmisionOme)}</strong></span>
+                        )}
+                        {c.nroOme && <span>N° OME: <strong>{c.nroOme}</strong></span>}
+                      </div>
+                      {c.cargadoPorEmail && (
+                        <div className="text-[10px] text-slate-400">
+                          Marcada como cargada por {c.cargadoPorEmail}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreCargada(c)}
+                      disabled={restoringCargadaId === c.id}
+                      className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${restoringCargadaId === c.id ? 'animate-spin' : ''}`} />
+                      <span>{restoringCargadaId === c.id ? 'Restaurando...' : 'Restaurar a pendientes'}</span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+              {cargadas.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleClearCargadasHistory}
+                  disabled={isClearingCargadas}
+                  className="text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isClearingCargadas ? 'Limpiando...' : 'Limpiar todo el historial de cargadas'}</span>
+                </button>
+              ) : <span />}
               <button
                 type="button"
-                onClick={handleConfirmRevert}
-                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors shadow-xs cursor-pointer"
+                onClick={() => setIsCargadasModalOpen(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
               >
-                Revertir
+                Cerrar
               </button>
             </div>
           </div>
